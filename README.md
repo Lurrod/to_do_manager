@@ -121,14 +121,3 @@ Chaque tâche est représentée par l'objet suivant :
   }
   ```
 
----
-
-## Test et validation
-- Utiliser **Postman** ou **Thunder Client** pour tester les routes.
-- Vérifier que toutes les opérations fonctionnent correctement avec la base de données MongoDB.
-
----
-
-## Auteur
-Développé par [Votre Nom] dans le cadre de la formation AFEC.
-
