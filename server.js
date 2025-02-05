@@ -3,15 +3,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 require('dotenv').config();
-
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Connexion à MongoDB
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -19,7 +15,6 @@ mongoose.connect(process.env.MONGO_URI, {
   .then(() => console.log('MongoDB Atlas connecté'))
   .catch(err => console.error('Erreur de connexion à MongoDB:', err));
 
-// Modèle Mongoose
 const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
@@ -28,7 +23,6 @@ const taskSchema = new mongoose.Schema({
 });
 const Task = mongoose.model('Task', taskSchema);
 
-// Routes API
 app.post('/tasks', async (req, res) => {
   try {
     const task = new Task(req.body);
@@ -82,8 +76,6 @@ app.get('/', (req, res) => {
     res.send('Bienvenue sur l’API To-Do List 🚀');
   });
   
-
-// Démarrer le serveur
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
 });
