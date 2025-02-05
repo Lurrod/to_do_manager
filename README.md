@@ -10,7 +10,7 @@ L'API To-Do List permet de gérer des tâches en effectuant des opérations CRUD
 ## Installation
 1. Cloner le projet :
    ```bash
-   git clone <repository_url>
+   git clone https://github.com/Lurrod/to_do_manager.git
    cd todo-manager
    ```
 2. Installer les dépendances :
@@ -120,15 +120,4 @@ Chaque tâche est représentée par l'objet suivant :
     "message": "Tâche supprimée"
   }
   ```
-
----
-
-## Test et validation
-- Utiliser **Postman** ou **Thunder Client** pour tester les routes.
-- Vérifier que toutes les opérations fonctionnent correctement avec la base de données MongoDB.
-
----
-
-## Auteur
-Développé par [Votre Nom] dans le cadre de la formation AFEC.
 
