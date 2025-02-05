@@ -10,7 +10,7 @@ L'API To-Do List permet de gérer des tâches en effectuant des opérations CRUD
 ## Installation
 1. Cloner le projet :
    ```bash
-   git clone <repository_url>
+   git clone https://github.com/Lurrod/to_do_manager.git
    cd todo-manager
    ```
 2. Installer les dépendances :
