@@ -1,21 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
   const taskForm = document.getElementById("task-form");
   const taskList = document.getElementById("task-list");
-
-  // Modale pour l'édition
+  // Ajouter les éléments existants
   const editModal = document.getElementById("edit-modal");
   const editTitle = document.getElementById("edit-title");
   const editDesc = document.getElementById("edit-desc");
   const editDueDate = document.getElementById("edit-due-date");
   const saveEditBtn = document.getElementById("save-edit");
   const closeEditModalBtn = document.getElementById("close-modal");
-
-  // Modale pour la suppression
   const deleteModal = document.getElementById("delete-modal");
   const confirmDeleteBtn = document.getElementById("confirm-delete");
   const cancelDeleteBtn = document.getElementById("cancel-delete");
-
-  // Pagination
   const prevPageBtn = document.getElementById("prev-page");
   const nextPageBtn = document.getElementById("next-page");
   const pageInfo = document.getElementById("page-info");
@@ -23,28 +18,61 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentTaskId = null;
   let currentPage = 1;
   let totalPages = 1;
+  let currentTasks = []; // Stocker les tâches actuelles
+  let currentSortMethod = 'creation'; // Par défaut : tri par date de création
 
-  // Charger les tâches avec pagination
+  // Fonctions de tri
+  const sortFunctions = {
+    creation: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+    dueDate: (a, b) => {
+      // Gérer le cas où une tâche n'a pas de date limite
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    }
+  };
+
+  // Fonction pour appliquer le tri
+  const sortTasks = (tasks, sortMethod) => {
+    return [...tasks].sort(sortFunctions[sortMethod]);
+  };
+
+  // Modifier fetchTasks pour inclure le tri
   const fetchTasks = async (page = 1) => {
     const response = await fetch(
       `http://localhost:5000/tasks?page=${page}&limit=5`
     );
     const data = await response.json();
-    const tasks = data.tasks;
+    currentTasks = data.tasks; // Sauvegarder les tâches
     totalPages = data.totalPages;
     currentPage = data.currentPage;
 
+    // Appliquer le tri
+    const sortedTasks = sortTasks(currentTasks, currentSortMethod);
+    renderTasks(sortedTasks);
+
+    // Mise à jour des infos de pagination
+    pageInfo.textContent = `Page ${currentPage} / ${totalPages}`;
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages;
+  };
+
+  // Nouvelle fonction pour rendre les tâches
+  const renderTasks = (tasks) => {
     taskList.innerHTML = "";
     tasks.forEach((task) => {
       const li = document.createElement("li");
       const formattedDate = task.dueDate
         ? new Date(task.dueDate).toLocaleString()
-        : null;
-        li.innerHTML = `
+        : "Aucune date limite";
+      const createdAtDate = new Date(task.createdAt).toLocaleString();
+      
+      li.innerHTML = `
         <div class="task-content">
             <h3 class="task-title">${task.title}</h3>
             <p class="task-desc">${task.description}</p>
-            ${formattedDate ? `<p class="task-date">Date limite : <span>${formattedDate}</span></p>` : ''}
+            <p class="task-date">Date limite: ${formattedDate}</p>
         </div>
         <div class="task-buttons">
             <input type="checkbox" class="verif" data-id="${task._id}" ${
@@ -53,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <button class="edit" data-id="${task._id}" data-title="${
         task.title
       }" data-desc="${task.description}" data-due-date="${
-        task.dueDate
+        task.dueDate || ""
       }"><i class="fa-solid fa-pen-to-square"></i> Modifier</button>
             <button class="delete" data-id="${task._id}"><i class="fa-solid fa-trash"></i> Supprimer</button>
         </div>
@@ -62,12 +90,10 @@ document.addEventListener("DOMContentLoaded", () => {
       taskList.appendChild(li);
     });
 
-    // Mise à jour des infos de pagination
-    pageInfo.textContent = `Page ${currentPage} / ${totalPages}`;
-    prevPageBtn.disabled = currentPage === 1;
-    nextPageBtn.disabled = currentPage === totalPages;
+    attachEventListeners();
+  };
 
-    // Gestion de la vérification d'une tâche
+  const attachEventListeners = () => {
     document.querySelectorAll(".verif").forEach((checkbox) => {
       checkbox.addEventListener("change", async (e) => {
         const taskId = e.target.dataset.id;
@@ -82,29 +108,43 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Gestion des boutons Modifier
     document.querySelectorAll(".edit").forEach((button) => {
       button.addEventListener("click", (e) => {
-        currentTaskId = e.target.getAttribute("data-id");
-        editTitle.value = e.target.getAttribute("data-title");
-        editDesc.value = e.target.getAttribute("data-desc");
-        editDueDate.value = e.target
-          .getAttribute("data-due-date")
-          .split("T")[0];
+        currentTaskId = e.target.dataset.id;
+        editTitle.value = e.target.dataset.title;
+        editDesc.value = e.target.dataset.desc;
+        editDueDate.value = e.target.dataset.dueDate.split("T")[0];
         editModal.style.display = "flex";
       });
     });
 
-    // Gestion des boutons Supprimer
     document.querySelectorAll(".delete").forEach((button) => {
       button.addEventListener("click", (e) => {
-        currentTaskId = e.target.getAttribute("data-id");
+        currentTaskId = e.target.dataset.id;
         deleteModal.style.display = "flex";
       });
     });
   };
 
-  // Sauvegarde des modifications
+  const sortingControls = `
+    <div class="sorting-controls">
+      <label>Trier par:</label>
+      <select id="sort-select">
+        <option value="creation">Date de création</option>
+        <option value="dueDate">Date limite</option>
+      </select>
+    </div>
+  `;
+  
+  taskForm.insertAdjacentHTML('afterend', sortingControls);
+  
+  document.getElementById("sort-select").addEventListener("change", (e) => {
+    currentSortMethod = e.target.value;
+    const sortedTasks = sortTasks(currentTasks, currentSortMethod);
+    renderTasks(sortedTasks);
+  });
+
+  // Garder le reste du code existant...
   saveEditBtn.addEventListener("click", async () => {
     if (currentTaskId) {
       await fetch(`http://localhost:5000/tasks/${currentTaskId}`, {
@@ -121,28 +161,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Annuler l'édition
   closeEditModalBtn.addEventListener("click", () => {
     editModal.style.display = "none";
   });
 
-  // Confirmation de suppression
   confirmDeleteBtn.addEventListener("click", async () => {
     if (currentTaskId) {
       await fetch(`http://localhost:5000/tasks/${currentTaskId}`, {
         method: "DELETE",
       });
       deleteModal.style.display = "none";
-      fetchTasks(1); // Réinitialiser à la première page après suppression
+      fetchTasks(1);
     }
   });
 
-  // Annuler la suppression
   cancelDeleteBtn.addEventListener("click", () => {
     deleteModal.style.display = "none";
   });
 
-  // Ajouter une nouvelle tâche
   taskForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = document.getElementById("task-title").value;
@@ -157,10 +193,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     taskForm.reset();
-    fetchTasks(1); // Réinitialiser à la première page après ajout
+    fetchTasks(1);
   });
 
-  // Gestion de la pagination
   prevPageBtn.addEventListener("click", () => {
     if (currentPage > 1) {
       fetchTasks(currentPage - 1);

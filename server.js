@@ -12,13 +12,13 @@ mongoose.connect(process.env.MONGO_URI, {useNewUrlParser: true, useUnifiedTopolo
   .then(() => console.log('MongoDB Atlas connecté'))
   .catch(err => console.error('Erreur de connexion à MongoDB:', err));
 
-const taskSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String },
-  completed: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now },
-  dueDate: { type: Date, default: null }
-});
+  const taskSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    completed: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+    dueDate: { type: Date, default: null },
+  });
 const Task = mongoose.model('Task', taskSchema);
 
 app.post('/tasks', async (req, res) => {
