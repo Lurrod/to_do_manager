@@ -40,24 +40,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const formattedDate = task.dueDate
         ? new Date(task.dueDate).toLocaleString()
         : null;
-      li.innerHTML = `
-    <div class="task-content">
-        <h3 class="task-title">${task.title}</h3>
-        <p class="task-desc">${task.description}</p>
-        <p class="task-date">Date de fin: <span>${formattedDate}</span></p>
-    </div>
-    <div class="task-buttons">
-        <input type="checkbox" class="verif" data-id="${task._id}" ${
+        li.innerHTML = `
+        <div class="task-content">
+            <h3 class="task-title">${task.title}</h3>
+            <p class="task-desc">${task.description}</p>
+            ${formattedDate ? `<p class="task-date">Date de fin: <span>${formattedDate}</span></p>` : ''}
+        </div>
+        <div class="task-buttons">
+            <input type="checkbox" class="verif" data-id="${task._id}" ${
         task.completed ? "checked" : ""
       }>
-        <button class="edit" data-id="${task._id}" data-title="${
+            <button class="edit" data-id="${task._id}" data-title="${
         task.title
       }" data-desc="${task.description}" data-due-date="${
         task.dueDate
       }">✏️ Modifier</button>
-        <button class="delete" data-id="${task._id}">🗑️ Supprimer</button>
-    </div>
-`;
+            <button class="delete" data-id="${task._id}">🗑️ Supprimer</button>
+        </div>
+      `;
 
       taskList.appendChild(li);
     });
