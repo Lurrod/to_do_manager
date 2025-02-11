@@ -64,6 +64,24 @@ button:hover {
     background: #ff5277;
 }
 
+.task-title {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.task-desc {
+    font-style: italic;
+    color: #ddd;
+}
+
+.task-date {
+    color: #ffdd57;
+}
+
+.task-content {
+    flex: 1;
+}
+
 /* Styles pour la modale */
 .modal {
     display: none;
