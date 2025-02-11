@@ -161,7 +161,34 @@ li:hover {
     gap: 10px;
 }
 
-.edit, .delete {
+.verif {
+    appearance: none;
+    width: 36px;
+    height: 36px;
+    border: 2px solid white;
+    border-radius: 5px;
+    background: transparent;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.verif:checked {
+    background: #28a745;
+    border-color: #28a745;
+}
+
+.verif:checked::after {
+    content: '✔';
+    font-size: 32px;
+    color: white;
+    position: absolute;
+    top: -7px;
+    left: 3px;
+    font-weight: bold;
+}
+
+.edit, .delete{
     border: none;
     padding: 8px 12px;
     cursor: pointer;

@@ -78,5 +78,5 @@ app.listen(PORT, () => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html')); // Envoie le fichier index.html
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

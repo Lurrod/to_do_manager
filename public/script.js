@@ -26,12 +26,28 @@ document.addEventListener("DOMContentLoaded", () => {
             li.innerHTML = `
                 <span>${task.title} - ${task.description}</span>
                 <div class="task-buttons">
+                    <input type="checkbox" class="verif" data-id="${task._id}" ${task.completed ? 'checked' : ''}>
                     <button class="edit" data-id="${task._id}" data-title="${task.title}" data-desc="${task.description}">✏️ Modifier</button>
                     <button class="delete" data-id="${task._id}">🗑️ Supprimer</button>
                 </div>
             `;
             taskList.appendChild(li);
-        });
+        });7
+
+        // Gestion de la vérification d'une tâche
+        document.querySelectorAll(".verif").forEach(checkbox => {
+            checkbox.addEventListener("change", async (e) => {
+                const taskId = e.target.dataset.id;
+                const completed = e.target.checked;
+
+                await fetch(`http://localhost:5000/tasks/${taskId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ completed })
+                });
+                fetchTasks();
+            });
+        });       
 
         // Gestion des boutons Modifier
         document.querySelectorAll(".edit").forEach(button => {
