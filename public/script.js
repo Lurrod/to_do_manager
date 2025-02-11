@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="task-content">
             <h3 class="task-title">${task.title}</h3>
             <p class="task-desc">${task.description}</p>
-            ${formattedDate ? `<p class="task-date">Date de fin: <span>${formattedDate}</span></p>` : ''}
+            ${formattedDate ? `<p class="task-date">Date limite : <span>${formattedDate}</span></p>` : ''}
         </div>
         <div class="task-buttons">
             <input type="checkbox" class="verif" data-id="${task._id}" ${
@@ -54,8 +54,8 @@ document.addEventListener("DOMContentLoaded", () => {
         task.title
       }" data-desc="${task.description}" data-due-date="${
         task.dueDate
-      }">✏️ Modifier</button>
-            <button class="delete" data-id="${task._id}">🗑️ Supprimer</button>
+      }"><i class="fa-solid fa-pen-to-square"></i> Modifier</button>
+            <button class="delete" data-id="${task._id}"><i class="fa-solid fa-trash"></i> Supprimer</button>
         </div>
       `;
 
