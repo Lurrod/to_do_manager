@@ -16,7 +16,8 @@ const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   completed: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  dueDate: { type: Date, default: null }
 });
 const Task = mongoose.model('Task', taskSchema);
 
@@ -32,8 +33,18 @@ app.post('/tasks', async (req, res) => {
 
 app.get('/tasks', async (req, res) => {
   try {
-    const tasks = await Task.find();
-    res.status(200).json(tasks);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
+    const tasks = await Task.find().skip(skip).limit(limit);
+    const totalTasks = await Task.countDocuments();
+
+    res.status(200).json({
+      tasks,
+      totalPages: Math.ceil(totalTasks / limit),
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

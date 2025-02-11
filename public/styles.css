@@ -41,7 +41,7 @@ form {
     gap: 10px;
 }
 
-input, textarea {
+input, textarea, input[type="date"] {
     width: 100%;
     padding: 12px;
     border: none;
@@ -97,7 +97,7 @@ button:hover {
     margin-bottom: 20px;
 }
 
-.modal input, .modal textarea {
+.modal input, .modal textarea, .modal input[type="date"] {
     width: 100%;
     margin: 10px 0;
     padding: 10px;

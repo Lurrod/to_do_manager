@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const editModal = document.getElementById("edit-modal");
     const editTitle = document.getElementById("edit-title");
     const editDesc = document.getElementById("edit-desc");
+    const editDueDate = document.getElementById("edit-due-date");
     const saveEditBtn = document.getElementById("save-edit");
     const closeEditModalBtn = document.getElementById("close-modal");
 
@@ -25,25 +26,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Charger les tâches avec pagination
     const fetchTasks = async (page = 1) => {
-        const response = await fetch(`http://localhost:5000/tasks`);
-        const tasks = await response.json();
-
-        totalPages = Math.ceil(tasks.length / 5);
-        page = Math.max(1, Math.min(page, totalPages));
-        currentPage = page;
-
-        // Récupérer seulement les tâches de la page actuelle
-        const startIndex = (currentPage - 1) * 5;
-        const tasksToShow = tasks.slice(startIndex, startIndex + 5);
+        const response = await fetch(`http://localhost:5000/tasks?page=${page}&limit=5`);
+        const data = await response.json();
+        const tasks = data.tasks;
+        totalPages = data.totalPages;
+        currentPage = data.currentPage;
 
         taskList.innerHTML = "";
-        tasksToShow.forEach(task => {
+        tasks.forEach(task => {
             const li = document.createElement("li");
+            const formattedDate = task.dueDate ? new Date(task.dueDate).toLocaleString() : null;
             li.innerHTML = `
-                <span>${task.title} - ${task.description}</span>
+                <span>${task.title} - ${task.description}${formattedDate ? " - Date de fin: " + formattedDate : ""}</span>
                 <div class="task-buttons">
                     <input type="checkbox" class="verif" data-id="${task._id}" ${task.completed ? 'checked' : ''}>
-                    <button class="edit" data-id="${task._id}" data-title="${task.title}" data-desc="${task.description}">✏️ Modifier</button>
+                    <button class="edit" data-id="${task._id}" data-title="${task.title}" data-desc="${task.description}" data-due-date="${task.dueDate}">✏️ Modifier</button>
                     <button class="delete" data-id="${task._id}">🗑️ Supprimer</button>
                 </div>
             `;
@@ -76,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentTaskId = e.target.getAttribute("data-id");
                 editTitle.value = e.target.getAttribute("data-title");
                 editDesc.value = e.target.getAttribute("data-desc");
+                editDueDate.value = e.target.getAttribute("data-due-date").split('T')[0];
                 editModal.style.display = "flex";
             });
         });
@@ -95,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
             await fetch(`http://localhost:5000/tasks/${currentTaskId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: editTitle.value, description: editDesc.value })
+                body: JSON.stringify({ title: editTitle.value, description: editDesc.value, dueDate: editDueDate.value })
             });
             editModal.style.display = "none";
             fetchTasks(currentPage);
@@ -112,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (currentTaskId) {
             await fetch(`http://localhost:5000/tasks/${currentTaskId}`, { method: "DELETE" });
             deleteModal.style.display = "none";
-            fetchTasks(currentPage);
+            fetchTasks(1); // Réinitialiser à la première page après suppression
         }
     });
 
@@ -126,15 +124,17 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         const title = document.getElementById("task-title").value;
         const description = document.getElementById("task-desc").value;
+        const dueDateInput = document.getElementById("task-due-date").value;
+        const dueDate = dueDateInput ? new Date(dueDateInput).toISOString() : null;
 
         await fetch("http://localhost:5000/tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, description })
+            body: JSON.stringify({ title, description, dueDate })
         });
 
         taskForm.reset();
-        fetchTasks(currentPage);
+        fetchTasks(1); // Réinitialiser à la première page après ajout
     });
 
     // Gestion de la pagination
@@ -150,5 +150,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Charger les tâches initiales
     fetchTasks();
 });

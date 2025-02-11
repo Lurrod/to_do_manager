@@ -12,11 +12,12 @@
       <form id="task-form">
         <input type="text" id="task-title" placeholder="Titre de la tâche" required/>
         <textarea id="task-desc" placeholder="Description"></textarea>
+        <input type="datetime-local" id="task-due-date"/>
         <button type="submit">Ajouter</button>
       </form>
       <ul id="task-list"></ul>
       <div class="pagination">
-        <button id="prev-page">Précédent</button>
+        <button id="prev-page">Précédent </button>
         <span id="page-info">Page 1</span>
         <button id="next-page">Suivant</button>
       </div>
@@ -24,8 +25,9 @@
     <div id="edit-modal" class="modal">
       <div class="modal-content">
         <h2>Modifier la tâche</h2>
-        <input type="text" id="edit-title" />
+        <input type="text" id="edit-title"/>
         <textarea id="edit-desc"></textarea>
+        <input type="datetime-local" id="edit-due-date"/>
         <button id="save-edit">Enregistrer</button>
         <button id="close-modal">Annuler</button>
       </div>
