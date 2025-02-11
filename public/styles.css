@@ -209,3 +209,36 @@ li:hover {
 .edit:hover, .delete:hover {
     opacity: 0.8;
 }
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  
+  .pagination button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    background: #ff7eb3;
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  
+  .pagination button:hover {
+    background: #ff5277;
+  }
+  
+  .pagination button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  
+  #page-info {
+    font-size: 16px;
+    color: white;
+  }

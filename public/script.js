@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     const taskForm = document.getElementById("task-form");
     const taskList = document.getElementById("task-list");
-    
+
     // Modale pour l'édition
     const editModal = document.getElementById("edit-modal");
     const editTitle = document.getElementById("edit-title");
@@ -14,14 +14,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const confirmDeleteBtn = document.getElementById("confirm-delete");
     const cancelDeleteBtn = document.getElementById("cancel-delete");
 
-    let currentTaskId = null;
+    // Pagination
+    const prevPageBtn = document.getElementById("prev-page");
+    const nextPageBtn = document.getElementById("next-page");
+    const pageInfo = document.getElementById("page-info");
 
-    // Charger les tâches
-    const fetchTasks = async () => {
-        const response = await fetch("http://localhost:5000/tasks");
+    let currentTaskId = null;
+    let currentPage = 1;
+    let totalPages = 1;
+
+    // Charger les tâches avec pagination
+    const fetchTasks = async (page = 1) => {
+        const response = await fetch(`http://localhost:5000/tasks`);
         const tasks = await response.json();
+
+        totalPages = Math.ceil(tasks.length / 5);
+        page = Math.max(1, Math.min(page, totalPages));
+        currentPage = page;
+
+        // Récupérer seulement les tâches de la page actuelle
+        const startIndex = (currentPage - 1) * 5;
+        const tasksToShow = tasks.slice(startIndex, startIndex + 5);
+
         taskList.innerHTML = "";
-        tasks.forEach(task => {
+        tasksToShow.forEach(task => {
             const li = document.createElement("li");
             li.innerHTML = `
                 <span>${task.title} - ${task.description}</span>
@@ -32,7 +48,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
             `;
             taskList.appendChild(li);
-        });7
+        });
+
+        // Mise à jour des infos de pagination
+        pageInfo.textContent = `Page ${currentPage} / ${totalPages}`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages;
 
         // Gestion de la vérification d'une tâche
         document.querySelectorAll(".verif").forEach(checkbox => {
@@ -45,9 +66,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ completed })
                 });
-                fetchTasks();
+                fetchTasks(currentPage);
             });
-        });       
+        });
 
         // Gestion des boutons Modifier
         document.querySelectorAll(".edit").forEach(button => {
@@ -77,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({ title: editTitle.value, description: editDesc.value })
             });
             editModal.style.display = "none";
-            fetchTasks();
+            fetchTasks(currentPage);
         }
     });
 
@@ -91,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (currentTaskId) {
             await fetch(`http://localhost:5000/tasks/${currentTaskId}`, { method: "DELETE" });
             deleteModal.style.display = "none";
-            fetchTasks();
+            fetchTasks(currentPage);
         }
     });
 
@@ -113,7 +134,20 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         taskForm.reset();
-        fetchTasks();
+        fetchTasks(currentPage);
+    });
+
+    // Gestion de la pagination
+    prevPageBtn.addEventListener("click", () => {
+        if (currentPage > 1) {
+            fetchTasks(currentPage - 1);
+        }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+        if (currentPage < totalPages) {
+            fetchTasks(currentPage + 1);
+        }
     });
 
     fetchTasks();
