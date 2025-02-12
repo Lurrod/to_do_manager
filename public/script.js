@@ -205,20 +205,15 @@ document.addEventListener("DOMContentLoaded", () => {
         li.innerHTML = `
         <div class="task-content">
           <div class="task-category-tag" style="background: ${categoryColor}"></div>
-          <div>
+          <div class="task-details">
             <h3 class="task-title">${task.title}</h3>
             <p class="task-desc">${task.description}</p>
             <p class="task-date">Date limite: ${formattedDate}</p>
           </div>
         </div>
         <div class="task-buttons">
-          <input type="checkbox" class="verif" data-id="${task._id}" 
-                 ${task.completed ? "checked" : ""}>
-          <button class="edit" data-id="${task._id}"
-                  data-title="${task.title}"
-                  data-desc="${task.description}"
-                  data-due-date="${task.dueDate || ''}"
-                  data-category="${task.category || ''}">
+          <input type="checkbox" class="verif" data-id="${task._id}" ${task.completed ? "checked" : ""}>
+          <button class="edit" data-id="${task._id}" data-title="${task.title}" data-desc="${task.description}" data-due-date="${task.dueDate || ''}" data-category="${task.category || ''}">
             <i class="fa-solid fa-pen-to-square"></i> Modifier
           </button>
           <button class="delete" data-id="${task._id}">
