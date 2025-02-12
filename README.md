@@ -186,8 +186,3 @@ Chaque tâche est représentée par l'objet suivant :
 - Frontend : HTML, CSS, JavaScript (vanilla)
 - Librairies : Font Awesome, body-parser, cors, dotenv
 
----
-
-
-## Auteur
-Projet créé par Lurrod.
