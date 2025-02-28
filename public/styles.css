@@ -97,7 +97,6 @@ body {
 }
 
 .category-item:hover {
-  opacity: 0.9;
 }
 
 .category-item.active {

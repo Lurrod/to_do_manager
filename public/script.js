@@ -23,6 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const categoriesList = document.getElementById("categories-list");
   const taskCategorySelect = document.getElementById("task-category");
 
+  // Éléments pour la modale de suppression de catégorie
+  const deleteCategoryModal = document.getElementById("delete-category-modal");
+  const confirmDeleteCategoryBtn = document.getElementById("confirm-delete-category");
+  const cancelDeleteCategoryBtn = document.getElementById("cancel-delete-category");
+  const deleteCategoryMessage = document.getElementById("delete-category-message");
+
   // Variables d'état
   let currentTaskId = null;
   let currentPage = 1;
@@ -30,13 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentTasks = [];
   let currentSortMethod = 'creation';
   let currentCategory = 'all';
-  
-  // Récupération des catégories du localStorage avec la nouvelle structure
-  let categories = JSON.parse(localStorage.getItem('categories')) || [];
-  // Conversion des anciennes catégories au nouveau format si nécessaire
-  categories = categories.map(cat => {
-    return typeof cat === 'string' ? { name: cat, color: '#ff7eb3' } : cat;
-  });
+  let categories = [];
+  let categoryToDelete = null; // Nouvelle variable pour stocker la catégorie à supprimer
 
   // Fonctions de tri
   const sortFunctions = {
@@ -49,46 +50,52 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // Fonction pour sauvegarder les catégories
-  const saveCategories = () => {
-    localStorage.setItem('categories', JSON.stringify(categories));
-    updateCategorySelects();
-    updateCategoriesList();
-  };
-
-  // Fonction pour ajouter une nouvelle catégorie
-  const addCategory = (name, color) => {
-    if (name && !categories.some(cat => cat.name === name)) {
-      categories.push({ name, color });
-      saveCategories();
+  // Charger les catégories depuis l'API
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/categories');
+      categories = await response.json();
+      updateCategorySelects();
+      updateCategoriesList();
+    } catch (error) {
+      console.error("Erreur lors du chargement des catégories:", error);
     }
   };
 
-  // Fonction pour supprimer une catégorie
-  const deleteCategory = (categoryName) => {
-    const index = categories.findIndex(cat => cat.name === categoryName);
-    if (index !== -1) {
-      // Supprimer la catégorie des tâches existantes
-      currentTasks.forEach(async (task) => {
-        if (task.category === categoryName) {
-          try {
-            await fetch(`http://localhost:5000/tasks/${task._id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...task, category: '' }),
-            });
-          } catch (error) {
-            console.error("Erreur lors de la mise à jour de la tâche:", error);
-          }
+  // Ajouter une nouvelle catégorie
+  const addCategory = async (name, color) => {
+    if (name && !categories.some(cat => cat.name === name)) {
+      try {
+        const response = await fetch('http://localhost:5000/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, color })
+        });
+        if (response.ok) {
+          await fetchCategories();
         }
-      });
-
-      categories.splice(index, 1);
-      if (currentCategory === categoryName) {
-        currentCategory = 'all';
+      } catch (error) {
+        console.error("Erreur lors de l'ajout de la catégorie:", error);
       }
-      saveCategories();
-      fetchTasks(currentPage);
+    }
+  };
+
+  // Supprimer une catégorie
+  const deleteCategory = async (categoryName) => {
+    try {
+      const response = await fetch(`http://localhost:5000/categories/${categoryName}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        if (currentCategory === categoryName) {
+          currentCategory = 'all';
+        }
+        await fetchCategories();
+        fetchTasks(currentPage);
+        deleteCategoryModal.style.display = "none";
+      }
+    } catch (error) {
+      console.error("Erreur lors de la suppression de la catégorie:", error);
     }
   };
 
@@ -150,15 +157,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll('.delete-category').forEach(button => {
       button.addEventListener('click', (e) => {
         e.stopPropagation();
-        const categoryName = button.dataset.category;
-        if (confirm(`Êtes-vous sûr de vouloir supprimer la catégorie "${categoryName}" ?`)) {
-          deleteCategory(categoryName);
-        }
+        categoryToDelete = button.dataset.category;
+        deleteCategoryMessage.textContent = `Êtes-vous sûr de vouloir supprimer la catégorie "${categoryToDelete}" ?`;
+        deleteCategoryModal.style.display = "flex";
       });
     });
   };
 
-  // Fonction pour charger les tâches
+  // Charger les tâches
   const fetchTasks = async (page = 1) => {
     try {
       const response = await fetch(
@@ -180,12 +186,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // Fonction pour trier les tâches
+  // Trier les tâches
   const sortTasks = (tasks, sortMethod) => {
     return [...tasks].sort(sortFunctions[sortMethod]);
   };
 
-  // Fonction pour afficher les tâches
+  // Afficher les tâches
   const renderTasks = (tasks) => {
     const filteredTasks = tasks.filter(task => 
       currentCategory === 'all' ? true : task.category === currentCategory
@@ -202,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ? new Date(task.dueDate).toLocaleString()
         : "Aucune date limite";
       
-        li.innerHTML = `
+      li.innerHTML = `
         <div class="task-content">
           <div class="task-category-tag" style="background: ${categoryColor}"></div>
           <div class="task-details">
@@ -228,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
     attachEventListeners();
   };
 
-  // Attacher les écouteurs d'événements aux éléments de tâche
+  // Attacher les écouteurs d'événements
   const attachEventListeners = () => {
     document.querySelectorAll(".verif").forEach((checkbox) => {
       checkbox.addEventListener("change", async (e) => {
@@ -248,7 +254,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Gestion des boutons d'édition
     document.querySelectorAll(".edit").forEach((button) => {
       button.addEventListener("click", (e) => {
         const target = e.currentTarget;
@@ -261,7 +266,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Gestion des boutons de suppression
     document.querySelectorAll(".delete").forEach((button) => {
       button.addEventListener("click", (e) => {
         currentTaskId = e.currentTarget.dataset.id;
@@ -344,7 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
     editModal.style.display = "none";
   });
 
-  // Événements pour la suppression
+  // Événements pour la suppression de tâche
   confirmDeleteBtn.addEventListener("click", async () => {
     if (currentTaskId) {
       try {
@@ -363,6 +367,19 @@ document.addEventListener("DOMContentLoaded", () => {
     deleteModal.style.display = "none";
   });
 
+  // Événements pour la suppression de catégorie
+  confirmDeleteCategoryBtn.addEventListener("click", () => {
+    if (categoryToDelete) {
+      deleteCategory(categoryToDelete);
+      categoryToDelete = null;
+    }
+  });
+
+  cancelDeleteCategoryBtn.addEventListener("click", () => {
+    deleteCategoryModal.style.display = "none";
+    categoryToDelete = null;
+  });
+
   // Événements pour la pagination
   prevPageBtn.addEventListener("click", () => {
     if (currentPage > 1) {
@@ -377,6 +394,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initialisation
-  updateCategorySelects();
+  fetchCategories();
   fetchTasks();
 });

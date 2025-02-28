@@ -5,22 +5,33 @@ const bodyParser = require('body-parser');
 require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 app.use(cors());
 app.use(bodyParser.json());
 
-mongoose.connect(process.env.MONGO_URI, {useNewUrlParser: true, useUnifiedTopology: true, })
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
   .then(() => console.log('MongoDB Atlas connecté'))
   .catch(err => console.error('Erreur de connexion à MongoDB:', err));
 
-  const taskSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    description: { type: String },
-    completed: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now },
-    dueDate: { type: Date, default: null },
-    category: { type: String, default: '' }
-  });
+const taskSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  completed: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  dueDate: { type: Date, default: null },
+  category: { type: String, default: '' }
+});
+
+const categorySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  color: { type: String, required: true }
+});
+
 const Task = mongoose.model('Task', taskSchema);
+const Category = mongoose.model('Category', categorySchema);
 
 app.post('/tasks', async (req, res) => {
   try {
@@ -81,16 +92,47 @@ app.delete('/tasks/:id', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-    res.send('Bienvenue sur l’API To-Do List 🚀');
-  });
-  
-app.listen(PORT, () => {
-  console.log(`Serveur démarré sur http://localhost:${PORT}`);
+app.get('/categories', async (req, res) => {
+  try {
+    const categories = await Category.find();
+    res.status(200).json(categories);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/categories', async (req, res) => {
+  try {
+    const category = new Category(req.body);
+    await category.save();
+    res.status(201).json(category);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/categories/:name', async (req, res) => {
+  try {
+    const category = await Category.findOneAndDelete({ name: req.params.name });
+    if (!category) return res.status(404).json({ error: 'Catégorie non trouvée' });
+
+    await Task.updateMany(
+      { category: req.params.name },
+      { $set: { category: '' } }
+    );
+
+    res.status(200).json({ message: 'Catégorie supprimée' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.send('Bienvenue sur l’API To-Do List 🚀');
+});
+
+app.listen(PORT, () => {
+  console.log(`Serveur démarré sur http://localhost:${PORT}`);
 });
 
 module.exports = app;
