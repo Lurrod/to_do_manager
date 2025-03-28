@@ -2,12 +2,28 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const https = require('https'); // Ajout du module HTTPS
+const fs = require('fs'); // Pour lire les certificats
 require('dotenv').config();
 const app = express();
-const PORT = 3000;
+const port = 443; // Changement du port à 443
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5500",
+  "https://to-do-manager.titouan-borde.com"
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 app.use(bodyParser.json());
+
+// Vérification de l'URI MongoDB
+if (!process.env.MONGO_URI) {
+  console.error('Erreur : MONGO_URI n’est pas défini dans le fichier .env');
+  process.exit(1);
+}
 
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
@@ -131,8 +147,15 @@ app.get('/', (req, res) => {
   res.send('Bienvenue sur l’API To-Do List 🚀');
 });
 
-app.listen(PORT, () => {
-  console.log(`Serveur démarré sur http://localhost:${PORT}`);
+// Configuration HTTPS
+const options = {
+  key: fs.readFileSync('/etc/letsencrypt/live/to-do-manager.titouan-borde.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/to-do-manager.titouan-borde.com/fullchain.pem')
+};
+
+// Lancer le serveur en HTTPS
+https.createServer(options, app).listen(port, () => {
+  console.log(`Serveur démarré sur https://localhost:${port}`);
 });
 
 module.exports = app;
