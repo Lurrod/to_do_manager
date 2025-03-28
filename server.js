@@ -4,9 +4,17 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 require('dotenv').config();
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 3000;
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5500",
+  "https://to-do-manager.titouan-borde.com"
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 app.use(bodyParser.json());
 
 mongoose.connect(process.env.MONGO_URI, {

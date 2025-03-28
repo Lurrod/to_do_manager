@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Définir la base URL pour les appels API
+  const API_BASE_URL = '/';
+
   // Éléments DOM existants
   const taskForm = document.getElementById("task-form");
   const taskList = document.getElementById("task-list");
@@ -53,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Charger les catégories depuis l'API
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:5000/categories');
+      const response = await fetch(`${API_BASE_URL}categories`);
       categories = await response.json();
       updateCategorySelects();
       updateCategoriesList();
@@ -66,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const addCategory = async (name, color) => {
     if (name && !categories.some(cat => cat.name === name)) {
       try {
-        const response = await fetch('http://localhost:5000/categories', {
+        const response = await fetch(`${API_BASE_URL}categories`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, color })
@@ -83,7 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Supprimer une catégorie
   const deleteCategory = async (categoryName) => {
     try {
-      const response = await fetch(`http://localhost:5000/categories/${categoryName}`, {
+      const response = await fetch(`${API_BASE_URL}categories/${categoryName}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -168,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fetchTasks = async (page = 1) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/tasks?page=${page}&limit=5`
+        `${API_BASE_URL}tasks?page=${page}&limit=5`
       );
       const data = await response.json();
       currentTasks = data.tasks;
@@ -242,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const completed = e.target.checked;
 
         try {
-          await fetch(`http://localhost:5000/tasks/${taskId}`, {
+          await fetch(`${API_BASE_URL}tasks/${taskId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ completed }),
@@ -309,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const dueDate = dueDateInput ? new Date(dueDateInput).toISOString() : null;
 
     try {
-      await fetch("http://localhost:5000/tasks", {
+      await fetch(`${API_BASE_URL}tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description, dueDate, category }),
@@ -326,7 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
   saveEditBtn.addEventListener("click", async () => {
     if (currentTaskId) {
       try {
-        await fetch(`http://localhost:5000/tasks/${currentTaskId}`, {
+        await fetch(`${API_BASE_URL}tasks/${currentTaskId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -352,7 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
   confirmDeleteBtn.addEventListener("click", async () => {
     if (currentTaskId) {
       try {
-        await fetch(`http://localhost:5000/tasks/${currentTaskId}`, {
+        await fetch(`${API_BASE_URL}tasks/${currentTaskId}`, {
           method: "DELETE",
         });
         deleteModal.style.display = "none";

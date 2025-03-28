@@ -1,12 +1,12 @@
 {
   "name": "to_do_manager",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
 "scripts": {
   "test": "jest"
 },
   "keywords": [],
-  "author": "",
+  "author": "Titouan Borde",
   "license": "ISC",
   "description": "",
   "dependencies": {
