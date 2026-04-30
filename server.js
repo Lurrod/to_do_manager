@@ -2,35 +2,70 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const https = require('https'); // Ajout du module HTTPS
-const fs = require('fs'); // Pour lire les certificats
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
+
 const app = express();
-const port = 443; // Changement du port à 443
+const port = parseInt(process.env.PORT, 10) || 3000;
 
-const allowedOrigins = [
-  "http://localhost:5500",
-  "https://to-do-manager.titouan-borde.com"
-];
-
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-}));
+app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Vérification de l'URI MongoDB
-if (!process.env.MONGO_URI) {
-  console.error('Erreur : MONGO_URI n’est pas défini dans le fichier .env');
-  process.exit(1);
+const isRemoteUri = (uri) =>
+  typeof uri === 'string' &&
+  uri.length > 0 &&
+  !uri.includes('127.0.0.1') &&
+  !uri.includes('localhost');
+
+let embeddedMongo = null;
+
+async function resolveMongoUri() {
+  if (isRemoteUri(process.env.MONGO_URI)) {
+    return process.env.MONGO_URI;
+  }
+
+  const { MongoMemoryServer } = require('mongodb-memory-server');
+  const dbPath = path.join(__dirname, 'data', 'db');
+  fs.mkdirSync(dbPath, { recursive: true });
+
+  console.log('Démarrage de MongoDB embarqué… (premier lancement : téléchargement ~100 Mo)');
+  embeddedMongo = await MongoMemoryServer.create({
+    instance: {
+      dbPath,
+      storageEngine: 'wiredTiger',
+    },
+  });
+  console.log(`MongoDB embarqué prêt — données persistantes dans ${dbPath}`);
+  return embeddedMongo.getUri();
 }
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => console.log('MongoDB Atlas connecté'))
-  .catch(err => console.error('Erreur de connexion à MongoDB:', err));
+async function shutdown(code = 0) {
+  try {
+    await mongoose.disconnect();
+  } catch (_) {}
+  if (embeddedMongo) {
+    await embeddedMongo.stop({ doCleanup: false, force: false });
+  }
+  process.exit(code);
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  process.on('SIGINT', () => shutdown(0));
+  process.on('SIGTERM', () => shutdown(0));
+
+  (async () => {
+    try {
+      const uri = await resolveMongoUri();
+      await mongoose.connect(uri);
+      console.log('MongoDB connecté');
+    } catch (err) {
+      console.error('Erreur de connexion à MongoDB:', err.message);
+      await shutdown(1);
+    }
+  })();
+}
 
 const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -38,12 +73,12 @@ const taskSchema = new mongoose.Schema({
   completed: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   dueDate: { type: Date, default: null },
-  category: { type: String, default: '' }
+  category: { type: String, default: '' },
 });
 
 const categorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
-  color: { type: String, required: true }
+  color: { type: String, required: true },
 });
 
 const Task = mongoose.model('Task', taskSchema);
@@ -61,8 +96,8 @@ app.post('/tasks', async (req, res) => {
 
 app.get('/tasks', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 5;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 5;
     const skip = (page - 1) * limit;
 
     const tasks = await Task.find().skip(skip).limit(limit);
@@ -70,8 +105,8 @@ app.get('/tasks', async (req, res) => {
 
     res.status(200).json({
       tasks,
-      totalPages: Math.ceil(totalTasks / limit),
-      currentPage: page
+      totalPages: Math.max(1, Math.ceil(totalTasks / limit)),
+      currentPage: page,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -143,19 +178,10 @@ app.delete('/categories/:name', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Bienvenue sur l’API To-Do List 🚀');
-});
-
-// Configuration HTTPS
-const options = {
-  key: fs.readFileSync('/etc/letsencrypt/live/to-do-manager.titouan-borde.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/to-do-manager.titouan-borde.com/fullchain.pem')
-};
-
-// Lancer le serveur en HTTPS
-https.createServer(options, app).listen(port, () => {
-  console.log(`Serveur démarré sur https://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Serveur démarré sur http://localhost:${port}`);
+  });
+}
 
 module.exports = app;

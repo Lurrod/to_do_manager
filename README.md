@@ -1,188 +1,140 @@
-# to_do_manager
+# To-Do Manager
 
-**Documentation de l'API To-Do List**
+Gestionnaire de tâches local — backend Express + MongoDB, frontend vanilla (HTML/CSS/JS), prêt à tourner depuis un clone GitHub.
 
-## Introduction
-L'API To-Do List permet de gérer des tâches en effectuant des opérations CRUD (Create, Read, Update, Delete) via des requêtes HTTP. Les données sont stockées dans une base MongoDB. Elle inclut également des fonctionnalités avancées comme la gestion des catégories, la pagination et le tri des tâches.
+![tasks · to-do manager](https://img.shields.io/badge/stack-Node%20%E2%80%A2%20Express%20%E2%80%A2%20MongoDB-1a1a22?style=flat-square)
+
+---
+
+## Prérequis
+
+- **Node.js** ≥ 18
+
+C'est tout. MongoDB est embarqué dans l'app via [`mongodb-memory-server`](https://github.com/typegoose/mongodb-memory-server) — au premier `npm start`, un binaire MongoDB est téléchargé (~100 Mo, mis en cache pour de bon dans `~/.cache/mongodb-binaries`). Les lancements suivants sont instantanés.
 
 ---
 
 ## Installation
 
-1. Cloner le projet :
-   ```bash
-   git clone https://github.com/Lurrod/to_do_manager.git
-   cd todo-manager
-   ```
+```bash
+git clone https://github.com/Lurrod/to_do_manager.git
+cd to_do_manager
+npm install
+npm start
+```
 
-2. Installer les dépendances :
-   ```bash
-   npm install
-   ```
+Puis ouvre [http://localhost:3000](http://localhost:3000).
 
-3. Configurer les variables d'environnement dans un fichier `.env` :
-   ```
-   PORT=5000
-   MONGO_URI=<votre_url_mongodb>
-   ```
+Tes tâches sont stockées dans `./data/db/` (ignoré par Git) et persistent entre les redémarrages.
 
-4. Lancer le serveur :
-   ```bash
-   npm start
-   ```
+---
+
+## Configuration (`.env`, optionnel)
+
+Le fichier `.env` n'est pas requis. Si tu veux pointer vers une base distante (Atlas par exemple) :
+
+```env
+MONGO_URI=mongodb+srv://user:pass@cluster.xxx.mongodb.net/to_do_manager
+PORT=3000
+```
+
+Si `MONGO_URI` est vide ou pointe sur localhost, le serveur démarre Mongo embarqué automatiquement.
+
+---
+
+## Fonctionnalités
+
+- **Tâches** : créer, modifier, terminer, supprimer
+- **Catégories** : créer / supprimer, couleur personnalisée, filtrage
+- **Filtres de statut** : toutes / à faire / terminées
+- **Recherche** en temps réel (titre + description) — raccourci `/`
+- **Tri** : par date de création ou par échéance
+- **Pagination** côté serveur (5 par page)
+- **Statistiques** live (total / faites / restantes)
+- **États** : vide, chargement (skeleton), erreur (toast)
+- **Accessibilité** : skip-link, focus visible, `aria-live`, `prefers-reduced-motion`
 
 ---
 
 ## Modèle de données
-Chaque tâche est représentée par l'objet suivant :
 
 ```json
 {
   "_id": "string",
   "title": "string",
   "description": "string",
-  "completed": "boolean",
-  "createdAt": "date",
-  "dueDate": "date",
+  "completed": false,
+  "createdAt": "ISO date",
+  "dueDate": "ISO date | null",
   "category": "string"
 }
 ```
 
 ---
 
-## Routes de l'API
+## API
 
-### 1. Créer une tâche
-**POST /tasks**
+| Méthode  | Route                | Description                            |
+| -------- | -------------------- | -------------------------------------- |
+| `GET`    | `/tasks?page&limit`  | Liste paginée des tâches               |
+| `GET`    | `/tasks/:id`         | Détail d'une tâche                     |
+| `POST`   | `/tasks`             | Crée une tâche                         |
+| `PUT`    | `/tasks/:id`         | Met à jour une tâche                   |
+| `DELETE` | `/tasks/:id`         | Supprime une tâche                     |
+| `GET`    | `/categories`        | Liste des catégories                   |
+| `POST`   | `/categories`        | Crée une catégorie (`name`, `color`)   |
+| `DELETE` | `/categories/:name`  | Supprime et nettoie les tâches liées   |
 
-- **Body** :
-  ```json
-  {
+### Exemple — créer une tâche
+
+```bash
+curl -X POST http://localhost:3000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
     "title": "Acheter du lait",
-    "description": "Aller au supermarché avant 18h",
-    "dueDate": "2025-02-15T12:00:00Z",
+    "description": "Avant 18h",
+    "dueDate": "2026-05-01T18:00:00Z",
     "category": "Courses"
-  }
-  ```
-
-- **Réponse** :
-  ```json
-  {
-    "_id": "123",
-    "title": "Acheter du lait",
-    "description": "Aller au supermarché avant 18h",
-    "completed": false,
-    "createdAt": "2025-02-05T12:00:00Z",
-    "dueDate": "2025-02-15T12:00:00Z",
-    "category": "Courses"
-  }
-  ```
-
-### 2. Lire toutes les tâches
-**GET /tasks?page=1&limit=5**
-
-- **Paramètres query** :
-  - `page` : Numéro de la page (par défaut 1).
-  - `limit` : Nombre de tâches par page (par défaut 5).
-
-- **Réponse** :
-  ```json
-  {
-    "tasks": [
-      {
-        "_id": "123",
-        "title": "Acheter du lait",
-        "description": "Aller au supermarché avant 18h",
-        "completed": false,
-        "createdAt": "2025-02-05T12:00:00Z",
-        "dueDate": "2025-02-15T12:00:00Z",
-        "category": "Courses"
-      }
-    ],
-    "totalPages": 2,
-    "currentPage": 1
-  }
-  ```
-
-### 3. Lire une tâche spécifique
-**GET /tasks/:id**
-
-- **Réponse** :
-  ```json
-  {
-    "_id": "123",
-    "title": "Acheter du lait",
-    "description": "Aller au supermarché avant 18h",
-    "completed": false,
-    "createdAt": "2025-02-05T12:00:00Z",
-    "dueDate": "2025-02-15T12:00:00Z",
-    "category": "Courses"
-  }
-  ```
-
-### 4. Mettre à jour une tâche
-**PUT /tasks/:id**
-
-- **Body** :
-  ```json
-  {
-    "completed": true,
-    "category": "Urgent"
-  }
-  ```
-
-- **Réponse** :
-  ```json
-  {
-    "_id": "123",
-    "title": "Acheter du lait",
-    "description": "Aller au supermarché avant 18h",
-    "completed": true,
-    "createdAt": "2025-02-05T12:00:00Z",
-    "dueDate": "2025-02-15T12:00:00Z",
-    "category": "Urgent"
-  }
-  ```
-
-### 5. Supprimer une tâche
-**DELETE /tasks/:id**
-
-- **Réponse** :
-  ```json
-  {
-    "message": "Tâche supprimée"
-  }
-  ```
+  }'
+```
 
 ---
 
-## Fonctionnalités supplémentaires
+## Tests
 
-### Gestion des catégories
-- Les catégories permettent de regrouper les tâches par thème.
-- Une catégorie peut être ajoutée ou supprimée via l'interface utilisateur.
+```bash
+npm test
+```
 
-### Pagination
-- Les tâches sont paginées pour améliorer la navigation.
-- Les paramètres `page` et `limit` permettent de contrôler l'affichage des tâches.
-
-### Tri des tâches
-- Les tâches peuvent être triées par :
-  - Date de création
-  - Date limite (dueDate)
-
-### Interface utilisateur
-- L'interface inclut :
-  - Un panneau pour gérer les catégories
-  - Une liste des tâches avec des options pour modifier ou supprimer
-  - Un système de pagination
-  - Des contrôles pour trier les tâches
+Les tests utilisent Jest + Supertest et s'exécutent contre l'app Express.
 
 ---
 
-## Technologies utilisées
+## Structure
 
-- Backend : Node.js, Express.js, MongoDB
-- Frontend : HTML, CSS, JavaScript (vanilla)
-- Librairies : Font Awesome, body-parser, cors, dotenv
+```
+to_do_manager/
+├── public/
+│   ├── index.html      # UI
+│   ├── styles.css      # Design system (Inter + JetBrains Mono, dark)
+│   └── script.js       # Logique frontend (recherche, filtres, toasts)
+├── test/
+│   └── server.test.js
+├── server.js           # API Express + static files
+├── .env.example
+└── package.json
+```
 
+---
+
+## Stack
+
+- **Backend** : Node.js, Express, Mongoose
+- **Frontend** : HTML, CSS, JavaScript vanilla — Inter & JetBrains Mono via Google Fonts
+- **Tests** : Jest, Supertest
+
+---
+
+## Licence
+
+ISC
