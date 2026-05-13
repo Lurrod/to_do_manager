@@ -3,30 +3,30 @@
    ========================================================================== */
 
 :root {
-  --bg: #0c0c0f;
-  --bg-deep: #08080a;
-  --surface: #14141a;
-  --surface-2: #1a1a22;
-  --surface-3: #20202a;
-  --border: #25252e;
-  --border-strong: #36363f;
+  --bg: #f8f5f2;
+  --bg-deep: #efeae5;
+  --surface: #fffffe;
+  --surface-2: #fbf9f6;
+  --surface-3: #f3eee8;
+  --border: rgba(35, 35, 35, 0.12);
+  --border-strong: rgba(35, 35, 35, 0.22);
 
-  --text: #ededf0;
-  --text-muted: #95959e;
-  --text-subtle: #5a5a64;
+  --text: #232323;
+  --text-muted: #4a4d4d;
+  --text-subtle: #7a7875;
 
-  --accent: #f3a366;
-  --accent-hover: #f7b884;
-  --accent-soft: rgba(243, 163, 102, 0.12);
-  --accent-text: #1a0f06;
+  --accent: #078080;
+  --accent-hover: #0a9595;
+  --accent-soft: rgba(7, 128, 128, 0.12);
+  --accent-text: #232323;
 
-  --danger: #e26464;
-  --success: #6dbc8b;
+  --danger: #f45d48;
+  --success: #078080;
   --warning: #e8b75c;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.55);
-  --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+  --shadow-sm: 0 1px 2px rgba(35, 35, 35, 0.06);
+  --shadow-md: 0 8px 24px -8px rgba(35, 35, 35, 0.14);
+  --shadow-lg: 0 24px 48px -12px rgba(35, 35, 35, 0.18);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -111,8 +111,8 @@ textarea::placeholder {
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(800px 600px at 100% -10%, rgba(243, 163, 102, 0.08), transparent 60%),
-    radial-gradient(600px 500px at -10% 110%, rgba(120, 100, 200, 0.06), transparent 60%);
+    radial-gradient(800px 600px at 100% -10%, rgba(7, 128, 128, 0.08), transparent 60%),
+    radial-gradient(600px 500px at -10% 110%, rgba(244, 93, 72, 0.06), transparent 60%);
   pointer-events: none;
 }
 
@@ -139,7 +139,7 @@ textarea::placeholder {
   align-items: center;
   padding: 18px 40px;
   border-bottom: 1px solid var(--border);
-  background: rgba(12, 12, 15, 0.72);
+  background: rgba(248, 245, 242, 0.78);
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
 }
@@ -156,17 +156,17 @@ textarea::placeholder {
   height: 10px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 12px rgba(243, 163, 102, 0.6);
+  box-shadow: 0 0 12px rgba(7, 128, 128, 0.6);
   animation: pulse 2.4s var(--ease) infinite;
 }
 
 @keyframes pulse {
   0%,
   100% {
-    box-shadow: 0 0 12px rgba(243, 163, 102, 0.6);
+    box-shadow: 0 0 12px rgba(7, 128, 128, 0.6);
   }
   50% {
-    box-shadow: 0 0 20px rgba(243, 163, 102, 0.9);
+    box-shadow: 0 0 20px rgba(7, 128, 128, 0.9);
   }
 }
 
@@ -318,12 +318,12 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   transition: all 0.18s var(--ease);
-  box-shadow: 0 0 0 0 rgba(243, 163, 102, 0);
+  box-shadow: 0 0 0 0 rgba(7, 128, 128, 0);
 }
 
 .category-form button:hover {
   background: var(--accent-hover);
-  box-shadow: 0 0 16px 0 rgba(243, 163, 102, 0.35);
+  box-shadow: 0 0 16px 0 rgba(7, 128, 128, 0.35);
   transform: translateY(-1px);
 }
 
@@ -418,7 +418,7 @@ textarea::placeholder {
 
 .delete-category:hover {
   color: var(--danger);
-  background: rgba(226, 100, 100, 0.1);
+  background: rgba(244, 93, 72, 0.1);
 }
 
 .filter-pills {
@@ -559,7 +559,7 @@ textarea::placeholder {
   background: linear-gradient(90deg, var(--accent), var(--accent-hover));
   border-radius: 2px;
   transition: width 0.5s var(--ease);
-  box-shadow: 0 0 12px rgba(243, 163, 102, 0.45);
+  box-shadow: 0 0 12px rgba(7, 128, 128, 0.45);
 }
 
 .progress-label {
@@ -620,7 +620,7 @@ textarea::placeholder {
 .task-form:focus-within {
   border-color: var(--border-strong);
   background: var(--surface-2);
-  box-shadow: 0 0 0 4px rgba(243, 163, 102, 0.05), var(--shadow-md);
+  box-shadow: 0 0 0 4px rgba(7, 128, 128, 0.05), var(--shadow-md);
 }
 
 .task-form input,
@@ -983,7 +983,7 @@ textarea::placeholder {
   animation: fadeUp 0.4s var(--ease);
   border: 1px dashed var(--border);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, transparent, rgba(243, 163, 102, 0.02));
+  background: linear-gradient(180deg, transparent, rgba(7, 128, 128, 0.04));
 }
 
 @keyframes fadeUp {
@@ -1094,7 +1094,7 @@ textarea::placeholder {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(35, 35, 35, 0.45);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   align-items: center;

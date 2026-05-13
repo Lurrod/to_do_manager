@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const submitCategoryForm = () => {
     const name = categoryInput.value.trim();
-    const color = categoryColorInput.value || '#f3a366';
+    const color = categoryColorInput.value || '#078080';
     if (!name) {
       categoryInput.focus();
       return;
