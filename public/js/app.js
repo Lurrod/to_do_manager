@@ -79,7 +79,10 @@ const statTotal = $('stat-total');
 const statDone = $('stat-done');
 const statActive = $('stat-active');
 
-const filterPills = [...document.querySelectorAll('.pill')];
+// `.pill` est porté par les deux rangées : on les sépare sur leur attribut
+const filterPills = [...document.querySelectorAll('.pill[data-filter]')];
+const duePills = [...document.querySelectorAll('.due-pill')];
+const dueOverdueCount = $('due-overdue-count');
 
 let state = {
   tasks: [],
@@ -88,9 +91,10 @@ let state = {
   sort: 'creation',
   status: 'all',
   category: 'all',
+  due: 'all',
   query: '',
   categories: [],
-  stats: { total: 0, done: 0, active: 0, byCategory: [] },
+  stats: { total: 0, done: 0, active: 0, overdue: 0, byCategory: [] },
   currentTaskId: null,
   categoryToDelete: null,
 };
@@ -105,6 +109,7 @@ const queryFor = (page) => ({
   sort: state.sort,
   status: state.status,
   category: state.category,
+  due: state.due,
   q: state.query,
 });
 
@@ -374,6 +379,7 @@ const renderTaskItem = (task) => {
 };
 
 const EMPTY_COPY = {
+  horizon: ['Rien sur cet horizon.', 'Aucune tâche à cette échéance.'],
   search: ['Rien sous ce mot.', 'Aucune tâche ne contient « %s ».'],
   done: ['Aucune tâche rayée.', 'Coche une tâche pour la barrer d’un trait.'],
   cleared: ['Tout est rayé.', 'Plus rien en attente.'],
@@ -389,6 +395,7 @@ const updateEmptyState = () => {
 
   let key = 'blank';
   if (state.query) key = 'search';
+  else if (state.due !== 'all') key = 'horizon';
   else if (state.status === 'done') key = 'done';
   else if (state.status === 'active' && state.stats.total > 0) key = 'cleared';
   else if (state.category !== 'all') key = 'category';
@@ -445,6 +452,10 @@ const updateCounters = () => {
   } else {
     subtitle.textContent = `${active} tâches restent à traiter.`;
   }
+
+  const overdue = state.stats.overdue || 0;
+  dueOverdueCount.textContent = overdue;
+  dueOverdueCount.hidden = overdue === 0;
 };
 
 const updateGreeting = () => {
@@ -513,15 +524,36 @@ searchInput.addEventListener('input', (e) => {
   }, SEARCH_DEBOUNCE_MS);
 });
 
+/** Marque une pastille comme seule active de sa rangée. */
+const activatePill = (pills, target) => {
+  pills.forEach((p) => {
+    const isTarget = p === target;
+    p.classList.toggle('is-active', isTarget);
+    setVariant(p, isTarget ? 'solid' : null);
+  });
+};
+
 filterPills.forEach((pill) => {
   pill.addEventListener('click', () => {
-    filterPills.forEach((p) => {
-      p.classList.remove('is-active');
-      setVariant(p, null);
-    });
-    pill.classList.add('is-active');
-    setVariant(pill, 'solid');
+    activatePill(filterPills, pill);
     state = { ...state, status: pill.dataset.filter };
+    refresh({ page: 1 });
+  });
+});
+
+duePills.forEach((pill) => {
+  pill.addEventListener('click', () => {
+    const due = pill.dataset.due;
+    activatePill(duePills, pill);
+
+    // le badge compte le travail qui reste : l'onglet doit montrer la même
+    // chose, et la rangée « Statut » doit dire la vérité sur ce qui est filtré
+    const status = due === 'overdue' ? 'active' : state.status;
+    if (status !== state.status) {
+      activatePill(filterPills, filterPills.find((p) => p.dataset.filter === status));
+    }
+
+    state = { ...state, due, status };
     refresh({ page: 1 });
   });
 });

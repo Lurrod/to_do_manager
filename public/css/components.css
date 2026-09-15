@@ -114,6 +114,19 @@
   text-transform: uppercase;
 }
 
+/* pastille de compte sur l'onglet « En retard » — encre rouge, comme une annotation */
+.due-badge {
+  margin-left: 5px;
+  color: var(--red-pen);
+  font-family: var(--font-hand);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.due-badge[hidden] {
+  display: none;
+}
+
 /* ---------------------------------- catégories ---------------------------- */
 
 .cat-form {

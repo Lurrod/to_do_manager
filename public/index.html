@@ -89,8 +89,24 @@
           </div>
         </section>
 
+        <section class="panel" data-sketch="card">
+          <h2 class="panel-title">Échéance</h2>
+          <div class="filters" role="group" aria-label="Filtrer par échéance">
+            <button class="btn pill due-pill is-active" data-due="all" data-sketch="button" data-variant="solid">
+              Tout
+            </button>
+            <button class="btn pill due-pill" data-due="overdue" data-sketch="button">
+              En retard <b class="due-badge" id="due-overdue-count" hidden>0</b>
+            </button>
+            <button class="btn pill due-pill" data-due="today" data-sketch="button">Aujourd'hui</button>
+            <button class="btn pill due-pill" data-due="week" data-sketch="button">Semaine</button>
+            <button class="btn pill due-pill" data-due="none" data-sketch="button">Sans date</button>
+          </div>
+        </section>
+
         <p class="margin-note">
           <span class="kbd">↵</span> ajouter · <span class="kbd">/</span> chercher ·
+          <span class="kbd">Ctrl</span>+<span class="kbd">K</span> palette ·
           <span class="kbd">Esc</span> fermer
         </p>
       </aside>

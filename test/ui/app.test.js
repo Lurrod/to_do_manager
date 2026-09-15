@@ -309,3 +309,92 @@ describe('état vide', () => {
     expect(document.querySelector('.empty-sub').textContent).toContain('introuvable');
   });
 });
+
+describe('onglets temporels', () => {
+  const lastListUrl = () => calls().filter((u) => u.startsWith('/tasks?')).pop();
+
+  test('la vue par défaut ne contraint pas l’échéance', async () => {
+    await boot();
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('due')).toBe('all');
+  });
+
+  test('cliquer un onglet relance la liste sur cet horizon, page 1', async () => {
+    await boot();
+    server.calls = [];
+
+    document.querySelector('.due-pill[data-due="today"]').click();
+    await settle();
+
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('due')).toBe('today');
+    expect(params.get('page')).toBe('1');
+  });
+
+  test('l’onglet « en retard » aligne le statut sur ce que compte le badge', async () => {
+    await boot();
+    server.calls = [];
+
+    document.querySelector('.due-pill[data-due="overdue"]').click();
+    await settle();
+
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('due')).toBe('overdue');
+    expect(params.get('status')).toBe('active');
+    // l'interface ne doit pas afficher « Toutes » en filtrant sur « À faire »
+    const statusPill = document.querySelector('.pill[data-filter="active"]');
+    expect(statusPill.classList.contains('is-active')).toBe(true);
+  });
+
+  test('les autres horizons laissent le statut tranquille', async () => {
+    await boot();
+    server.calls = [];
+
+    document.querySelector('.due-pill[data-due="week"]').click();
+    await settle();
+
+    expect(new URL(lastListUrl(), 'http://test').searchParams.get('status')).toBe('all');
+    expect(document.querySelector('.pill[data-filter="all"]').classList.contains('is-active')).toBe(
+      true
+    );
+  });
+
+  test('l’onglet actif est le seul marqué', async () => {
+    await boot();
+    document.querySelector('.due-pill[data-due="overdue"]').click();
+    await settle();
+
+    const active = [...document.querySelectorAll('.due-pill.is-active')].map(
+      (el) => el.dataset.due
+    );
+    expect(active).toEqual(['overdue']);
+  });
+
+  test('le badge affiche le nombre de tâches en retard', async () => {
+    server.stats = { ...server.stats, overdue: 3 };
+    await boot();
+
+    const badge = document.getElementById('due-overdue-count');
+    expect(badge.textContent).toBe('3');
+    expect(badge.hidden).toBe(false);
+  });
+
+  test('le badge disparaît quand rien n’est en retard', async () => {
+    server.stats = { ...server.stats, overdue: 0 };
+    await boot();
+
+    expect(document.getElementById('due-overdue-count').hidden).toBe(true);
+  });
+
+  test('un horizon vide affiche un état vide qui le dit', async () => {
+    server.tasks = [];
+    server.stats = { total: 0, done: 0, active: 0, overdue: 0, byCategory: [] };
+    await boot();
+
+    document.querySelector('.due-pill[data-due="week"]').click();
+    await settle();
+
+    expect(document.getElementById('empty-state').classList.contains('hidden')).toBe(false);
+    expect(document.querySelector('.empty-title').textContent).toBe('Rien sur cet horizon.');
+  });
+});
