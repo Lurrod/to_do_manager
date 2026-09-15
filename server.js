@@ -286,12 +286,10 @@ app.get('/tasks/stats', async (req, res) => {
     const [total, done, overdue, byCategory] = await Promise.all([
       Task.countDocuments(base),
       Task.countDocuments({ ...base, completed: true }),
-      // une tâche terminée n'est plus un rappel, même si son échéance est passée
-      Task.countDocuments({
-        ...base,
-        completed: false,
-        dueDate: { $ne: null, $lt: startOfDay(new Date()) },
-      }),
+      // une tâche terminée n'est plus un rappel, même si son échéance est passée.
+      // dueClause est réutilisé tel quel : le badge et l'onglet « en retard »
+      // ne peuvent pas diverger sur ce que « en retard » veut dire.
+      Task.countDocuments({ ...base, completed: false, ...dueClause('overdue') }),
       Task.aggregate([{ $match: base }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
     ]);
 
