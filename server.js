@@ -153,6 +153,35 @@ const toInt = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+/* Bornes de journée en heure locale du serveur : le navigateur tourne sur la
+   même machine, il n'y a donc aucun décalage à faire transiter. */
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const addDays = (date, days) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+/**
+ * Horizons emboîtés : `today` contient le retard, `week` contient `today`.
+ * Une tâche en retard ne doit jamais disparaître d'une vue plus large — c'est
+ * précisément l'oubli que ces vues servent à empêcher.
+ * @returns {object|null} clause à fusionner dans le filtre, ou null si `due` est inconnu
+ */
+const dueClause = (due, now = new Date()) => {
+  const start = startOfDay(now);
+  if (due === 'overdue') return { dueDate: { $ne: null, $lt: start } };
+  if (due === 'today') return { dueDate: { $ne: null, $lt: addDays(start, 1) } };
+  if (due === 'week') return { dueDate: { $ne: null, $lt: addDays(start, 7) } };
+  if (due === 'none') return { dueDate: null };
+  return null;
+};
+
 /** Les détails internes restent dans les logs ; le client reçoit un message sûr. */
 const fail = (res, error) => {
   if (error instanceof mongoose.Error.ValidationError) {
@@ -210,6 +239,10 @@ const buildFilter = (query) => {
   if (category && category !== 'all') {
     filter.category = category === 'none' ? '' : category;
   }
+
+  // asString neutralise ?due[$ne]=null : un objet devient chaîne vide, donc aucun filtre
+  const due = dueClause(asString(query.due, 16));
+  if (due) Object.assign(filter, due);
 
   const term = asString(query.q, MAX_SEARCH);
   if (term) {

@@ -93,6 +93,64 @@ describe('Tasks API', () => {
     const after = await request(app).get(`/tasks/${created.body._id}`);
     expect(after.status).toBe(404);
   });
+
+  describe('GET /tasks — filtre temporel', () => {
+    /** Échéance à J+offset, midi, pour rester loin des bornes de minuit. */
+    const at = (offsetDays) => {
+      const d = new Date();
+      d.setHours(12, 0, 0, 0);
+      d.setDate(d.getDate() + offsetDays);
+      return d.toISOString();
+    };
+
+    beforeEach(async () => {
+      await request(app).post('/tasks').send({ title: 'hier', dueDate: at(-1) });
+      await request(app).post('/tasks').send({ title: 'aujourdhui', dueDate: at(0) });
+      await request(app).post('/tasks').send({ title: 'dans3j', dueDate: at(3) });
+      await request(app).post('/tasks').send({ title: 'dans30j', dueDate: at(30) });
+      await request(app).post('/tasks').send({ title: 'sansdate' });
+    });
+
+    const titlesFor = async (query) => {
+      const res = await request(app).get(`/tasks?limit=100&${query}`);
+      expect(res.status).toBe(200);
+      return res.body.tasks.map((t) => t.title).sort();
+    };
+
+    test('due=overdue ne renvoie que les échéances dépassées', async () => {
+      expect(await titlesFor('due=overdue')).toEqual(['hier']);
+    });
+
+    test('due=today inclut le retard et le jour même', async () => {
+      expect(await titlesFor('due=today')).toEqual(['aujourdhui', 'hier']);
+    });
+
+    test('due=week couvre sept jours, retard inclus', async () => {
+      expect(await titlesFor('due=week')).toEqual(['aujourdhui', 'dans3j', 'hier']);
+    });
+
+    test('due=none ne renvoie que les tâches sans échéance', async () => {
+      expect(await titlesFor('due=none')).toEqual(['sansdate']);
+    });
+
+    test('une valeur inconnue de due est ignorée', async () => {
+      expect(await titlesFor('due=nimportequoi')).toHaveLength(5);
+    });
+
+    test('un opérateur Mongo injecté dans due est ignoré', async () => {
+      expect(await titlesFor('due[$ne]=null')).toHaveLength(5);
+    });
+
+    test('due se combine avec le statut et la recherche', async () => {
+      await request(app).post('/tasks').send({ title: 'hier fini', dueDate: at(-1) });
+      const all = await request(app).get('/tasks?limit=100&due=overdue&status=active');
+      const ids = all.body.tasks.map((t) => t._id);
+      await request(app).put(`/tasks/${ids[0]}`).send({ completed: true });
+
+      const res = await request(app).get('/tasks?limit=100&due=overdue&status=active&q=hier');
+      expect(res.body.tasks.map((t) => t.title).sort()).toEqual(['hier']);
+    });
+  });
 });
 
 describe('Tasks API — tri, filtres et recherche serveur', () => {
