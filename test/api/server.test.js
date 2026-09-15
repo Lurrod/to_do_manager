@@ -142,13 +142,14 @@ describe('Tasks API', () => {
     });
 
     test('due se combine avec le statut et la recherche', async () => {
-      await request(app).post('/tasks').send({ title: 'hier fini', dueDate: at(-1) });
-      const all = await request(app).get('/tasks?limit=100&due=overdue&status=active');
-      const ids = all.body.tasks.map((t) => t._id);
-      await request(app).put(`/tasks/${ids[0]}`).send({ completed: true });
+      // chaque leurre n'est écarté que par un seul des trois filtres : si l'un
+      // d'eux cesse d'agir, un intrus apparaît et le test tombe
+      await request(app).post('/tasks').send({ title: 'hier futur', dueDate: at(30) });
+      await request(app).post('/tasks').send({ title: 'course', dueDate: at(-1) });
+      const fini = await request(app).post('/tasks').send({ title: 'hier fini', dueDate: at(-1) });
+      await request(app).put(`/tasks/${fini.body._id}`).send({ completed: true });
 
-      const res = await request(app).get('/tasks?limit=100&due=overdue&status=active&q=hier');
-      expect(res.body.tasks.map((t) => t.title).sort()).toEqual(['hier']);
+      expect(await titlesFor('due=overdue&status=active&q=hier')).toEqual(['hier']);
     });
   });
 });
