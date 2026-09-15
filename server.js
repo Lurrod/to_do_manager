@@ -227,7 +227,7 @@ const SORT_FIELDS = {
   },
 };
 
-/** Filtre de liste — statut, catégorie et recherche s'appliquent à TOUTES les tâches. */
+/** Filtre de liste — statut, échéance, catégorie et recherche portent sur TOUTES les tâches. */
 const buildFilter = (query) => {
   const filter = { deletedAt: null };
 
@@ -283,9 +283,15 @@ app.post('/tasks', async (req, res) => {
 app.get('/tasks/stats', async (req, res) => {
   try {
     const base = { deletedAt: null };
-    const [total, done, byCategory] = await Promise.all([
+    const [total, done, overdue, byCategory] = await Promise.all([
       Task.countDocuments(base),
       Task.countDocuments({ ...base, completed: true }),
+      // une tâche terminée n'est plus un rappel, même si son échéance est passée
+      Task.countDocuments({
+        ...base,
+        completed: false,
+        dueDate: { $ne: null, $lt: startOfDay(new Date()) },
+      }),
       Task.aggregate([{ $match: base }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
     ]);
 
@@ -293,6 +299,7 @@ app.get('/tasks/stats', async (req, res) => {
       total,
       done,
       active: total - done,
+      overdue,
       byCategory: byCategory.map(({ _id, count }) => ({ category: _id || '', count })),
     });
   } catch (error) {

@@ -267,6 +267,28 @@ describe('Tasks API — tri, filtres et recherche serveur', () => {
     const perso = res.body.byCategory.find((c) => c.category === 'Perso');
     expect(perso.count).toBe(3);
   });
+
+  test('GET /tasks/stats compte les tâches en retard non terminées', async () => {
+    const past = new Date();
+    past.setDate(past.getDate() - 2);
+    const future = new Date();
+    future.setDate(future.getDate() + 2);
+
+    await request(app).post('/tasks').send({ title: 'retard', dueDate: past.toISOString() });
+    await request(app).post('/tasks').send({ title: 'a venir', dueDate: future.toISOString() });
+    await request(app).post('/tasks').send({ title: 'sans date' });
+
+    const done = await request(app)
+      .post('/tasks')
+      .send({ title: 'retard mais fini', dueDate: past.toISOString() });
+    await request(app).put(`/tasks/${done.body._id}`).send({ completed: true });
+
+    const res = await request(app).get('/tasks/stats');
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(4);
+    // la tâche terminée ne compte pas : elle n'est plus un rappel
+    expect(res.body.overdue).toBe(1);
+  });
 });
 
 describe('Tasks API — paramètres hostiles', () => {
