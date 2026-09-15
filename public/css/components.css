@@ -1,0 +1,536 @@
+/* ---------------------------------------------------------------------------
+   Cahier — composants
+   Chargé APRÈS /vendor/drawably/style.css : les quelques règles qui suivent
+   ajustent la mise en page et la typo des hôtes drawably, jamais leurs tracés
+   (les couleurs passent par --drawably-stroke / --drawably-fill).
+   --------------------------------------------------------------------------- */
+
+/* ---------------------------------- feuilles ------------------------------ */
+
+.panel,
+.composer,
+.task,
+.empty,
+.modal-content,
+.toast {
+  /* fond de feuille : le quadrillage transparaît juste assez */
+  background: color-mix(in srgb, var(--paper-sheet) 84%, transparent);
+}
+
+.panel {
+  padding: var(--gap-3) var(--gap-3) var(--gap-4);
+}
+
+.panel-title {
+  margin: 0 0 var(--gap-2);
+  font-family: var(--font-hand);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* ---------------------------------- champs -------------------------------- */
+
+.field {
+  display: inline-block;
+  width: 100%;
+}
+
+.field input,
+.field textarea,
+.field select {
+  padding: 7px 11px;
+  font-family: var(--font-ui);
+  font-size: var(--step-sm);
+  color: var(--ink);
+}
+
+/* la gouttière de droite est réservée au chevron dessiné par drawably */
+.field select {
+  padding-right: 34px;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--ink-faint);
+}
+
+.field textarea {
+  min-height: 58px;
+  line-height: 1.5;
+}
+
+.field--grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.field--color {
+  width: 38px;
+  flex: 0 0 38px;
+}
+
+.field--color input {
+  padding: 3px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.field--date {
+  width: auto;
+}
+
+.field--date input {
+  font-size: var(--step-xs);
+}
+
+/* ---------------------------------- boutons ------------------------------- */
+
+.btn {
+  padding: 7px 16px;
+  font-family: var(--font-ui);
+  font-size: var(--step-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.btn--icon {
+  padding: 6px 12px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-2);
+}
+
+.pill {
+  padding: 5px 13px;
+  font-size: var(--step-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------- catégories ---------------------------- */
+
+.cat-form {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  margin-bottom: var(--gap-3);
+}
+
+.cat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  padding: 4px 2px;
+  cursor: pointer;
+  transition: color 140ms var(--ease);
+}
+
+.cat-item:hover {
+  color: var(--ink);
+}
+
+.cat-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.cat-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--step-sm);
+}
+
+.cat-count {
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.cat-delete {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 140ms var(--ease), color 140ms var(--ease);
+}
+
+.cat-item:hover .cat-delete,
+.cat-delete:focus-visible {
+  opacity: 1;
+}
+
+.cat-delete:hover {
+  color: var(--red-pen);
+}
+
+/* ---------------------------------- composeur ----------------------------- */
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+  padding: var(--gap-3);
+}
+
+.composer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+/* les champs de cette ligne se dimensionnent sur leur contenu */
+.composer-row .field {
+  width: auto;
+}
+
+.composer-row .btn {
+  margin-left: auto;
+}
+
+/* ---------------------------------- tâches -------------------------------- */
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-3);
+}
+
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-3);
+  padding: var(--gap-3);
+  animation: ink-in 260ms var(--ease) both;
+}
+
+@keyframes ink-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) rotate(-0.25deg);
+  }
+}
+
+.task-check {
+  flex: 0 0 22px;
+  margin-top: 2px;
+}
+
+.task-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-title {
+  display: inline-block;
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+/* la priorité se lit comme une annotation en marge : un astérisque à la plume */
+.task-prio {
+  display: inline-block;
+  margin-right: 6px;
+  font-family: var(--font-hand);
+  font-weight: 700;
+  line-height: 0;
+  vertical-align: -0.15em;
+  font-size: 1.6rem;
+}
+
+.task-prio[data-level='high'] {
+  color: var(--red-pen);
+}
+
+.task-prio[data-level='medium'] {
+  color: var(--graphite);
+}
+
+.task-prio[data-level='low'] {
+  color: var(--ink-faint);
+  font-size: 1.2rem;
+}
+
+.task-desc {
+  margin: 4px 0 0;
+  font-size: var(--step-sm);
+  color: var(--ink-soft);
+  word-break: break-word;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-2);
+  margin-top: var(--gap-2);
+}
+
+.task-due {
+  font-size: var(--step-xs);
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.task-due.is-soon {
+  color: var(--graphite);
+  font-weight: 700;
+}
+
+.task-due.is-overdue {
+  color: var(--red-pen);
+  font-weight: 700;
+}
+
+.tag {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  opacity: 0.55;
+  transition: opacity 160ms var(--ease);
+}
+
+.task:hover .task-actions,
+.task:focus-within .task-actions {
+  opacity: 1;
+}
+
+.task-actions .btn {
+  padding: 4px 11px;
+  font-size: var(--step-xs);
+  font-weight: 500;
+}
+
+.task.is-done {
+  opacity: 0.62;
+}
+
+.task.is-done .task-title {
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------- vide / chargement --------------------- */
+
+.empty {
+  padding: var(--gap-5) var(--gap-4);
+  text-align: center;
+}
+
+.empty-title {
+  margin: 0;
+  font-family: var(--font-hand);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.empty-sub {
+  margin: var(--gap-2) 0 0;
+  color: var(--ink-soft);
+  font-size: var(--step-sm);
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-3);
+}
+
+.skeleton {
+  height: 74px;
+  background: color-mix(in srgb, var(--paper-deep) 70%, transparent);
+  animation: breathe 1.5s ease-in-out infinite;
+}
+
+.skeleton:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.skeleton:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ---------------------------------- pagination ---------------------------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-3);
+  padding-top: var(--gap-1);
+}
+
+.page-info {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------- modales ------------------------------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-3);
+  background: color-mix(in srgb, var(--ink) 26%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  width: min(460px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+  padding: var(--gap-4);
+  background: var(--paper-sheet);
+  animation: ink-in 200ms var(--ease) both;
+}
+
+.modal-title {
+  margin: 0;
+  font-family: var(--font-hand);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.modal-text {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--step-sm);
+}
+
+.modal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-2);
+}
+
+.modal-row .field {
+  flex: 1;
+  min-width: 140px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gap-2);
+  margin-top: var(--gap-2);
+}
+
+/* ---------------------------------- toasts -------------------------------- */
+
+.toast-container {
+  position: fixed;
+  right: var(--gap-4);
+  bottom: var(--gap-4);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+  pointer-events: none;
+}
+
+.toast {
+  padding: 9px 16px;
+  font-family: var(--font-hand);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--ink);
+  background: var(--paper-sheet);
+  animation: ink-in 220ms var(--ease) both;
+}
+
+.toast--action {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-3);
+  /* le conteneur laisse passer les clics : la note qui en attend un les reprend */
+  pointer-events: auto;
+}
+
+.toast-action {
+  flex: 0 0 auto;
+  padding: 3px 12px;
+  font-family: var(--font-ui);
+  font-size: var(--step-xs);
+  font-weight: 700;
+}
+
+.toast.success {
+  --drawably-stroke: var(--green-pen);
+  color: var(--green-pen);
+}
+
+.toast.error {
+  --drawably-stroke: var(--red-pen);
+  color: var(--red-pen);
+}
+
+/* ---------------------------------- accessibilité ------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .task,
+  .toast,
+  .modal-content,
+  .skeleton {
+    animation: none;
+  }
+}
