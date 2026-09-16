@@ -19,16 +19,19 @@ const request = async (path, options = {}) => {
   return res.json();
 };
 
-/**
- * @param {{page:number, limit:number, sort:string, status:string, category:string, q:string}} query
- */
-export const listTasks = (query) => {
+/** Les valeurs vides ne sont pas envoyées : le serveur applique ses défauts. */
+const buildQuery = (query) => {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (value !== '' && value !== null && value !== undefined) params.set(key, value);
   });
-  return request(`tasks?${params}`);
+  return params;
 };
+
+/**
+ * @param {{page:number, limit:number, sort:string, status:string, category:string, q:string}} query
+ */
+export const listTasks = (query) => request(`tasks?${buildQuery(query)}`);
 
 export const fetchStats = () => request('tasks/stats');
 
@@ -42,13 +45,7 @@ export const deleteTask = (id) => request(`tasks/${id}`, { method: 'DELETE' });
 
 export const restoreTask = (id) => request(`tasks/${id}/restore`, { method: 'POST' });
 
-export const listTrash = (query) => {
-  const params = new URLSearchParams();
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== '' && value !== null && value !== undefined) params.set(key, value);
-  });
-  return request(`tasks/trash?${params}`);
-};
+export const listTrash = (query) => request(`tasks/trash?${buildQuery(query)}`);
 
 export const purgeTask = (id) => request(`tasks/${id}/purge`, { method: 'DELETE' });
 

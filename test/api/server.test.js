@@ -239,6 +239,35 @@ describe('Tasks API', () => {
       const res = await request(app).get('/tasks?limit=100');
       expect(res.body.tasks).toHaveLength(0);
     });
+
+    test('PUT ne peut pas poser deletedAt lui-même', async () => {
+      const created = await request(app).post('/tasks').send({ title: 'vivante' });
+
+      const res = await request(app)
+        .put(`/tasks/${created.body._id}`)
+        .send({ title: 'vivante', deletedAt: new Date().toISOString() });
+      expect(res.status).toBe(200);
+
+      // la liste blanche a écarté le champ : la tâche est toujours vivante
+      const trash = await request(app).get('/tasks/trash');
+      expect(trash.body.total).toBe(0);
+      const still = await request(app).get(`/tasks/${created.body._id}`);
+      expect(still.status).toBe(200);
+    });
+
+    test('supprimer deux fois ne mène pas à la suppression définitive', async () => {
+      const created = await request(app).post('/tasks').send({ title: 'deux fois' });
+
+      const first = await request(app).delete(`/tasks/${created.body._id}`);
+      expect(first.status).toBe(200);
+
+      const second = await request(app).delete(`/tasks/${created.body._id}`);
+      expect(second.status).toBe(404);
+
+      // toujours restaurable : rien n'a été détruit
+      const trash = await request(app).get('/tasks/trash');
+      expect(trash.body.total).toBe(1);
+    });
   });
 });
 

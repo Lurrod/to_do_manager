@@ -153,6 +153,21 @@ const toInt = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+/**
+ * Bornes de pagination, communes aux listes.
+ * Le total est compté avant la page : deux requêtes, donc un total
+ * théoriquement décalé si une écriture s'intercale. Acceptable ici (un seul
+ * utilisateur local) et toujours plus juste que compter côté client sur la
+ * page affichée.
+ */
+const paginate = (query, total) => {
+  const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(query.limit, DEFAULT_LIMIT)));
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  // supprimer le dernier élément d'une page ne doit pas laisser une page vide
+  const currentPage = Math.min(Math.max(1, toInt(query.page, 1)), totalPages);
+  return { limit, totalPages, currentPage, skip: (currentPage - 1) * limit };
+};
+
 /* Bornes de journée en heure locale du serveur : le navigateur tourne sur la
    même machine, il n'y a donc aucun décalage à faire transiter. */
 const startOfDay = (date) => {
@@ -308,17 +323,13 @@ app.get('/tasks/stats', async (req, res) => {
 // déclaré avant /tasks/:id, sinon « trash » serait pris pour un identifiant
 app.get('/tasks/trash', async (req, res) => {
   try {
-    const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(req.query.limit, DEFAULT_LIMIT)));
-    const requestedPage = Math.max(1, toInt(req.query.page, 1));
     const filter = { deletedAt: { $ne: null } };
-
     const total = await Task.countDocuments(filter);
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const currentPage = Math.min(requestedPage, totalPages);
+    const { limit, totalPages, currentPage, skip } = paginate(req.query, total);
 
     const tasks = await Task.find(filter)
       .sort({ deletedAt: -1, _id: -1 })
-      .skip((currentPage - 1) * limit)
+      .skip(skip)
       .limit(limit);
 
     res.status(200).json({ tasks, total, totalPages, currentPage });
@@ -329,27 +340,20 @@ app.get('/tasks/trash', async (req, res) => {
 
 app.get('/tasks', async (req, res) => {
   try {
-    const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(req.query.limit, DEFAULT_LIMIT)));
-    const requestedPage = Math.max(1, toInt(req.query.page, 1));
     // recherche sur les clés propres : `?sort=toString` remonterait sinon un
     // membre du prototype et casserait l'étage $sort
     const requestedSort = asString(req.query.sort, 16);
     const sort = Object.hasOwn(SORTS, requestedSort) ? requestedSort : 'creation';
 
     const filter = buildFilter(req.query);
-    // comptage puis page : deux requêtes, donc un total théoriquement décalé si
-    // une écriture s'intercale. Acceptable ici (un seul utilisateur local) et
-    // toujours plus juste que compter côté client sur la page affichée.
     const total = await Task.countDocuments(filter);
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    // supprimer le dernier élément d'une page ne doit pas laisser une page vide
-    const currentPage = Math.min(requestedPage, totalPages);
+    const { limit, totalPages, currentPage, skip } = paginate(req.query, total);
 
     const tasks = await Task.aggregate([
       { $match: filter },
       SORT_FIELDS,
       { $sort: SORTS[sort] },
-      { $skip: (currentPage - 1) * limit },
+      { $skip: skip },
       { $limit: limit },
       { $project: { noDue: 0, priorityRank: 0 } },
     ]);
