@@ -305,6 +305,28 @@ app.get('/tasks/stats', async (req, res) => {
   }
 });
 
+// déclaré avant /tasks/:id, sinon « trash » serait pris pour un identifiant
+app.get('/tasks/trash', async (req, res) => {
+  try {
+    const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(req.query.limit, DEFAULT_LIMIT)));
+    const requestedPage = Math.max(1, toInt(req.query.page, 1));
+    const filter = { deletedAt: { $ne: null } };
+
+    const total = await Task.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const currentPage = Math.min(requestedPage, totalPages);
+
+    const tasks = await Task.find(filter)
+      .sort({ deletedAt: -1, _id: -1 })
+      .skip((currentPage - 1) * limit)
+      .limit(limit);
+
+    res.status(200).json({ tasks, total, totalPages, currentPage });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
 app.get('/tasks', async (req, res) => {
   try {
     const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(req.query.limit, DEFAULT_LIMIT)));
@@ -385,6 +407,20 @@ app.post('/tasks/:id/restore', async (req, res) => {
     );
     if (!task) return res.status(404).json({ error: 'Tâche non trouvée dans la corbeille' });
     res.status(200).json(task);
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+/**
+ * Suppression définitive. Réservée à ce qui est déjà dans la corbeille : rien
+ * d'irréversible ne doit être atteignable en un seul geste.
+ */
+app.delete('/tasks/:id/purge', async (req, res) => {
+  try {
+    const task = await Task.findOneAndDelete({ _id: req.params.id, deletedAt: { $ne: null } });
+    if (!task) return res.status(404).json({ error: 'Tâche non trouvée dans la corbeille' });
+    res.status(200).json({ message: 'Tâche supprimée définitivement', task });
   } catch (error) {
     fail(res, error);
   }

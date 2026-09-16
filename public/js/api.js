@@ -42,6 +42,16 @@ export const deleteTask = (id) => request(`tasks/${id}`, { method: 'DELETE' });
 
 export const restoreTask = (id) => request(`tasks/${id}/restore`, { method: 'POST' });
 
+export const listTrash = (query) => {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== '' && value !== null && value !== undefined) params.set(key, value);
+  });
+  return request(`tasks/trash?${params}`);
+};
+
+export const purgeTask = (id) => request(`tasks/${id}/purge`, { method: 'DELETE' });
+
 export const listCategories = () => request('categories');
 
 export const createCategory = (name, color) =>

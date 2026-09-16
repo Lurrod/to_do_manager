@@ -174,6 +174,72 @@ describe('Tasks API', () => {
     // la tâche terminée ne compte pas : elle n'est plus un rappel
     expect(res.body.overdue).toBe(1);
   });
+
+  describe('corbeille', () => {
+    /** Crée une tâche puis la supprime ; renvoie son identifiant. */
+    const trashed = async (title) => {
+      const created = await request(app).post('/tasks').send({ title });
+      await request(app).delete(`/tasks/${created.body._id}`);
+      return created.body._id;
+    };
+
+    test('GET /tasks/trash liste les tâches supprimées, la plus récente en tête', async () => {
+      await trashed('premiere');
+      await trashed('seconde');
+      await request(app).post('/tasks').send({ title: 'vivante' });
+
+      const res = await request(app).get('/tasks/trash');
+      expect(res.status).toBe(200);
+      expect(res.body.total).toBe(2);
+      expect(res.body.tasks.map((t) => t.title)).toEqual(['seconde', 'premiere']);
+    });
+
+    test('GET /tasks/trash pagine', async () => {
+      await trashed('a');
+      await trashed('b');
+      await trashed('c');
+
+      const res = await request(app).get('/tasks/trash?limit=2&page=2');
+      expect(res.body.totalPages).toBe(2);
+      expect(res.body.currentPage).toBe(2);
+      expect(res.body.tasks).toHaveLength(1);
+    });
+
+    test('« trash » n’est pas confondu avec un identifiant', async () => {
+      const res = await request(app).get('/tasks/trash');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('tasks');
+    });
+
+    test('DELETE /tasks/:id/purge supprime définitivement', async () => {
+      const id = await trashed('a purger');
+
+      const res = await request(app).delete(`/tasks/${id}/purge`);
+      expect(res.status).toBe(200);
+
+      const after = await request(app).get('/tasks/trash');
+      expect(after.body.total).toBe(0);
+
+      const restore = await request(app).post(`/tasks/${id}/restore`);
+      expect(restore.status).toBe(404);
+    });
+
+    test('purger une tâche vivante est refusé', async () => {
+      const created = await request(app).post('/tasks').send({ title: 'vivante' });
+
+      const res = await request(app).delete(`/tasks/${created.body._id}/purge`);
+      expect(res.status).toBe(404);
+
+      const still = await request(app).get(`/tasks/${created.body._id}`);
+      expect(still.status).toBe(200);
+    });
+
+    test('les tâches en corbeille ne remontent pas dans GET /tasks', async () => {
+      await trashed('supprimee');
+      const res = await request(app).get('/tasks?limit=100');
+      expect(res.body.tasks).toHaveLength(0);
+    });
+  });
 });
 
 describe('Tasks API — tri, filtres et recherche serveur', () => {
