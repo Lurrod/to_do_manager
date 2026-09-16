@@ -4,11 +4,15 @@
 
 | Version | Correctifs de sécurité |
 | ------- | ---------------------- |
-| 2.0.x   | oui                    |
-| < 2.0   | non                    |
+| 3.0.x   | oui                    |
+| < 3.0   | non                    |
 
-Il n'y a pas de rétroportage : le Cahier se met à jour tout seul depuis la
-2.0.0, et une version antérieure se remplace par la dernière.
+Il n'y a pas de rétroportage : une version antérieure se remplace par la
+dernière.
+
+**La mise à jour automatique commence à la 3.0.0.** La 2.0.0 n'embarque pas le
+code qui va la chercher : un poste qui en est resté là ne verra jamais rien
+arriver et doit être mis à jour à la main, une dernière fois.
 
 ## Signaler une faille
 

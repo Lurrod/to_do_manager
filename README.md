@@ -22,7 +22,7 @@ C'est tout. MongoDB est embarqué dans l'app via [`mongodb-memory-server`](https
 
 ```bash
 npm install
-npm run dist          # → dist/Cahier Setup 2.0.0.exe
+npm run dist          # → dist/Cahier Setup 3.0.0.exe
 ```
 
 Un installeur classique : raccourci sur le bureau et dans le menu Démarrer, désinstallable
@@ -332,11 +332,12 @@ c'est une dette connue, écrite dans `vitest.config.js`.
 npm run format        # Prettier sur tout le dépôt
 npm run format:check  # ce que vérifie la CI
 npm run audit         # failles hautes dans les dépendances de production
+npm run icons         # refabrique les icônes depuis public/favicon.svg
 npm run dist          # installeur local, non publié
 ```
 
 Chaque poussée et chaque PR déclenchent la CI (`.github/workflows/ci.yml`) sous
-Windows : formatage, audit, 395 tests et seuils de couverture. L'audit des
+Windows : formatage, audit, 400 tests et seuils de couverture. L'audit des
 dépendances de production **bloque** ; celui des outils de développement
 avertit sans bloquer, ces paquets ne partant pas dans l'installeur.
 

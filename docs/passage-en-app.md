@@ -10,7 +10,7 @@
 ## Ce qu'on obtient
 
 ```bash
-npm run dist          # → dist/Cahier Setup 2.0.0.exe
+npm run dist          # → dist/Cahier Setup 3.0.0.exe
 ```
 
 Un installeur NSIS classique : on le double-clique, il propose un dossier, il pose un raccourci

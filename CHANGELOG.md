@@ -8,7 +8,7 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
-## [Non publié]
+## [3.0.0] — 2026-09-16
 
 ### Ajouté
 
@@ -17,7 +17,7 @@ des postes déjà installés.
   fois la version sur le disque, et se reporte à la fermeture si on décline.
   Une panne de réseau reste silencieuse : le Cahier s'utilise hors ligne.
 - **Intégration continue** (`.github/workflows/ci.yml`) : formatage, audit des
-  dépendances de production et 395 tests avec seuils de couverture, sur
+  dépendances de production et 400 tests avec seuils de couverture, sur
   Windows, à chaque poussée et chaque PR.
 - **Chaîne de publication** (`.github/workflows/release.yml`) : une étiquette
   `vX.Y.Z` construit l'installeur et le dépose en release **brouillon**. Plus
@@ -46,6 +46,16 @@ des postes déjà installés.
   levées dans ce qui est installé chez les utilisateurs.
 - L'arrêt des services (le verrou Mongo) est relâché par une fonction unique,
   qu'on ferme la fenêtre ou qu'on pose une mise à jour.
+
+### Corrigé
+
+- **Les icônes de l'application étaient des canevas blancs.** Le générateur
+  d'origine chargeait `favicon.svg` par `<img src=…>` et n'obtenait rien : ce
+  qui a été livré avec la 2.0.0 comme icône du raccourci, de la barre des
+  tâches, de l'installeur et de la PWA était une image cassée. Mesuré à 0,86 %
+  d'encre contre 82,5 % après réparation. `npm run icons` les refabrique à
+  partir du SVG, désormais inséré dans la page et non référencé — et refuse
+  d'écrire un rendu vide.
 
 ### Sécurité
 
