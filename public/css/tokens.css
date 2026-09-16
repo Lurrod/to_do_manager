@@ -1,0 +1,135 @@
+/* ---------------------------------------------------------------------------
+   Cahier — jetons de design
+   Papier crème quadrillé, encre bleue, stylo rouge, surligneur jaune.
+   Tout le chrome (cadres, cases, boutons) est dessiné par drawably :
+   aucune bordure ni ombre CSS ne doit imiter un trait de crayon.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* papier */
+  --paper: #f6f1e4;
+  --paper-sheet: #fbf8ef;
+  --paper-deep: #eee7d6;
+  --rule-line: rgba(31, 47, 92, 0.09);
+  --rule-strong: rgba(31, 47, 92, 0.16);
+
+  /* encres */
+  --ink: #1f2f5c;
+  --ink-soft: #55618a;
+  --ink-faint: #8d94ab;
+  --graphite: #6e675f;
+  --red-pen: #c8402f;
+  --green-pen: #2f7d51;
+  --highlighter: #f3d15b;
+
+  /* typographie */
+  --font-hand: 'Caveat', 'Segoe Script', cursive;
+  --font-ui: 'Karla', 'Trebuchet MS', sans-serif;
+
+  --step-xs: 0.75rem;
+  --step-sm: 0.85rem;
+  --step-md: 0.95rem;
+  --step-lg: 1.15rem;
+  --step-xl: 2.6rem;
+
+  /* rythme */
+  --gap-1: 6px;
+  --gap-2: 10px;
+  --gap-3: 16px;
+  --gap-4: 24px;
+  --gap-5: 36px;
+  --line: 28px; /* pas du quadrillage, sert aussi d'unité verticale */
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* thème drawably */
+  --drawably-stroke: var(--ink);
+  --drawably-fill: var(--ink);
+  --drawably-paper: var(--paper-sheet);
+  --drawably-error: var(--red-pen);
+  --drawably-success: var(--green-pen);
+  --drawably-width: 1.7;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  scrollbar-color: var(--ink-faint) transparent;
+  scrollbar-width: thin;
+}
+
+body {
+  position: relative;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-ui);
+  font-size: var(--step-md);
+  line-height: 1.55;
+  color: var(--ink);
+  background-color: var(--paper);
+}
+
+/* Le quadrillage du cahier. Il vit sur une couche à part, pas sur le fond du
+   <body> : celui-ci se propage au canvas, qui n'en carrelle l'image que sur la
+   zone déjà peinte — la trame s'arrêtait net sous une page peu remplie. */
+body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--rule-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule-line) 1px, transparent 1px);
+  background-size: var(--line) var(--line);
+}
+
+/* la lib impose Inter sur ses hôtes : le cahier garde sa propre plume */
+.drawably-host,
+.drawably-button,
+.drawably-badge {
+  font-family: inherit;
+}
+
+/* grain de papier, posé au-dessus du quadrillage et sous le contenu */
+.paper-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: color-mix(in srgb, var(--highlighter) 70%, transparent);
+  color: var(--ink);
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 8px;
+  z-index: 50;
+  padding: 8px 14px;
+  background: var(--paper-sheet);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.skip-link:focus {
+  left: 12px;
+}
+
+.hidden {
+  display: none !important;
+}

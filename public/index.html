@@ -1,144 +1,283 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f8f5f2" />
-    <meta name="description" content="Gestionnaire de tâches minimaliste — organise, priorise, avance." />
-    <title>Tasks · To-Do Manager</title>
+    <meta name="theme-color" content="#f6f1e4" />
+    <meta name="description" content="Cahier de tâches — écris, raye, avance." />
+    <title>Cahier · to-do manager</title>
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+
+    <link rel="stylesheet" href="/vendor/drawably/style.css" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
   </head>
   <body>
-    <div class="grain" aria-hidden="true"></div>
-    <div class="ambient-glow" aria-hidden="true"></div>
-
+    <div class="paper-grain" aria-hidden="true"></div>
     <a class="skip-link" href="#main">Aller au contenu</a>
 
     <header class="topbar">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">Tasks</span>
-        <span class="brand-divider" aria-hidden="true">/</span>
+        <span class="brand-name">Cahier</span>
         <span class="brand-sub">to-do manager</span>
       </div>
-      <div class="brand-meta" aria-label="Statistiques">
-        <span class="stat">
-          <span class="stat-num" id="stat-total">0</span>
-          <span class="stat-label">total</span>
+      <div class="counters" aria-label="Statistiques">
+        <span class="counter">
+          <b id="stat-total">0</b>
+          <i>écrites</i>
         </span>
-        <span class="stat">
-          <span class="stat-num" id="stat-done">0</span>
-          <span class="stat-label">faites</span>
+        <span class="counter">
+          <b id="stat-done">0</b>
+          <i>rayées</i>
         </span>
-        <span class="stat">
-          <span class="stat-num" id="stat-active">0</span>
-          <span class="stat-label">restantes</span>
+        <span class="counter counter--hero">
+          <b id="stat-active" data-sketch="circle">0</b>
+          <i>en cours</i>
         </span>
       </div>
     </header>
 
-    <main class="layout" id="main">
+    <hr class="rule rule--top" data-sketch="divider" />
+
+    <div class="layout">
       <aside class="sidebar">
-        <section class="sidebar-section">
-          <h2 class="sidebar-title">Catégories</h2>
-          <form class="category-form" id="category-form" autocomplete="off">
-            <input
-              type="text"
-              id="category-input"
-              placeholder="Nouvelle catégorie"
-              maxlength="32"
-            />
-            <input
-              type="color"
-              id="category-color-input"
-              value="#078080"
-              aria-label="Couleur de la catégorie"
-            />
-            <button type="submit" id="add-category-btn" aria-label="Ajouter une catégorie">+</button>
+        <section class="panel" data-sketch="card">
+          <h2 class="panel-title">Catégories</h2>
+
+          <form class="cat-form" id="category-form" autocomplete="off">
+            <span class="field field--grow" data-sketch="input">
+              <input type="text" id="category-input" placeholder="Nouvelle…" maxlength="32" />
+            </span>
+            <span class="field field--color" data-sketch="input">
+              <input
+                type="color"
+                id="category-color-input"
+                value="#1f2f5c"
+                aria-label="Couleur de la catégorie"
+              />
+            </span>
+            <button
+              type="submit"
+              id="add-category-btn"
+              class="btn btn--icon"
+              data-sketch="button"
+              data-variant="solid"
+              aria-label="Ajouter une catégorie"
+            >
+              +
+            </button>
           </form>
-          <ul id="categories-list" class="categories-list"></ul>
+
+          <ul id="categories-list" class="cat-list"></ul>
         </section>
 
-        <section class="sidebar-section">
-          <h2 class="sidebar-title">Statut</h2>
-          <div class="filter-pills" role="group" aria-label="Filtrer par statut">
-            <button class="pill active" data-filter="all">Toutes</button>
-            <button class="pill" data-filter="active">À faire</button>
-            <button class="pill" data-filter="done">Terminées</button>
+        <section class="panel" data-sketch="card">
+          <h2 class="panel-title">Statut</h2>
+          <div class="filters" role="group" aria-label="Filtrer par statut">
+            <button
+              class="btn pill is-active"
+              data-filter="all"
+              data-sketch="button"
+              data-variant="solid"
+              aria-pressed="true"
+            >
+              Toutes
+            </button>
+            <button class="btn pill" data-filter="active" data-sketch="button" aria-pressed="false">
+              À faire
+            </button>
+            <button class="btn pill" data-filter="done" data-sketch="button" aria-pressed="false">
+              Rayées
+            </button>
+          </div>
+          <button
+            id="open-trash"
+            class="btn trash-open"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
+            Corbeille
+          </button>
+          <a
+            class="btn side-action"
+            id="export-link"
+            href="/export"
+            download
+            data-sketch="button"
+            data-tone="neutral"
+            >Sauvegarder</a
+          >
+          <button
+            id="open-restore"
+            class="btn side-action"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
+            Restaurer…
+          </button>
+          <input type="file" id="import-file" accept="application/json,.json" hidden />
+        </section>
+
+        <section class="panel" data-sketch="card">
+          <h2 class="panel-title">Échéance</h2>
+          <div class="filters" role="group" aria-label="Filtrer par échéance">
+            <button
+              class="btn pill due-pill is-active"
+              data-due="all"
+              data-sketch="button"
+              data-variant="solid"
+              aria-pressed="true"
+            >
+              Tout
+            </button>
+            <button
+              class="btn pill due-pill"
+              data-due="overdue"
+              data-sketch="button"
+              aria-pressed="false"
+            >
+              En retard <b class="due-badge" id="due-overdue-count" hidden>0</b>
+            </button>
+            <button
+              class="btn pill due-pill"
+              data-due="today"
+              data-sketch="button"
+              aria-pressed="false"
+            >
+              Aujourd'hui
+            </button>
+            <button
+              class="btn pill due-pill"
+              data-due="week"
+              data-sketch="button"
+              aria-pressed="false"
+            >
+              Semaine
+            </button>
+            <button
+              class="btn pill due-pill"
+              data-due="none"
+              data-sketch="button"
+              aria-pressed="false"
+            >
+              Sans date
+            </button>
           </div>
         </section>
 
-        <section class="sidebar-section sidebar-footer">
-          <p class="hint">
-            <span class="kbd">↵</span> ajouter ·
-            <span class="kbd">Esc</span> fermer
-          </p>
-        </section>
+        <p class="margin-note">
+          <span class="kbd">↵</span> ajouter · <span class="kbd">/</span> chercher ·
+          <span class="kbd">Ctrl</span>+<span class="kbd">K</span> palette ·
+          <span class="kbd">Esc</span> fermer
+        </p>
       </aside>
 
-      <section class="main-pane">
-        <header class="main-header">
-          <div class="main-header-left">
+      <main class="main-pane" id="main">
+        <header class="page-head">
+          <div class="page-head-left">
             <h1 class="display">
-              <span class="greeting">Bonjour</span><span class="display-accent">.</span>
+              <span class="greeting" data-sketch="underline">Bonjour</span
+              ><span class="display-dot">.</span>
             </h1>
             <p class="subtitle" id="subtitle">Quelles tâches aujourd'hui ?</p>
           </div>
-          <div class="main-header-right">
-            <div class="search">
-              <span class="search-icon" aria-hidden="true">⌕</span>
+
+          <div class="page-head-right">
+            <span class="field field--search" data-sketch="input">
               <input
                 type="search"
                 id="search-input"
-                placeholder="Rechercher une tâche…"
+                placeholder="Chercher une tâche…"
                 aria-label="Rechercher"
               />
-            </div>
+            </span>
             <div class="progress" aria-label="Avancement">
-              <div class="progress-track">
-                <div id="progress-bar" class="progress-fill"></div>
-              </div>
-              <span id="progress-label" class="progress-label">–</span>
+              <div class="progress-track" id="progress-track"></div>
+              <span class="progress-label" id="progress-label">–</span>
             </div>
           </div>
         </header>
 
-        <form id="task-form" class="task-form" autocomplete="off">
-          <input
-            type="text"
-            id="task-title"
-            placeholder="Que dois-tu faire ?"
-            required
-            maxlength="120"
-          />
-          <textarea
-            id="task-desc"
-            placeholder="Notes (optionnel)"
-            rows="2"
-            maxlength="500"
-          ></textarea>
-          <div class="task-form-row">
-            <input type="datetime-local" id="task-due-date" aria-label="Date limite" />
-            <select id="task-category" aria-label="Catégorie">
-              <option value="">Sans catégorie</option>
-            </select>
-            <div class="form-actions">
+        <form id="task-form" class="composer" data-sketch="card" autocomplete="off">
+          <span class="field" data-sketch="input">
+            <input
+              type="text"
+              id="task-title"
+              placeholder="Que dois-tu faire ? (ex. Dentiste demain 14h #Santé !haute)"
+              required
+              maxlength="200"
+            />
+          </span>
+          <p class="quick-preview" id="quick-preview" aria-live="polite" hidden></p>
+
+          <span class="field" data-sketch="textarea">
+            <textarea
+              id="task-desc"
+              placeholder="Notes en marge (optionnel)"
+              rows="2"
+              maxlength="500"
+            ></textarea>
+          </span>
+
+          <div class="composer-row">
+            <span class="field field--date" data-sketch="input">
+              <input type="datetime-local" id="task-due-date" aria-label="Date limite" />
+            </span>
+            <span class="field" data-sketch="select">
+              <select id="task-category" aria-label="Catégorie">
+                <option value="">Sans catégorie</option>
+              </select>
+            </span>
+            <span class="field" data-sketch="select">
+              <select id="task-priority" aria-label="Priorité">
+                <option value="">Priorité : —</option>
+                <option value="low">Priorité : basse</option>
+                <option value="medium">Priorité : moyenne</option>
+                <option value="high">Priorité : haute</option>
+              </select>
+            </span>
+            <span class="field" data-sketch="select">
+              <select id="task-recurrence" aria-label="Récurrence" disabled>
+                <option value="">Ne se répète pas</option>
+                <option value="daily">Chaque jour</option>
+                <option value="weekly">Chaque semaine</option>
+                <option value="monthly">Chaque mois</option>
+              </select>
+            </span>
+            <span class="field" data-sketch="select">
+              <select id="task-reminder" aria-label="Rappel" disabled>
+                <option value="">Sans rappel</option>
+                <option value="atDue">Rappel : à l'heure</option>
+                <option value="1h">Rappel : 1 h avant</option>
+                <option value="1d">Rappel : la veille</option>
+              </select>
+            </span>
+            <span class="field" data-sketch="select">
               <select id="sort-select" aria-label="Trier par">
                 <option value="creation">Tri : Création</option>
                 <option value="dueDate">Tri : Échéance</option>
+                <option value="priority">Tri : Priorité</option>
+                <option value="manual">Tri : manuel</option>
               </select>
-              <button type="submit" class="btn-primary">Ajouter</button>
-            </div>
+            </span>
+            <button type="submit" class="btn" data-sketch="button" data-variant="solid">
+              Ajouter
+            </button>
           </div>
         </form>
-
-        <div id="task-feedback" class="task-feedback" aria-live="polite"></div>
 
         <ul id="task-list" class="task-list" aria-live="polite"></ul>
 
@@ -148,60 +287,175 @@
           <div class="skeleton"></div>
         </div>
 
-        <div id="empty-state" class="empty-state hidden">
-          <div class="empty-mark" aria-hidden="true">↳</div>
-          <p class="empty-title">Rien à faire ici.</p>
-          <p class="empty-sub">Ajoute ta première tâche ci-dessus pour démarrer.</p>
+        <div id="empty-state" class="empty hidden" data-sketch="card">
+          <p class="empty-title">Page blanche.</p>
+          <p class="empty-sub">Écris ta première tâche là-haut pour commencer.</p>
         </div>
 
         <nav class="pagination" aria-label="Pagination">
-          <button id="prev-page" class="btn-ghost">← Précédent</button>
-          <span id="page-info">Page 1</span>
-          <button id="next-page" class="btn-ghost">Suivant →</button>
+          <button id="prev-page" class="btn" data-sketch="button" data-tone="neutral">
+            ← Précédent
+          </button>
+          <span id="page-info" class="page-info">Page 1</span>
+          <button id="next-page" class="btn" data-sketch="button" data-tone="neutral">
+            Suivant →
+          </button>
         </nav>
-      </section>
-    </main>
-
-    <div id="edit-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
-      <div class="modal-content">
-        <h2 id="edit-modal-title">Modifier la tâche</h2>
-        <input type="text" id="edit-title" placeholder="Titre" />
-        <textarea id="edit-desc" placeholder="Notes" rows="3"></textarea>
-        <div class="modal-row">
-          <input type="datetime-local" id="edit-due-date" aria-label="Date limite" />
-          <select id="edit-category" aria-label="Catégorie"></select>
-        </div>
-        <div class="modal-actions">
-          <button id="close-modal" class="btn-ghost" type="button">Annuler</button>
-          <button id="save-edit" class="btn-primary" type="button">Enregistrer</button>
-        </div>
-      </div>
+      </main>
     </div>
 
-    <div id="delete-modal" class="modal" role="dialog" aria-modal="true">
-      <div class="modal-content">
-        <h2>Supprimer cette tâche ?</h2>
-        <p>Cette action est définitive.</p>
+    <div
+      id="edit-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-modal-title"
+    >
+      <div class="modal-content" data-sketch="card">
+        <h2 id="edit-modal-title" class="modal-title">Modifier la tâche</h2>
+        <span class="field" data-sketch="input">
+          <input type="text" id="edit-title" placeholder="Titre" />
+        </span>
+        <span class="field" data-sketch="textarea">
+          <textarea id="edit-desc" placeholder="Notes" rows="3"></textarea>
+        </span>
+        <div class="modal-row">
+          <span class="field field--date" data-sketch="input">
+            <input type="datetime-local" id="edit-due-date" aria-label="Date limite" />
+          </span>
+          <span class="field" data-sketch="select">
+            <select id="edit-category" aria-label="Catégorie"></select>
+          </span>
+          <span class="field" data-sketch="select">
+            <select id="edit-priority" aria-label="Priorité">
+              <option value="">Priorité : —</option>
+              <option value="low">Priorité : basse</option>
+              <option value="medium">Priorité : moyenne</option>
+              <option value="high">Priorité : haute</option>
+            </select>
+          </span>
+        </div>
         <div class="modal-actions">
-          <button id="cancel-delete" class="btn-ghost" type="button">Annuler</button>
-          <button id="confirm-delete" class="btn-danger" type="button">Supprimer</button>
+          <button
+            id="close-modal"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
+            Annuler
+          </button>
+          <button
+            id="save-edit"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-variant="solid"
+          >
+            Enregistrer
+          </button>
         </div>
       </div>
     </div>
 
     <div id="delete-category-modal" class="modal" role="dialog" aria-modal="true">
-      <div class="modal-content">
-        <h2>Supprimer cette catégorie ?</h2>
-        <p id="delete-category-message">Les tâches associées garderont leur titre mais perdront cette catégorie.</p>
+      <div class="modal-content" data-sketch="card">
+        <h2 class="modal-title">Supprimer cette catégorie ?</h2>
+        <p class="modal-text" id="delete-category-message">
+          Les tâches associées garderont leur titre mais perdront cette catégorie.
+        </p>
         <div class="modal-actions">
-          <button id="cancel-delete-category" class="btn-ghost" type="button">Annuler</button>
-          <button id="confirm-delete-category" class="btn-danger" type="button">Supprimer</button>
+          <button
+            id="cancel-delete-category"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
+            Annuler
+          </button>
+          <button
+            id="confirm-delete-category"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="danger"
+          >
+            Supprimer
+          </button>
         </div>
+      </div>
+    </div>
+
+    <div
+      id="trash-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="trash-modal-title"
+    >
+      <div class="modal-content modal-content--wide" data-sketch="card">
+        <h2 id="trash-modal-title" class="modal-title">Corbeille</h2>
+        <p class="modal-text">
+          Les tâches supprimées restent ici sept jours, puis disparaissent au démarrage suivant.
+        </p>
+
+        <ul id="trash-list" class="trash-list"></ul>
+        <p id="trash-empty" class="modal-text" hidden>La corbeille est vide.</p>
+
+        <div class="modal-actions">
+          <button
+            id="close-trash"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="palette-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="palette-title"
+    >
+      <div class="modal-content" data-sketch="card">
+        <h2 id="palette-title" class="modal-title">Aller à…</h2>
+        <span class="field" data-sketch="input">
+          <input
+            type="text"
+            id="palette-input"
+            placeholder="Une commande…"
+            autocomplete="off"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-list"
+          />
+        </span>
+        <ul id="palette-list" class="palette-list" role="listbox"></ul>
       </div>
     </div>
 
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
-    <script src="script.js" defer></script>
+    <script type="module" src="js/app.js"></script>
+
+    <!-- Enregistré hors de app.js : le service worker n'a rien à voir avec
+         l'application elle-même, et les tests montent app.js dans happy-dom,
+         qui n'a pas de navigator.serviceWorker. -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {
+            // pas de coquille hors ligne : l'application marche quand même
+          });
+        });
+      }
+    </script>
   </body>
 </html>

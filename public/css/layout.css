@@ -1,0 +1,237 @@
+/* ---------------------------------------------------------------------------
+   Cahier — structure de la page
+   Règle de la DA : ce qui est *imprimé* sur le papier (quadrillage, marge
+   rouge) est parfaitement droit ; ce qui est *tracé à la main* passe par
+   drawably et tremble. Rien de dessiné n'est simulé en CSS.
+   --------------------------------------------------------------------------- */
+
+.topbar,
+.layout,
+.rule--top {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------- en-tête ------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gap-4);
+  flex-wrap: wrap;
+  padding: var(--gap-4) var(--gap-5) var(--gap-2);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-2);
+}
+
+.brand-name {
+  font-family: var(--font-hand);
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.brand-sub {
+  font-size: var(--step-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.counters {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap-4);
+}
+
+.counter {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-2);
+}
+
+.counter b {
+  font-family: var(--font-hand);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-block;
+}
+
+.counter i {
+  font-style: normal;
+  font-size: var(--step-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* le chiffre entouré au stylo a besoin d'air pour la boucle */
+.counter--hero b {
+  margin: 0 10px;
+  font-size: 2rem;
+}
+
+.rule--top {
+  margin: 0 var(--gap-5) var(--gap-3);
+}
+
+/* ---------------------------------- colonnes ------------------------------ */
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+  gap: var(--gap-5);
+  padding: 0 var(--gap-5) var(--gap-5);
+  align-items: start;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-4);
+  position: sticky;
+  top: var(--gap-3);
+}
+
+/* la marge du cahier : trait imprimé, donc parfaitement droit */
+.main-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-4);
+  padding-left: var(--gap-4);
+  border-left: 1px solid color-mix(in srgb, var(--red-pen) 32%, transparent);
+}
+
+/* ---------------------------------- entête de page ------------------------ */
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gap-4);
+  flex-wrap: wrap;
+}
+
+.display {
+  margin: 0;
+  font-family: var(--font-hand);
+  font-size: var(--step-xl);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.greeting {
+  display: inline-block;
+}
+
+.display-dot {
+  color: var(--red-pen);
+}
+
+.subtitle {
+  margin: var(--gap-2) 0 0;
+  color: var(--ink-soft);
+  font-size: var(--step-md);
+}
+
+.page-head-right {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-3);
+}
+
+.field--search {
+  width: 230px;
+}
+
+/* ---------------------------------- avancement ---------------------------- */
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+.progress-track {
+  position: relative;
+  width: 120px;
+  height: 22px;
+}
+
+.progress-label {
+  font-family: var(--font-hand);
+  font-size: 1.35rem;
+  font-weight: 700;
+  min-width: 3ch;
+}
+
+/* ---------------------------------- note de marge ------------------------- */
+
+.margin-note {
+  margin: 0;
+  padding-left: var(--gap-2);
+  font-size: var(--step-xs);
+  color: var(--ink-faint);
+  font-family: var(--font-hand);
+  font-size: 1.05rem;
+}
+
+.kbd {
+  font-family: var(--font-ui);
+  font-size: var(--step-xs);
+  padding: 0 4px;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------- responsive ---------------------------- */
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--gap-4);
+    padding: 0 var(--gap-3) var(--gap-4);
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .main-pane {
+    padding-left: var(--gap-3);
+  }
+
+  .topbar {
+    padding: var(--gap-3) var(--gap-3) var(--gap-1);
+  }
+
+  .rule--top {
+    margin: 0 var(--gap-3) var(--gap-3);
+  }
+
+  .page-head-right {
+    width: 100%;
+  }
+
+  .field--search {
+    flex: 1;
+    width: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .counters {
+    gap: var(--gap-3);
+  }
+
+  .display {
+    font-size: 2rem;
+  }
+}

@@ -1,0 +1,92 @@
+# Les actions sont épinglées par empreinte de commit, jamais par `@v4` : une
+# étiquette mobile réassignée en amont s'exécuterait ici sans que rien ne
+# change dans ce fichier. Le commentaire donne la version lisible ; Dependabot
+# propose les montées en PR.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# en lecture seule, écrit ici plutôt que laissé au réglage du dépôt : ce
+# workflow ne publie rien et ne doit rien pouvoir publier, même si le réglage
+# par défaut de l'organisation change un jour
+permissions:
+  contents: read
+
+# une nouvelle poussée sur la même branche annule la précédente : inutile de
+# payer deux fois pour un état que personne ne regardera
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    # le Cahier est une application Windows, et lib/notify.js parle à
+    # PowerShell : le vérifier ailleurs ne vérifierait pas ce qu'on livre
+    runs-on: windows-latest
+
+    env:
+      # mongodb-memory-server télécharge son binaire ici ; le dossier est mis
+      # en cache pour ne pas retélécharger 77 Mo à chaque exécution
+      MONGOMS_DOWNLOAD_DIR: ${{ github.workspace }}\.mongo-binaries
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.11.0'
+          cache: npm
+
+      - name: Cache du binaire Mongo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ github.workspace }}\.mongo-binaries
+          # la version fait foi dans lib/mongod-version.js ; la répéter ici ne
+          # sert qu'à invalider le cache quand elle change
+          key: mongod-${{ runner.os }}-8.2.6
+
+      # `npm ci` et non `npm install` : il installe l'arbre exact du
+      # package-lock.json et échoue si les deux divergent
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier le formatage
+        run: npm run format:check
+
+      - name: Auditer les dépendances de production
+        run: npm run audit
+
+      - name: Tests et seuils de couverture
+        run: npm test
+
+      - name: Conserver les rapports de couverture
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: couverture
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Informatif. Les failles des outils de construction ne partent pas dans
+  # l'application installée : les faire bloquer la chaîne apprendrait seulement
+  # à passer outre. Elles remontent en avertissement, visible sans être fatal.
+  audit-complet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.11.0'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Audit complet, dépendances de développement comprises
+        # `npm audit` sort en 1 dès qu'il trouve quelque chose : sans ce repli,
+        # le job serait rouge en permanence et ne dirait plus rien à personne
+        run: |
+          npm audit --audit-level=high \
+            || echo "::warning::Failles hautes dans les outils de construction. Elles ne partent pas dans l'installeur — voir le journal ci-dessus et SECURITY.md."

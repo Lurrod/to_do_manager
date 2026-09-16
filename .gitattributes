@@ -1,0 +1,14 @@
+# Le dépôt et la copie de travail sont en LF, sur toute machine.
+#
+# Sans cette ligne, `core.autocrlf=true` (par défaut sous Windows, y compris
+# sur les exécuteurs GitHub) rend une copie de travail en CRLF, et le contrôle
+# de formatage échouerait sur chaque fichier alors que rien n'a bougé.
+* text=auto eol=lf
+
+# Binaires : ne jamais y toucher.
+*.png binary
+*.ico binary
+*.exe binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
