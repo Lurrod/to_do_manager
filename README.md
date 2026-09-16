@@ -177,8 +177,15 @@ curl -X POST 'http://127.0.0.1:3000/import?mode=replace' \
 ```
 
 Le mode `replace` exige l'en-tête `X-Confirm: replace` et **dépose l'état courant dans
-`backups/` avant d'effacer**. Un import est tout ou rien : une seule ligne invalide et rien
-n'est écrit.
+`backups/` avant d'effacer**. Un import est tout ou rien : une seule ligne invalide, un
+identifiant en double dans le fichier, et rien n'est écrit — le refus intervient avant
+l'effacement.
+
+Une réimportation **comble les champs absents** avec les valeurs par défaut du schéma. Une
+tâche écrite avant l'ajout de `priority` ou de `deletedAt` ressort donc avec `priority: ""`
+et `deletedAt: null` : l'aller-retour reproduit les données, pas l'absence d'un champ. C'est
+ce que ferait une migration, les requêtes ne font aucune différence entre « absent » et
+« null », et l'opération est stable — un second aller-retour ne change plus rien.
 
 `export.csv` neutralise les cellules commençant par `=`, `+`, `-` ou `@` en les préfixant
 d'une apostrophe — sans quoi un tableur les exécuterait comme des formules. C'est pourquoi le

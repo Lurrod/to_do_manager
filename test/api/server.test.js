@@ -683,6 +683,42 @@ describe('Export / import', () => {
     expect(depose.tasks).toHaveLength(2);
   });
 
+  test('réimporter normalise une tâche écrite avant l’ajout d’un champ au schéma', async () => {
+    // écrite directement dans la collection : aucun défaut Mongoose appliqué,
+    // comme les tâches créées avant que `priority` et `deletedAt` n'existent
+    await mongoose.connection.collection('tasks').insertOne({
+      title: 'Ancienne façon',
+      createdAt: new Date('2026-01-02T08:00:00.000Z'),
+    });
+
+    const avant = (await request(app).get('/export')).body;
+    const ancienne = avant.tasks.find((t) => t.title === 'Ancienne façon');
+    expect(ancienne.priority).toBeUndefined();
+    expect(ancienne.deletedAt).toBeUndefined();
+
+    await request(app)
+      .post('/import?mode=replace')
+      .set('X-Confirm', 'replace')
+      .send({ tasks: avant.tasks, categories: avant.categories });
+
+    // l'import remplit les défauts du schéma : l'aller-retour ne reproduit pas
+    // l'ABSENCE d'un champ, il la comble. C'est voulu — c'est ce que ferait une
+    // migration — et c'est stable : un second aller-retour ne change plus rien.
+    const apres = (await request(app).get('/export')).body;
+    const normalisee = apres.tasks.find((t) => t.title === 'Ancienne façon');
+    expect(normalisee._id).toBe(ancienne._id);
+    expect(normalisee.priority).toBe('');
+    expect(normalisee.deletedAt).toBeNull();
+
+    const reExport = (await request(app).get('/export')).body;
+    expect(reExport.tasks).toEqual(apres.tasks);
+
+    // et surtout : une tâche sans `deletedAt` était déjà vue comme vivante,
+    // elle l'est toujours après normalisation
+    const liste = await request(app).get('/tasks?limit=50');
+    expect(liste.body.tasks.some((t) => t.title === 'Ancienne façon')).toBe(true);
+  });
+
   test('un fichier aux identifiants dupliqués est refusé avant d’effacer quoi que ce soit', async () => {
     await seed();
     const avant = (await request(app).get('/export')).body;
