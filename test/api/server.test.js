@@ -876,8 +876,15 @@ describe('Export / import', () => {
 
       // l'assertion qui compte : le chemin annonce existe vraiment et contient
       // les donnees d'avant. Un message qui nomme un fichier absent ne vaut rien.
-      const chemin = res.body.error.match(/([^\s:]*avant-remplacement-[^\s]*\.json)/)?.[1];
+      // `\S` et non `[^\s:]` : sous Windows, exclure les deux-points decapite la
+      // lettre de lecteur, et le chemin restant se resout sur le disque courant.
+      // Invisible tant que TEMP et le depot sont sur le meme disque — ce qui
+      // n'est pas le cas des executeurs GitHub : depot sur D:, TEMP sur C:.
+      const chemin = res.body.error.match(/(\S*avant-remplacement-\S*\.json)/)?.[1];
       expect(chemin).toBeTruthy();
+      // ancre sur le dossier de sauvegarde : un chemin tronque ne le porterait
+      // pas. `path.isAbsolute` ne suffirait pas — il tient « \a\b » pour absolu.
+      expect(chemin.startsWith(process.env.BACKUP_DIR)).toBe(true);
       expect(fs.existsSync(chemin)).toBe(true);
       const sauvegarde = JSON.parse(fs.readFileSync(chemin, 'utf8'));
       expect(sauvegarde.tasks).toEqual(avant.tasks);
