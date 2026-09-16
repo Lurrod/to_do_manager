@@ -8,6 +8,27 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
+## [3.0.1] — 2026-09-17
+
+### Modifié
+
+- Le sous-titre « to-do manager » disparaît de l'en-tête, du titre de la fenêtre
+  et du manifeste : l'application s'appelle Cahier, et le répéter autrement ne
+  disait rien de plus.
+- **L'icône Windows porte enfin sept tailles** (16 à 256 px) au lieu d'une
+  seule. Windows ne réduit pas gracieusement : le trait fin du carnet devenait
+  illisible à 16 px dans l'Explorateur. L'installeur et le désinstalleur la
+  portent aussi, ce qui n'était pas le cas.
+
+### Documenté
+
+- Les deux avertissements Windows — celui du navigateur au téléchargement et
+  celui de SmartScreen au lancement — sont distingués dans le README, avec la
+  marche à suivre pour chacun. Aucun réglage ne les supprime : ils portent sur
+  l'absence de signature, pas sur le contenu du fichier.
+- `SECURITY.md` chiffre ce que signer demanderait, et note que `release.yml`
+  signerait sans modification dès que les secrets seraient posés.
+
 ## [3.0.0] — 2026-09-17
 
 ### Ajouté

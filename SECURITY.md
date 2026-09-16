@@ -86,6 +86,24 @@ des recommandations :
 Signer l'exécutable est ce qui lèverait cette dépendance. Tant que ce n'est pas
 fait, c'est le compte qui est le périmètre de sécurité.
 
+### Ce que signer demanderait
+
+La signature de code n'est pas un réglage : elle exige un certificat délivré après
+vérification d'identité. Trois voies praticables pour un projet de cette taille :
+
+| Voie                      | Coût indicatif | Remarque                                                         |
+| ------------------------- | -------------- | ---------------------------------------------------------------- |
+| **SignPath Foundation**   | gratuit        | réservé aux projets libres ; dossier à déposer                   |
+| **Certum Open Source**    | ~25 €/an       | carte à puce, vérification d'identité                            |
+| **Azure Trusted Signing** | ~10 $/mois     | le plus simple à automatiser, éligibilité variable selon le pays |
+
+Côté code, rien à changer : `electron-builder` signe dès qu'il trouve `CSC_LINK` et
+`CSC_KEY_PASSWORD` dans l'environnement. Il suffirait de les poser en secrets du dépôt
+et `release.yml` signerait sans autre modification.
+
+Tant que ce n'est pas fait, l'empreinte SHA-256 publiée avec chaque release est le seul
+moyen offert à quelqu'un de vérifier ce qu'il a téléchargé.
+
 ## Dépendances
 
 - `npm audit --omit=dev --audit-level=high` **bloque** la CI. Une faille haute

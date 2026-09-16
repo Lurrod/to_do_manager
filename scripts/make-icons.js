@@ -17,12 +17,24 @@ const path = require('path');
 const { app, BrowserWindow } = require('electron');
 
 const { SEUIL_ENCRE, proportionEncree } = require('../lib/icon-ink');
+const { assemblerIco } = require('../lib/ico');
 
 const RACINE = path.join(__dirname, '..');
 const SOURCE = path.join(RACINE, 'public', 'favicon.svg');
 
 /** Rendu large puis réduit : les traits fins restent nets à 180 px. */
 const RENDU = 1024;
+
+/**
+ * Tailles portées par le `.ico` de Windows.
+ *
+ * L'Explorateur, la barre des tâches et l'installeur piochent chacun la leur.
+ * N'en fournir qu'une grande laisse Windows réduire lui-même, et le trait fin
+ * du carnet devient illisible à 16 px.
+ */
+const TAILLES_ICO = [16, 24, 32, 48, 64, 128, 256];
+
+const ICO = path.join(RACINE, 'electron', 'icon.ico');
 
 const SORTIES = [
   { chemin: path.join(RACINE, 'electron', 'icon.png'), taille: 512 },
@@ -68,6 +80,15 @@ ${svg}`;
     fs.writeFileSync(chemin, reduite.toPNG());
     console.log(`${path.relative(RACINE, chemin)} — ${taille}×${taille}`);
   }
+
+  const ico = assemblerIco(
+    TAILLES_ICO.map((taille) => ({
+      taille,
+      png: capture.resize({ width: taille, height: taille, quality: 'best' }).toPNG(),
+    }))
+  );
+  fs.writeFileSync(ICO, ico);
+  console.log(`${path.relative(RACINE, ICO)} — ${TAILLES_ICO.join(', ')} px`);
 
   console.log(`Encre mesurée sur le rendu : ${(encre * 100).toFixed(1)} %`);
   fenetre.destroy();

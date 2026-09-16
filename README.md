@@ -22,16 +22,38 @@ C'est tout. MongoDB est embarqué dans l'app via [`mongodb-memory-server`](https
 
 ```bash
 npm install
-npm run dist          # → dist/Cahier Setup 3.0.0.exe
+npm run dist          # → dist/Cahier Setup 3.0.1.exe
 ```
 
 Un installeur classique : raccourci sur le bureau et dans le menu Démarrer, désinstallable
 depuis **Applications installées**. Les données vivent dans `%APPDATA%\Cahier\db`, hors de
 l'application — une mise à jour ne les touche pas.
 
-L'exécutable n'étant pas signé, Windows affichera **« Windows a protégé votre ordinateur »** au
-premier lancement : _Informations complémentaires_ → _Exécuter quand même_. Ce que l'absence de
-signature coûte par ailleurs est écrit dans [SECURITY.md](SECURITY.md).
+#### Les avertissements de Windows
+
+L'exécutable n'est pas signé. Deux avertissements différents en découlent, et on les
+confond souvent :
+
+| Quand                                     | Ce qui s'affiche                                     | Quoi faire                                                                                                            |
+| ----------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Au téléchargement**, dans le navigateur | « Fichier dangereux » / « rarement téléchargé »      | Chrome : ⌄ à côté du téléchargement → _Conserver_. Edge : ⋯ → _Conserver_ → _Afficher plus_ → _Conserver quand même_. |
+| **Au lancement**                          | « Windows a protégé votre ordinateur » (SmartScreen) | _Informations complémentaires_ → _Exécuter quand même_.                                                               |
+
+Aucun réglage du projet ne les fait disparaître : ils ne portent pas sur le contenu du
+fichier mais sur **l'absence de signature et de réputation**. Un exécutable sans
+certificat est traité par défaut comme inconnu, et il le restera jusqu'à ce qu'il soit
+signé — voir [SECURITY.md](SECURITY.md) pour ce que ça demande.
+
+#### Vérifier que le fichier est bien le nôtre
+
+Puisque la signature ne peut pas l'attester, l'empreinte le peut. Chaque release publie
+son empreinte SHA-256 ; pour la comparer, dans PowerShell :
+
+```powershell
+Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\Cahier-Setup-3.0.1.exe"
+```
+
+Si elle correspond à celle des notes de release, le fichier n'a pas été modifié en chemin.
 
 > L'application a **sa propre base**, distincte de `data/db`. Pour y amener tes tâches :
 > **Sauvegarder** d'un côté, **Restaurer…** de l'autre.
