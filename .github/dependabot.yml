@@ -1,0 +1,36 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore'
+    groups:
+      # une PR par lot plutôt que quinze : la revue porte sur un ensemble
+      # cohérent, et la CI ne tourne pas quinze fois pour la même montée
+      outils-de-developpement:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-mineur:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      # Electron 33+ et electron-builder 25+ cassent sur Node 22 (require() d'un
+      # module ESM). L'épinglage est délibéré et documenté dans
+      # docs/passage-en-app.md ; il se lèvera quand le socle Node changera, pas
+      # au fil d'une PR automatique.
+      - dependency-name: electron
+        update-types: [version-update:semver-major]
+      - dependency-name: electron-builder
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'ci'
