@@ -757,3 +757,19 @@
 .task-tag:focus-visible {
   color: var(--ink-soft);
 }
+
+/* ----------------------------- glisser-déposer ---------------------------- */
+
+.task[draggable='true'] {
+  cursor: grab;
+}
+
+.task.is-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.task.is-drop-target {
+  /* un trait d'encre marque où la ligne va tomber */
+  box-shadow: inset 0 3px 0 -1px var(--ink);
+}

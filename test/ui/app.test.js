@@ -79,6 +79,10 @@ const mutate = (url, method, body) => {
     return server.tasks.find((t) => t._id === id);
   }
 
+  if (method === 'PATCH' && url.endsWith('/order')) {
+    return { message: 'ordre mis à jour' };
+  }
+
   return {};
 };
 
@@ -1055,5 +1059,63 @@ describe('étiquettes à l’écran', () => {
     await boot();
 
     expect(document.querySelector('.task-tag')).toBeNull();
+  });
+});
+
+describe('glisser-déposer', () => {
+  const dragTo = (source, cible) => {
+    source.dispatchEvent(new Event('dragstart', { bubbles: true }));
+    cible.dispatchEvent(new Event('dragover', { bubbles: true, cancelable: true }));
+    cible.dispatchEvent(new Event('drop', { bubbles: true, cancelable: true }));
+    source.dispatchEvent(new Event('dragend', { bubbles: true }));
+  };
+
+  test('les lignes ne sont saisissables que sous le tri manuel', async () => {
+    server.tasks = [task('A'), task('B')];
+    await boot();
+
+    expect(document.querySelector('.task').draggable).toBe(false);
+
+    const tri = document.getElementById('sort-select');
+    tri.value = 'manual';
+    tri.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+
+    expect(document.querySelector('.task').draggable).toBe(true);
+  });
+
+  test('déposer une ligne envoie ses voisines au serveur', async () => {
+    server.tasks = [task('A'), task('B'), task('C')];
+    await boot();
+    const tri = document.getElementById('sort-select');
+    tri.value = 'manual';
+    tri.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+    server.calls = [];
+
+    const lignes = document.querySelectorAll('.task');
+    dragTo(lignes[2], lignes[0]);
+    await settle();
+
+    const appel = server.calls.find((c) => c.method === 'PATCH');
+    expect(appel.url).toBe('/tasks/id-C/order');
+    // déposé sur la première ligne : il n'y a personne au-dessus
+    expect(appel.body).toEqual({ before: null, after: 'id-A' });
+  });
+
+  test('déposer une ligne sur elle-même ne demande rien au serveur', async () => {
+    server.tasks = [task('A'), task('B')];
+    await boot();
+    const tri = document.getElementById('sort-select');
+    tri.value = 'manual';
+    tri.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+    server.calls = [];
+
+    const ligne = document.querySelector('.task');
+    dragTo(ligne, ligne);
+    await settle();
+
+    expect(server.calls.find((c) => c.method === 'PATCH')).toBeUndefined();
   });
 });

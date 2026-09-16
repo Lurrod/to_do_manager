@@ -5,6 +5,7 @@
    --------------------------------------------------------------------------- */
 
 import * as api from './api.js';
+import { initDragDrop } from './dragdrop.js';
 import { initFilters, showOverdueCount } from './filters.js';
 import { initKeyboard } from './keyboard.js';
 import { bindBackdrop, closeModal, openModal } from './modal.js';
@@ -344,6 +345,11 @@ const renderTaskItem = (task) => {
   const li = document.createElement('li');
   li.className = `task${task.completed ? ' is-done' : ''}`;
   li.dataset.sketch = 'card';
+  li.dataset.id = task._id;
+  // réordonner à la main une liste triée par priorité produirait un ordre
+  // que le tri réécraserait au prochain chargement : seul le tri manuel
+  // rend les lignes saisissables
+  li.draggable = state.sort === 'manual';
 
   const category = state.categories.find((c) => c.name === task.category);
   const categoryColor = safeColor(category?.color, NEUTRAL_COLOR);
@@ -695,6 +701,13 @@ confirmDeleteCategoryBtn.addEventListener('click', () => {
 cancelDeleteCategoryBtn.addEventListener('click', () => {
   closeModal(deleteCategoryModal);
   state = { ...state, categoryToDelete: null };
+});
+
+initDragDrop({
+  taskList,
+  moveTask: api.moveTask,
+  refresh,
+  toast,
 });
 
 const { openTrash } = initTrash({ restoreTask });
