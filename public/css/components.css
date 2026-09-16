@@ -653,9 +653,17 @@
   cursor: pointer;
 }
 
-.palette-item:hover,
+/* Le survol n'indique que ce qui est pointé… */
+.palette-item:hover {
+  background: color-mix(in srgb, var(--highlighter) 22%, transparent);
+}
+
+/* …la sélection clavier, elle, dit ce qu'« Entrée » va lancer : sans ce trait
+   d'encre en marge, une souris posée sur une autre ligne surligne deux lignes
+   à l'identique et on ne sait plus laquelle part. */
 .palette-item.is-selected {
-  background: color-mix(in srgb, var(--highlighter) 40%, transparent);
+  background: color-mix(in srgb, var(--highlighter) 60%, transparent);
+  box-shadow: inset 3px 0 0 var(--ink);
 }
 
 .task.is-cursor {
