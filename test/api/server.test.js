@@ -669,19 +669,17 @@ describe('Export / import', () => {
   test('un replace dépose une sauvegarde avant d’effacer', async () => {
     await seed();
 
-    await request(app)
+    const res = await request(app)
       .post('/import')
       .set('X-Confirm', 'replace')
       .send({ mode: 'replace', tasks: [{ title: 'Seule survivante' }] });
 
-    const fichiers = fs.readdirSync(process.env.BACKUP_DIR);
-    expect(fichiers.some((f) => f.startsWith('avant-remplacement-'))).toBe(true);
-    const depose = JSON.parse(
-      fs.readFileSync(
-        path.join(process.env.BACKUP_DIR, fichiers.find((f) => f.startsWith('avant-remplacement-'))),
-        'utf8'
-      )
-    );
+    // on relit le fichier que la route dit avoir écrit, et pas « un fichier de
+    // sauvegarde dans le dossier » : les tests partagent BACKUP_DIR, et piocher
+    // le premier par ordre alphabétique revient à lire le plus ancien, déposé
+    // par un autre test
+    expect(path.basename(res.body.backup)).toMatch(/^avant-remplacement-/);
+    const depose = JSON.parse(fs.readFileSync(res.body.backup, 'utf8'));
     expect(depose.tasks).toHaveLength(2);
   });
 
