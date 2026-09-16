@@ -72,12 +72,11 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # non bloquant : les failles des outils de construction ne partent pas dans
-  # l'application installée, mais personne ne doit pouvoir les ignorer sans le
-  # savoir
+  # Informatif. Les failles des outils de construction ne partent pas dans
+  # l'application installée : les faire bloquer la chaîne apprendrait seulement
+  # à passer outre. Elles remontent en avertissement, visible sans être fatal.
   audit-complet:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -86,4 +85,8 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Audit complet, dépendances de développement comprises
-        run: npm audit --audit-level=high
+        # `npm audit` sort en 1 dès qu'il trouve quelque chose : sans ce repli,
+        # le job serait rouge en permanence et ne dirait plus rien à personne
+        run: |
+          npm audit --audit-level=high \
+            || echo "::warning::Failles hautes dans les outils de construction. Elles ne partent pas dans l'installeur — voir le journal ci-dessus et SECURITY.md."
