@@ -545,3 +545,47 @@ describe('Categories API', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('Export / import', () => {
+  const seed = async () => {
+    await request(app).post('/categories').send({ name: 'Perso', color: '#2f7d51' });
+    const vivante = await request(app)
+      .post('/tasks')
+      .send({ title: 'Relire le brief', category: 'Perso', priority: 'high' });
+    const jetee = await request(app).post('/tasks').send({ title: 'Ancienne' });
+    await request(app).delete(`/tasks/${jetee.body._id}`);
+    return { vivante: vivante.body, jetee: jetee.body };
+  };
+
+  test('GET /export renvoie tâches, catégories et version de schéma', async () => {
+    await seed();
+
+    const res = await request(app).get('/export');
+
+    expect(res.status).toBe(200);
+    expect(res.body.app).toBe('cahier');
+    expect(res.body.schemaVersion).toBe(1);
+    expect(typeof res.body.exportedAt).toBe('string');
+    expect(res.body.categories.map((c) => c.name)).toEqual(['Perso']);
+    // la corbeille fait partie de la sauvegarde : la perdre, c'est perdre
+    // exactement ce qui était encore récupérable
+    expect(res.body.tasks.map((t) => t.title).sort()).toEqual(['Ancienne', 'Relire le brief']);
+  });
+
+  test('GET /export conserve identifiants et dates, sans quoi l’aller-retour ment', async () => {
+    const { vivante } = await seed();
+
+    const res = await request(app).get('/export');
+    const trouvee = res.body.tasks.find((t) => t.title === 'Relire le brief');
+
+    expect(trouvee._id).toBe(vivante._id);
+    expect(trouvee.createdAt).toBe(vivante.createdAt);
+    expect(trouvee.deletedAt).toBeNull();
+  });
+
+  test('GET /export propose un nom de fichier au navigateur', async () => {
+    const res = await request(app).get('/export');
+
+    expect(res.headers['content-disposition']).toMatch(/attachment; filename="cahier-.*\.json"/);
+  });
+});

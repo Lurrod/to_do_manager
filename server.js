@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const { exportShape, validateImport } = require('./lib/portable');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -425,6 +426,36 @@ app.delete('/tasks/:id/purge', async (req, res) => {
     const task = await Task.findOneAndDelete({ _id: req.params.id, deletedAt: { $ne: null } });
     if (!task) return res.status(404).json({ error: 'Tâche non trouvée dans la corbeille' });
     res.status(200).json({ message: 'Tâche supprimée définitivement', task });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+/* --------------------------------------------------------------------------
+   Export / import
+   -------------------------------------------------------------------------- */
+
+/** Horodatage de nom de fichier : 2026-09-16T08-42-11, trié correctement à plat. */
+const fileStamp = (date = new Date()) => date.toISOString().replace(/:/g, '-').slice(0, 19);
+
+/**
+ * Sauvegarde complète : tâches (corbeille comprise) et catégories, avec leurs
+ * identifiants et leurs dates. C'est la seule forme qui se réimporte à
+ * l'identique.
+ */
+const collectExport = async () => {
+  const [tasks, categories] = await Promise.all([
+    Task.find().sort({ createdAt: 1, _id: 1 }).lean(),
+    Category.find().sort({ name: 1 }).lean(),
+  ]);
+  return exportShape({ tasks, categories });
+};
+
+app.get('/export', async (req, res) => {
+  try {
+    const payload = await collectExport();
+    res.setHeader('Content-Disposition', `attachment; filename="cahier-${fileStamp()}.json"`);
+    res.status(200).json(payload);
   } catch (error) {
     fail(res, error);
   }
