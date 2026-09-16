@@ -1,0 +1,102 @@
+# Journal des versions
+
+Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
+Le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
+
+Une version se publie en étiquetant un commit : `npm version <niveau>` puis
+`git push --follow-tags`. L'étiquette construit l'installeur et le dépose en
+release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
+des postes déjà installés.
+
+## [Non publié]
+
+### Ajouté
+
+- **Mise à jour automatique** depuis les releases GitHub. Le téléchargement se
+  fait en fond, sans rien interrompre ; le redémarrage n'est proposé qu'une
+  fois la version sur le disque, et se reporte à la fermeture si on décline.
+  Une panne de réseau reste silencieuse : le Cahier s'utilise hors ligne.
+- **Intégration continue** (`.github/workflows/ci.yml`) : formatage, audit des
+  dépendances de production et 395 tests avec seuils de couverture, sur
+  Windows, à chaque poussée et chaque PR.
+- **Chaîne de publication** (`.github/workflows/release.yml`) : une étiquette
+  `vX.Y.Z` construit l'installeur et le dépose en release **brouillon**. Plus
+  aucune release ne sort d'un poste de développement. L'étiquette est confrontée à
+  `package.json` avant de construire quoi que ce soit. Publier le brouillon reste
+  un geste manuel : c'est lui qui déclenche la mise à jour des postes installés.
+- `LICENSE` (ISC), `SECURITY.md` et ce journal.
+- `SECURITY.md` nomme ce que l'application ne protège pas — absence
+  d'authentification, données en clair au repos — et les trois risques acceptés
+  à date.
+- Dependabot : une PR groupée par semaine, montées majeures d'Electron
+  volontairement ignorées.
+- Prettier, avec `npm run format` et un contrôle bloquant en CI.
+- Seuils de couverture bloquants : 85 % des lignes côté API, 88 % côté
+  interface. Ils sont posés sous le niveau atteint — ils empêchent de
+  redescendre plutôt que de récompenser.
+- `scripts/fetch-mongod.js` : le binaire Mongo embarqué est téléchargé à une
+  version écrite noir sur blanc, au lieu d'être pris dans le cache de la
+  machine qui construit.
+
+### Modifié
+
+- `package-lock.json` est désormais versionné. Deux constructions à deux dates
+  donnaient jusqu'ici deux applications différentes.
+- Express 4.21 → 4.22 et Mongoose 8.9 → 8.24 : trois vulnérabilités modérées
+  levées dans ce qui est installé chez les utilisateurs.
+- L'arrêt des services (le verrou Mongo) est relâché par une fonction unique,
+  qu'on ferme la fenêtre ou qu'on pose une mise à jour.
+
+### Sécurité
+
+- `.env` n'est plus suivi par git. Il l'était malgré le `.gitignore`, ajouté
+  avant celui-ci : le jour où quelqu'un y aurait mis une URI Atlas avec un mot
+  de passe, ce mot de passe partait dans un commit.
+
+## [2.0.0] — 2026-09-16
+
+Le Cahier devient une application installable, et gagne de quoi tenir un vrai
+usage quotidien.
+
+### Ajouté
+
+- **Application Windows** : Electron, MongoDB embarqué, installeur NSIS de
+  88 Mo, raccourci bureau et menu Démarrer. Aucune installation préalable, rien
+  à télécharger au premier lancement.
+- **Installable comme PWA** depuis le navigateur.
+- **Vues temporelles** (aujourd'hui, semaine, en retard) et compteur de tâches
+  en retard.
+- **Saisie rapide en langage naturel** avec aperçu de ce qui a été compris.
+- **Corbeille** : suppression réversible, restauration, purge confirmée.
+- **Raccourcis clavier et palette de commandes**, navigable au clavier.
+- **Sous-tâches** sur un niveau, avec compte des étapes et cochage en cascade.
+- **Récurrence** : cocher une tâche récurrente crée l'occurrence suivante.
+- **Étiquettes**, posables à la saisie et filtrables.
+- **Ordre manuel** par glisser-déposer, sur indexation fractionnaire.
+- **Rappels** avec notification système Windows.
+- **Sauvegarde et restauration** : export JSON complet, import en fusion ou en
+  remplacement confirmé, exports lisibles en Markdown et CSV, sauvegarde
+  horodatée en ligne de commande et depuis l'interface.
+- **Actions groupées** sur une sélection de tâches.
+- `GET /healthz`, et démarrage tolérant à un port déjà occupé.
+- Refonte graphique : le papier, l'encre et le trait dessiné.
+
+### Corrigé
+
+- Un import aux identifiants dupliqués est refusé **avant** d'effacer la base.
+- Un import en remplacement qui échoue en cours d'écriture remet la base en
+  place.
+- L'application empaquetée écrit ses données dans `%APPDATA%\Cahier`, quel que
+  soit le mode de lancement — trois chemins différents cohabitaient.
+- Le verrou WiredTiger est relâché avant la sortie d'Electron.
+
+### Sécurité
+
+- Une cellule d'export CSV commençant par `=`, `+`, `-` ou `@` est neutralisée :
+  un tableur l'exécuterait comme une formule.
+- Les erreurs de lecture du corps de requête répondent en JSON assaini.
+
+## Avant 2.0.0
+
+Aucun journal n'était tenu. L'historique se lit dans les commits, depuis le
+premier le 5 février 2025.

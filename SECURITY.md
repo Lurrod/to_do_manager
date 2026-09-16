@@ -1,0 +1,102 @@
+# Sécurité
+
+## Versions suivies
+
+| Version | Correctifs de sécurité |
+| ------- | ---------------------- |
+| 2.0.x   | oui                    |
+| < 2.0   | non                    |
+
+Il n'y a pas de rétroportage : le Cahier se met à jour tout seul depuis la
+2.0.0, et une version antérieure se remplace par la dernière.
+
+## Signaler une faille
+
+Passer par **Security → Report a vulnerability** sur le dépôt GitHub
+(_private vulnerability reporting_). Le rapport reste privé jusqu'au correctif.
+
+Ne pas ouvrir d'issue publique pour une faille exploitable.
+
+Délai visé : accusé de réception sous 7 jours, correctif ou position motivée
+sous 30 jours. C'est un projet tenu par une personne — ces délais sont une
+intention, pas un engagement contractuel.
+
+## Ce que le Cahier protège, et ce qu'il ne protège pas
+
+Le Cahier est une application **locale, mono-utilisateur**. Ce cadre décide de
+presque tout le reste :
+
+- **L'API n'a aucune authentification.** Elle n'écoute que sur la boucle locale
+  (`127.0.0.1`). Quiconque a une session ouverte sur la machine a accès aux
+  données — comme pour n'importe quel fichier du dossier personnel.
+- **Les données ne sont pas chiffrées au repos.** Elles vivent en clair dans
+  `%APPDATA%\Cahier\db`. Sur un poste partagé ou un disque non chiffré, c'est
+  le chiffrement du disque qui protège, pas l'application.
+- **La désinstallation ne supprime pas les données.** `%APPDATA%\Cahier` reste
+  en place, délibérément : une mise à jour ne doit pas effacer un cahier.
+- **Exposer le serveur sur le réseau (`HOST=0.0.0.0`) revient à ouvrir la base
+  à tout le réseau.** Ce n'est pas un mode pris en charge.
+
+## Ce qui est tenu
+
+- **Processus de rendu bridé** : `nodeIntegration: false`,
+  `contextIsolation: true`, aucun préchargement privilégié. Un lien externe
+  s'ouvre dans le navigateur du système, jamais dans la fenêtre.
+- **Instance unique** : deux processus ouvriraient la même base.
+- **Entrées validées aux frontières** : l'import de sauvegarde refuse un
+  document mal formé ou aux identifiants dupliqués _avant_ de toucher à la
+  base, et remet la base en place si l'écriture échoue en cours de route.
+- **Exports assainis** : une cellule commençant par `=`, `+`, `-` ou `@` est
+  neutralisée à l'export CSV — un tableur l'exécuterait comme une formule.
+- **Pas d'opérateur Mongo fourni par le client** : les filtres de `GET /tasks`
+  et les listes d'identifiants sont construits côté serveur.
+- **Aucun texte interpolé dans un script** : les notifications passent leur
+  contenu à PowerShell par l'environnement, jamais par la ligne de commande.
+
+## Mise à jour automatique : sur quoi repose la confiance
+
+L'application installée interroge les releases du dépôt, télécharge en fond et
+pose la nouvelle version après accord de l'utilisateur. Il faut savoir ce qui
+garantit — et ce qui ne garantit pas — que ce qui s'installe est bien le
+Cahier.
+
+- **Ce qui est vérifié** : le transport est en HTTPS, et electron-updater
+  contrôle l'empreinte SHA512 de l'installeur contre celle publiée dans
+  `latest.yml`.
+- **Ce qui ne l'est pas** : l'installeur n'étant pas signé, la vérification de
+  l'éditeur (Authenticode) ne s'applique pas. Or l'installeur et le `latest.yml`
+  qui l'atteste sortent de la **même** release, publiée par le **même** jeton.
+  L'empreinte prouve que le fichier n'a pas été altéré en chemin ; elle ne
+  prouve pas de qui il vient.
+
+**Autrement dit, l'authenticité des mises à jour repose entièrement sur la
+sécurité du compte GitHub propriétaire et de la chaîne de publication.**
+Quiconque peut publier une release sur ce dépôt peut distribuer un binaire
+arbitraire aux postes installés. En découlent trois exigences, qui ne sont pas
+des recommandations :
+
+- double authentification obligatoire sur le compte propriétaire ;
+- aucun jeton de publication à portée en dehors de `release.yml` ;
+- releases publiées depuis un brouillon relu, jamais automatiquement.
+
+Signer l'exécutable est ce qui lèverait cette dépendance. Tant que ce n'est pas
+fait, c'est le compte qui est le périmètre de sécurité.
+
+## Dépendances
+
+- `npm audit --omit=dev --audit-level=high` **bloque** la CI. Une faille haute
+  ou critique dans ce qui est installé chez les gens arrête la chaîne.
+- L'audit complet, outils de développement compris, tourne à chaque CI sans
+  bloquer : ces paquets ne partent pas dans l'installeur.
+- Dependabot ouvre une PR groupée par semaine.
+
+### Risques acceptés, à date
+
+| Sujet                                | Pourquoi il reste                                                                                                                                                                                          |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `qs` (modérée), via Express 4        | Express 4 épingle sa propre copie ; seul Express 5 la relève. Les routes concernées ne sont pas exposées hors boucle locale.                                                                               |
+| `electron` 32, `electron-builder` 24 | Les versions majeures suivantes cassent sur Node 22. Montée liée à un changement de socle Node, pas à une PR automatique.                                                                                  |
+| Installeur non signé                 | Pas de certificat de signature de code. SmartScreen avertit à la première installation, et l'authenticité des mises à jour se réduit au compte GitHub (voir plus haut). Bloquant pour un déploiement géré. |
+
+Ces trois points sont des décisions, pas des oublis. Ils se relisent à chaque
+version majeure.

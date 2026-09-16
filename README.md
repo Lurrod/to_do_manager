@@ -30,7 +30,7 @@ depuis **Applications installées**. Les données vivent dans `%APPDATA%\Cahier\
 l'application — une mise à jour ne les touche pas.
 
 L'exécutable n'étant pas signé, Windows affichera **« Windows a protégé votre ordinateur »** au
-premier lancement : *Informations complémentaires* → *Exécuter quand même*. Détails et coûts
+premier lancement : _Informations complémentaires_ → _Exécuter quand même_. Détails et coûts
 dans [`docs/passage-en-app.md`](docs/passage-en-app.md).
 
 > L'application a **sa propre base**, distincte de `data/db`. Pour y amener tes tâches :
@@ -127,8 +127,16 @@ tant que `CORS_ORIGIN` n'est pas défini.
   "parentId": "string | null — la tâche dont celle-ci est une étape",
   "tags": ["string (24 max, minuscules)"],
   "order": 0,
-  "recurrence": { "freq": "daily | weekly | monthly | vide", "interval": 1, "until": "ISO date | null" },
-  "reminder": { "offset": "atDue | 1h | 1d | vide", "at": "ISO date | null", "sentAt": "ISO date | null" }
+  "recurrence": {
+    "freq": "daily | weekly | monthly | vide",
+    "interval": 1,
+    "until": "ISO date | null"
+  },
+  "reminder": {
+    "offset": "atDue | 1h | 1d | vide",
+    "at": "ISO date | null",
+    "sentAt": "ISO date | null"
+  }
 }
 ```
 
@@ -145,41 +153,41 @@ existence les reçoit au premier lancement, et relancer le serveur ne réécrit 
 
 ## API
 
-| Méthode  | Route                     | Description                                    |
-| -------- | ------------------------- | ---------------------------------------------- |
-| `GET`    | `/tasks`                  | Liste paginée, triée et filtrée (voir ci-après) |
-| `GET`    | `/tasks/stats`            | Totaux, compte par catégorie et retard         |
-| `GET`    | `/tasks/trash`            | Liste paginée de la corbeille                  |
-| `GET`    | `/tasks/:id`              | Détail d'une tâche                             |
-| `GET`    | `/tasks/:id/children`     | Étapes d'une tâche                             |
-| `PATCH`  | `/tasks/:id/order`        | Déplace une tâche entre deux voisines          |
-| `POST`   | `/tasks/bulk`             | Même action sur 100 tâches au plus             |
-| `POST`   | `/tasks`                  | Crée une tâche                                 |
-| `PUT`    | `/tasks/:id`              | Met à jour une tâche                           |
-| `DELETE` | `/tasks/:id`              | Met la tâche à la corbeille                    |
-| `POST`   | `/tasks/:id/restore`      | Ressort une tâche de la corbeille              |
-| `DELETE` | `/tasks/:id/purge`        | Supprime définitivement (corbeille seulement)  |
-| `GET`    | `/export`                 | Sauvegarde JSON complète (corbeille comprise)  |
-| `GET`    | `/export.md`              | Le cahier en Markdown, groupé par catégorie    |
-| `GET`    | `/export.csv`             | Tableau CSV à colonnes stables                 |
-| `POST`   | `/import`                 | Remet une sauvegarde (`merge` ou `replace`)    |
-| `GET`    | `/categories`             | Liste des catégories                           |
-| `POST`   | `/categories`             | Crée une catégorie (`name`, `color`)           |
-| `DELETE` | `/categories/:name`       | Supprime et nettoie les tâches liées           |
-| `GET`    | `/healthz`                | Le serveur répond, et la base est là           |
+| Méthode  | Route                 | Description                                     |
+| -------- | --------------------- | ----------------------------------------------- |
+| `GET`    | `/tasks`              | Liste paginée, triée et filtrée (voir ci-après) |
+| `GET`    | `/tasks/stats`        | Totaux, compte par catégorie et retard          |
+| `GET`    | `/tasks/trash`        | Liste paginée de la corbeille                   |
+| `GET`    | `/tasks/:id`          | Détail d'une tâche                              |
+| `GET`    | `/tasks/:id/children` | Étapes d'une tâche                              |
+| `PATCH`  | `/tasks/:id/order`    | Déplace une tâche entre deux voisines           |
+| `POST`   | `/tasks/bulk`         | Même action sur 100 tâches au plus              |
+| `POST`   | `/tasks`              | Crée une tâche                                  |
+| `PUT`    | `/tasks/:id`          | Met à jour une tâche                            |
+| `DELETE` | `/tasks/:id`          | Met la tâche à la corbeille                     |
+| `POST`   | `/tasks/:id/restore`  | Ressort une tâche de la corbeille               |
+| `DELETE` | `/tasks/:id/purge`    | Supprime définitivement (corbeille seulement)   |
+| `GET`    | `/export`             | Sauvegarde JSON complète (corbeille comprise)   |
+| `GET`    | `/export.md`          | Le cahier en Markdown, groupé par catégorie     |
+| `GET`    | `/export.csv`         | Tableau CSV à colonnes stables                  |
+| `POST`   | `/import`             | Remet une sauvegarde (`merge` ou `replace`)     |
+| `GET`    | `/categories`         | Liste des catégories                            |
+| `POST`   | `/categories`         | Crée une catégorie (`name`, `color`)            |
+| `DELETE` | `/categories/:name`   | Supprime et nettoie les tâches liées            |
+| `GET`    | `/healthz`            | Le serveur répond, et la base est là            |
 
 ### Paramètres de `GET /tasks`
 
-| Paramètre  | Valeurs                              | Défaut     |
-| ---------- | ------------------------------------ | ---------- |
-| `page`     | entier ≥ 1 (ramené à la dernière page si dépassé) | `1` |
-| `limit`    | 1 à 100                              | `5`        |
-| `sort`     | `creation`, `dueDate`, `priority`    | `creation` |
-| `status`   | `all`, `active`, `done`              | `all`      |
-| `due`      | `all`, `overdue`, `today`, `week`, `none` — horizons emboîtés | `all` |
-| `category` | `all`, `none`, ou un nom             | `all`      |
-| `tag`      | une étiquette (24 caractères max, insensible à la casse) | — |
-| `q`        | recherche titre + description (100 caractères max) | — |
+| Paramètre  | Valeurs                                                       | Défaut     |
+| ---------- | ------------------------------------------------------------- | ---------- |
+| `page`     | entier ≥ 1 (ramené à la dernière page si dépassé)             | `1`        |
+| `limit`    | 1 à 100                                                       | `5`        |
+| `sort`     | `creation`, `dueDate`, `priority`                             | `creation` |
+| `status`   | `all`, `active`, `done`                                       | `all`      |
+| `due`      | `all`, `overdue`, `today`, `week`, `none` — horizons emboîtés | `all`      |
+| `category` | `all`, `none`, ou un nom                                      | `all`      |
+| `tag`      | une étiquette (24 caractères max, insensible à la casse)      | —          |
+| `q`        | recherche titre + description (100 caractères max)            | —          |
 
 Réponse : `{ tasks, total, totalPages, currentPage }`. Le tri est toujours
 départagé par `_id`, sans quoi paginer pourrait répéter ou sauter des tâches.
@@ -310,6 +318,63 @@ npm run test:ui   # Vitest + happy-dom sur les modules du navigateur
 Le navigateur charge drawably depuis `/vendor/drawably` ; en test, `vitest.config.js`
 redirige cet alias vers `node_modules/drawably`.
 
+Les deux commandes mesurent la couverture et **échouent sous le seuil** : 85 % des
+lignes côté API, 88 % côté interface. Ces seuils sont posés juste sous le niveau
+atteint — ils empêchent de redescendre, ils ne récompensent rien. La couverture des
+branches de l'interface est à 79 %, sous la barre des 80 % que se donne le projet :
+c'est une dette connue, écrite dans `vitest.config.js`.
+
+---
+
+## Qualité et publication
+
+```bash
+npm run format        # Prettier sur tout le dépôt
+npm run format:check  # ce que vérifie la CI
+npm run audit         # failles hautes dans les dépendances de production
+npm run dist          # installeur local, non publié
+```
+
+Chaque poussée et chaque PR déclenchent la CI (`.github/workflows/ci.yml`) sous
+Windows : formatage, audit, 395 tests et seuils de couverture. L'audit des
+dépendances de production **bloque** ; celui des outils de développement
+avertit sans bloquer, ces paquets ne partant pas dans l'installeur.
+
+### Publier une version
+
+```bash
+npm version minor        # met à jour package.json et crée l'étiquette
+git push --follow-tags
+```
+
+L'étiquette `vX.Y.Z` déclenche `.github/workflows/release.yml` : la version de
+l'étiquette est confrontée à `package.json`, les tests rejouent, puis l'installeur
+et son `latest.yml` sont déposés dans une release GitHub **en brouillon**.
+**Aucune release ne se construit sur un poste de développement.**
+
+Le brouillon est délibéré : les trois seuls défauts d'empaquetage qu'a connus ce
+projet n'apparaissaient que sur l'application installée, jamais en développement
+ni en test. Il reste donc une étape à la main — installer le brouillon, l'ouvrir,
+puis le publier dans GitHub. **Tant qu'il est en brouillon, aucun poste ne le
+voit** : c'est la publication qui déclenche la mise à jour automatique chez les
+utilisateurs.
+
+Le binaire Mongo embarqué est téléchargé par `scripts/fetch-mongod.js` à une
+version écrite noir sur blanc, et non pris dans le cache de la machine qui
+construit.
+
+### Mise à jour automatique
+
+Les postes déjà installés interrogent les releases au lancement, téléchargent en
+fond et ne proposent le redémarrage qu'une fois la version sur le disque. Décliner
+ne perd rien : elle se pose à la fermeture suivante. Hors ligne, il ne se passe
+rien et rien ne s'affiche — le Cahier s'utilise sans réseau. La logique est dans
+`lib/updates.js`, testable sans ouvrir de fenêtre.
+
+Les failles se signalent en privé — voir [SECURITY.md](SECURITY.md), qui dit aussi
+ce que l'application ne protège pas. Les versions se lisent dans
+[CHANGELOG.md](CHANGELOG.md).
+
 ---
 
 ## Structure
@@ -387,4 +452,4 @@ de déclarer ce qu'il veut :
 
 ## Licence
 
-ISC
+ISC — voir [LICENSE](LICENSE).
