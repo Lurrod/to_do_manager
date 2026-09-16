@@ -805,6 +805,48 @@ describe('Export / import', () => {
       echecSimule.mockRestore();
     }
   });
+
+  test('si la remise en place echoue aussi, la reponse dit ou est la sauvegarde', async () => {
+    await seed();
+    const avant = (await request(app).get('/export')).body;
+
+    // deux rejets : le premier fait echouer l'ecriture, le second fait echouer
+    // la remise en place. On atteint alors le dernier filet — le seul chemin ou
+    // la base reste dans un etat indetermine, et ou le fichier depose sur le
+    // disque est tout ce qui reste a l'utilisateur.
+    const echecDouble = jest
+      .spyOn(mongoose.model('Task'), 'insertMany')
+      .mockRejectedValueOnce(new Error('echec d’ecriture simule'))
+      .mockRejectedValueOnce(new Error('echec de remise en place simule'));
+    // la route journalise les deux erreurs : attendu ici, on le tait pour
+    // garder la sortie de test lisible
+    const journal = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const res = await request(app)
+        .post('/import?mode=replace')
+        .set('X-Confirm', 'replace')
+        .send({ tasks: [{ title: 'Ne devrait pas rester' }], categories: [] });
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toMatch(/manuellement/i);
+
+      // l'assertion qui compte : le chemin annonce existe vraiment et contient
+      // les donnees d'avant. Un message qui nomme un fichier absent ne vaut rien.
+      const chemin = res.body.error.match(/([^\s:]*avant-remplacement-[^\s]*\.json)/)?.[1];
+      expect(chemin).toBeTruthy();
+      expect(fs.existsSync(chemin)).toBe(true);
+      const sauvegarde = JSON.parse(fs.readFileSync(chemin, 'utf8'));
+      expect(sauvegarde.tasks).toEqual(avant.tasks);
+      expect(sauvegarde.categories).toEqual(avant.categories);
+
+      // et rien d'interne ne fuit, par coherence avec le reste de l'API
+      expect(res.body.error).not.toMatch(/node_modules|\bat\s+\w+\s*\(/);
+    } finally {
+      echecDouble.mockRestore();
+      journal.mockRestore();
+    }
+  });
 });
 
 describe('Erreurs de lecture du corps (body-parser)', () => {
