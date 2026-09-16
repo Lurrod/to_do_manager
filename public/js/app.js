@@ -6,7 +6,8 @@
 
 import * as api from './api.js';
 import { initFilters, showOverdueCount } from './filters.js';
-import { bindBackdrop, closeModal, isModalOpen, openModal } from './modal.js';
+import { initKeyboard } from './keyboard.js';
+import { bindBackdrop, closeModal, openModal } from './modal.js';
 import { initPalette } from './palette.js';
 import { parseQuickEntry } from './parse.js';
 import { resetSteps, toggleSteps } from './steps.js';
@@ -418,30 +419,6 @@ const updateEmptyState = () => {
   sketchAll(emptyState);
 };
 
-const taskAt = (index) => state.tasks[index] || null;
-
-/**
- * Une frappe partie d'un champ appartient au champ, pas aux raccourcis.
- * `matches` n'existe que sur les éléments : un événement clavier envoyé au
- * document (ce que font les tests) a `document` pour cible, et appeler
- * `document.matches` lèverait une TypeError.
- */
-const isTyping = (target) =>
-  typeof target?.matches === 'function' && target.matches('input, textarea, select');
-
-const applyCursor = () => {
-  const rows = [...taskList.querySelectorAll('.task')];
-  rows.forEach((row, index) => row.classList.toggle('is-cursor', index === state.cursor));
-};
-
-/** Déplace le curseur clavier, en restant dans les bornes de la page affichée. */
-const moveCursor = (delta) => {
-  if (state.tasks.length === 0) return;
-  const next = Math.min(state.tasks.length - 1, Math.max(0, state.cursor + delta));
-  state = { ...state, cursor: state.cursor === -1 && delta > 0 ? 0 : next };
-  applyCursor();
-};
-
 const render = () => {
   // une liste fraîchement rendue ne doit pas rouvrir sur des étapes périmées
   resetSteps();
@@ -663,6 +640,19 @@ const { openPalette, closePalette } = initPalette({
   openTrash,
 });
 
+const { applyCursor } = initKeyboard({
+  getState: () => state,
+  setState: (patch) => {
+    state = { ...state, ...patch };
+  },
+  toggleTask,
+  removeTask,
+  openPalette,
+  closePalette,
+  focusSearch: () => searchInput.focus(),
+  focusTitle: () => taskTitleInput.focus(),
+});
+
 prevPageBtn.addEventListener('click', () => {
   if (state.currentPage > 1) refresh({ page: state.currentPage - 1 });
 });
@@ -672,67 +662,6 @@ nextPageBtn.addEventListener('click', () => {
 });
 
 document.querySelectorAll('.modal').forEach(bindBackdrop);
-
-document.addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault();
-    // la palette se referme sur elle-même ; une autre modale garde la main
-    // (closePalette ne fait rien si ce n'est pas elle qui est ouverte)
-    if (isModalOpen()) {
-      closePalette();
-      return;
-    }
-    openPalette();
-    return;
-  }
-
-  if (isModalOpen()) return;
-  // un raccourci d'une lettre ne doit jamais manger une frappe de saisie
-  if (isTyping(e.target)) return;
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-  const cursorTask = taskAt(state.cursor);
-
-  switch (e.key) {
-    case '/':
-      e.preventDefault();
-      searchInput.focus();
-      break;
-    case 'n':
-      e.preventDefault();
-      taskTitleInput.focus();
-      break;
-    case 'j':
-      e.preventDefault();
-      moveCursor(1);
-      break;
-    case 'k':
-      e.preventDefault();
-      moveCursor(-1);
-      break;
-    case 'x':
-      if (cursorTask) {
-        e.preventDefault();
-        toggleTask(cursorTask, !cursorTask.completed);
-      }
-      break;
-    case 'e':
-      if (cursorTask) {
-        e.preventDefault();
-        taskList.querySelectorAll('.task .edit')[state.cursor]?.click();
-      }
-      break;
-    case 'Delete':
-    case 'Backspace':
-      if (cursorTask) {
-        e.preventDefault();
-        removeTask(cursorTask);
-      }
-      break;
-    default:
-      break;
-  }
-});
 
 /* ----------------------------------------------------------------------
    Démarrage
