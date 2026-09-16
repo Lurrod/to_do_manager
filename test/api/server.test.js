@@ -1643,3 +1643,22 @@ describe('Rappels', () => {
     expect(apres.body.reminder.sentAt).not.toBeNull();
   });
 });
+
+describe('Santé du serveur', () => {
+  test('GET /healthz dit que le serveur répond et que la base est là', async () => {
+    const res = await request(app).get('/healthz');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.db).toBe('connected');
+  });
+
+  test('GET /healthz ne demande pas d’identifiant et ne fuite rien', async () => {
+    const res = await request(app).get('/healthz');
+
+    // le lanceur l'interroge en boucle au démarrage : elle doit rester
+    // triviale, et ne rien dire de la machine
+    expect(Object.keys(res.body).sort()).toEqual(['db', 'status', 'uptime']);
+    expect(JSON.stringify(res.body)).not.toMatch(/C:\|node_modules|mongodb:/);
+  });
+});

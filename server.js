@@ -12,6 +12,7 @@ const { normalizeTags } = require('./lib/tags');
 const { NEEDS_RENUMBER, rankBetween, renumber } = require('./lib/ordering');
 const { remindAtFor, messageGroupe, RETARD_MAX_MS } = require('./lib/reminders');
 const { sendNotification } = require('./lib/notify');
+const { listenWithFallback } = require('./lib/listen');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -603,6 +604,19 @@ async function migrateSchema() {
    Tâches
    -------------------------------------------------------------------------- */
 
+/**
+ * Point de santé. Le lanceur l'interroge en boucle pour savoir quand ouvrir la
+ * fenêtre : il doit donc rester trivial, et ne rien dire de la machine —
+ * ni chemin, ni URI de base.
+ */
+app.get('/healthz', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    uptime: Math.round(process.uptime()),
+  });
+});
+
 app.post('/tasks', async (req, res) => {
   try {
     const champs = pick(req.body, CREATE_FIELDS);
@@ -1107,9 +1121,22 @@ app.delete('/categories/:name', async (req, res) => {
 });
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(port, host, () => {
-    console.log(`Serveur démarré sur http://${host}:${port}`);
-  });
+  const http = require('http');
+  const serveur = http.createServer(app);
+
+  listenWithFallback(serveur, { port, host })
+    .then((obtenu) => {
+      if (obtenu !== port) {
+        console.log(`Port ${port} occupé — le Cahier prend le ${obtenu}.`);
+      }
+      // ligne lue par le lanceur (« npm run app ») pour savoir où ouvrir :
+      // ne pas en changer la forme sans changer scripts/app.js
+      console.log(`Serveur démarré sur http://${host}:${obtenu}`);
+    })
+    .catch((error) => {
+      console.error(`Démarrage impossible : ${error.message}`);
+      process.exit(1);
+    });
 }
 
 module.exports = app;
