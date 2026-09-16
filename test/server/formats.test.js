@@ -55,6 +55,16 @@ describe('csvCell', () => {
     expect(csvCell('-2')).toBe("'-2");
     expect(csvCell('@import')).toBe("'@import");
   });
+
+  test('neutralise aussi une formule précédée d’un blanc de tête', () => {
+    expect(csvCell('\t=SUM(A1:A9)')).toBe("'\t=SUM(A1:A9)");
+    expect(csvCell('\r=1+1')).toBe("'\r=1+1");
+    expect(csvCell('   =1+1')).toBe("'   =1+1");
+  });
+
+  test('ne préfixe pas une cellule qui commence par un espace sans déclencheur', () => {
+    expect(csvCell(' bonjour')).toBe(' bonjour');
+  });
 });
 
 describe('toCsv', () => {
