@@ -285,9 +285,17 @@
       <div class="modal-content" data-sketch="card">
         <h2 id="palette-title" class="modal-title">Aller à…</h2>
         <span class="field" data-sketch="input">
-          <input type="text" id="palette-input" placeholder="Une commande…" autocomplete="off" />
+          <input
+            type="text"
+            id="palette-input"
+            placeholder="Une commande…"
+            autocomplete="off"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-list"
+          />
         </span>
-        <ul id="palette-list" class="palette-list"></ul>
+        <ul id="palette-list" class="palette-list" role="listbox"></ul>
       </div>
     </div>
 

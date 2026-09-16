@@ -39,17 +39,38 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
     { label: 'Ouvrir la corbeille', run: openTrash },
   ];
 
+  // Liste courante (après filtre) et ligne mise en avant : le focus réel
+  // reste dans le champ, cette sélection n'existe que sur ces deux variables
+  // et ce qu'elles reflètent dans le DOM (motif ARIA combobox + listbox).
+  let matches = [];
+  let selectedIndex = 0;
+
+  /** Reporte `selectedIndex` sur le DOM : classe visible, aria-selected, aria-activedescendant. */
+  const updateSelection = () => {
+    const rows = [...paletteList.children];
+    rows.forEach((row, index) => {
+      const selected = index === selectedIndex;
+      row.setAttribute('aria-selected', String(selected));
+      row.querySelector('.palette-item').classList.toggle('is-selected', selected);
+    });
+
+    const current = rows[selectedIndex];
+    if (current) paletteInput.setAttribute('aria-activedescendant', current.id);
+    else paletteInput.removeAttribute('aria-activedescendant');
+  };
+
   const renderPalette = () => {
     const needle = paletteInput.value.trim().toLowerCase();
-    const matches = PALETTE_COMMANDS.filter(({ label }) =>
-      label.toLowerCase().includes(needle)
-    );
+    matches = PALETTE_COMMANDS.filter(({ label }) => label.toLowerCase().includes(needle));
+    selectedIndex = 0;
 
     unsketchAll(paletteList);
     paletteList.innerHTML = '';
 
-    matches.forEach((command) => {
+    matches.forEach((command, index) => {
       const li = document.createElement('li');
+      li.id = `palette-option-${index}`;
+      li.setAttribute('role', 'option');
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'palette-item';
@@ -61,6 +82,35 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
       li.appendChild(button);
       paletteList.appendChild(li);
     });
+
+    updateSelection();
+  };
+
+  /** Déplace la sélection en bouclant d'un bout à l'autre de la liste. */
+  const moveSelection = (delta) => {
+    if (matches.length === 0) return;
+    selectedIndex = (selectedIndex + delta + matches.length) % matches.length;
+    updateSelection();
+  };
+
+  const runSelected = () => {
+    const command = matches[selectedIndex];
+    if (!command) return;
+    closeModal(paletteModal);
+    command.run();
+  };
+
+  const onPaletteKeydown = (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveSelection(1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveSelection(-1);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      runSelected();
+    }
   };
 
   const openPalette = () => {
@@ -73,6 +123,7 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
   const closePalette = () => closeModal(paletteModal);
 
   paletteInput.addEventListener('input', renderPalette);
+  paletteInput.addEventListener('keydown', onPaletteKeydown);
 
   return { openPalette, closePalette };
 };

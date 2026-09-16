@@ -643,6 +643,8 @@
 }
 
 .palette-item {
+  display: block;
+  width: 100%;
   padding: var(--gap-1) var(--gap-2);
   border: 0;
   background: none;
@@ -654,7 +656,8 @@
 }
 
 .palette-item:hover,
-.palette-item:focus-visible {
+.palette-item:focus-visible,
+.palette-item.is-selected {
   background: color-mix(in srgb, var(--highlighter) 40%, transparent);
 }
 

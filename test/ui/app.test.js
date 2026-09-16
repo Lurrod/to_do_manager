@@ -790,4 +790,102 @@ describe('clavier', () => {
   });
 });
 
+describe('palette au clavier', () => {
+  const press = (key, target) =>
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+
+  /** Ouvre la palette et rend son champ, point de départ de chaque test. */
+  const openPalette = async () => {
+    await boot();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+    return document.getElementById('palette-input');
+  };
+
+  const options = () => [...document.querySelectorAll('#palette-list [role="option"]')];
+
+  test('la première commande est sélectionnée à l’ouverture', async () => {
+    await openPalette();
+    const rows = options();
+
+    expect(rows[0].getAttribute('aria-selected')).toBe('true');
+    expect(rows.slice(1).every((row) => row.getAttribute('aria-selected') === 'false')).toBe(true);
+  });
+
+  test('flèche bas et flèche haut déplacent la sélection, avec bouclage', async () => {
+    const input = await openPalette();
+    const last = options().length - 1;
+
+    press('ArrowDown', input);
+    expect(options()[1].getAttribute('aria-selected')).toBe('true');
+
+    press('ArrowUp', input);
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
+
+    press('ArrowUp', input); // depuis la première, on boucle vers la dernière
+    expect(options()[last].getAttribute('aria-selected')).toBe('true');
+
+    press('ArrowDown', input); // depuis la dernière, on boucle vers la première
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('Entrée exécute la commande sélectionnée et referme la palette', async () => {
+    const input = await openPalette();
+    press('ArrowDown', input); // sélectionne « Chercher »
+    press('Enter', input);
+
+    expect(document.getElementById('palette-modal').classList.contains('active')).toBe(false);
+    expect(document.activeElement.id).toBe('search-input');
+  });
+
+  test('filtrer remet la sélection sur la première commande de la nouvelle liste', async () => {
+    const input = await openPalette();
+    press('ArrowDown', input);
+    press('ArrowDown', input);
+    expect(options()[2].getAttribute('aria-selected')).toBe('true');
+
+    input.value = 'voir';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('aucun résultat : pas de sélection, et Entrée ne fait rien', async () => {
+    const input = await openPalette();
+    input.value = 'introuvable';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(options()).toHaveLength(0);
+
+    press('Enter', input);
+    expect(document.getElementById('palette-modal').classList.contains('active')).toBe(true);
+  });
+
+  test('Échap continue de fermer la palette', async () => {
+    const input = await openPalette();
+    press('Escape', input);
+
+    expect(document.getElementById('palette-modal').classList.contains('active')).toBe(false);
+  });
+
+  test('le clic à la souris fonctionne toujours, même sur une commande non sélectionnée', async () => {
+    await openPalette();
+    // la sélection clavier pointe toujours la première commande ; on clique la troisième
+    document.querySelectorAll('#palette-list .palette-item')[2].click();
+    await settle();
+
+    expect(document.getElementById('palette-modal').classList.contains('active')).toBe(false);
+    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    expect(new URL(url, 'http://test').searchParams.get('due')).toBe('all');
+  });
+
+  test('aria-activedescendant pointe l’identifiant de la commande sélectionnée', async () => {
+    const input = await openPalette();
+    press('ArrowDown', input);
+    const selected = options()[1];
+
+    expect(selected.id).toBeTruthy();
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected.id);
+  });
+});
+
 
