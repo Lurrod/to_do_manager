@@ -183,6 +183,22 @@
               </select>
             </span>
             <span class="field" data-sketch="select">
+              <select id="task-recurrence" aria-label="Récurrence" disabled>
+                <option value="">Ne se répète pas</option>
+                <option value="daily">Chaque jour</option>
+                <option value="weekly">Chaque semaine</option>
+                <option value="monthly">Chaque mois</option>
+              </select>
+            </span>
+            <span class="field" data-sketch="select">
+              <select id="task-reminder" aria-label="Rappel" disabled>
+                <option value="">Sans rappel</option>
+                <option value="atDue">Rappel : à l'heure</option>
+                <option value="1h">Rappel : 1 h avant</option>
+                <option value="1d">Rappel : la veille</option>
+              </select>
+            </span>
+            <span class="field" data-sketch="select">
               <select id="sort-select" aria-label="Trier par">
                 <option value="creation">Tri : Création</option>
                 <option value="dueDate">Tri : Échéance</option>

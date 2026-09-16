@@ -936,3 +936,47 @@ describe('étapes', () => {
     expect(calls().filter((u) => u.includes('/children'))).toHaveLength(appelsApresOuverture);
   });
 });
+
+describe('récurrence', () => {
+  test('une tâche récurrente porte un pictogramme', async () => {
+    server.tasks = [task('Poubelles', { recurrence: { freq: 'weekly', interval: 1, until: null } })];
+    await boot();
+
+    const marque = document.querySelector('.task-recurrence');
+    expect(marque).not.toBeNull();
+    expect(marque.getAttribute('title')).toMatch(/semaine/i);
+  });
+
+  test('une tâche sans récurrence n’en porte pas', async () => {
+    server.tasks = [task('Simple')];
+    await boot();
+
+    expect(document.querySelector('.task-recurrence')).toBeNull();
+  });
+
+  test('le composeur envoie la récurrence choisie', async () => {
+    await boot();
+
+    document.getElementById('task-title').value = 'Poubelles';
+    document.getElementById('task-due-date').value = '2026-09-22T09:00';
+    document.getElementById('task-recurrence').value = 'weekly';
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle();
+
+    const creation = server.calls.find((c) => c.method === 'POST');
+    expect(creation.body.recurrence.freq).toBe('weekly');
+  });
+
+  test('le champ de récurrence est désactivé tant qu’il n’y a pas d’échéance', async () => {
+    await boot();
+
+    const champ = document.getElementById('task-recurrence');
+    expect(champ.disabled).toBe(true);
+
+    const date = document.getElementById('task-due-date');
+    date.value = '2026-09-22T09:00';
+    date.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(champ.disabled).toBe(false);
+  });
+});

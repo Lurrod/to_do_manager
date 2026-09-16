@@ -718,3 +718,23 @@
   color: var(--ink-faint);
   text-decoration: line-through;
 }
+
+/* ------------------------------- récurrence ------------------------------- */
+
+.task-recurrence {
+  font-family: var(--font-hand);
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  cursor: help;
+}
+
+/* --------------------------------- rappels -------------------------------- */
+
+.task-reminder {
+  font-family: var(--font-hand);
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  cursor: help;
+}

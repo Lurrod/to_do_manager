@@ -40,6 +40,20 @@ const NEUTRAL_COLOR = 'var(--ink-faint)';
 const SEARCH_DEBOUNCE_MS = 150;
 const PRIORITY_LABELS = { high: 'haute', medium: 'moyenne', low: 'basse' };
 
+/** Ce que dit le pictogramme de récurrence au survol et aux aides techniques. */
+const RECURRENCE_LABELS = {
+  daily: 'Chaque jour',
+  weekly: 'Chaque semaine',
+  monthly: 'Chaque mois',
+};
+
+/** Ce que dit le pictogramme de rappel au survol et aux aides techniques. */
+const REMINDER_LABELS = {
+  atDue: 'Rappel à l’heure dite',
+  '1h': 'Rappel une heure avant',
+  '1d': 'Rappel la veille',
+};
+
 const taskForm = $('task-form');
 const taskList = $('task-list');
 const taskTitleInput = $('task-title');
@@ -48,6 +62,8 @@ const taskDescInput = $('task-desc');
 const taskDueInput = $('task-due-date');
 const taskCategorySelect = $('task-category');
 const taskPrioritySelect = $('task-priority');
+const taskRecurrenceInput = $('task-recurrence');
+const taskReminderInput = $('task-reminder');
 const sortSelect = $('sort-select');
 const searchInput = $('search-input');
 
@@ -350,6 +366,14 @@ const renderTaskItem = (task) => {
       `<span class="tag" data-sketch="badge" data-stroke="${escapeHtml(categoryColor)}">${escapeHtml(task.category)}</span>`
     );
   }
+  if (task.recurrence?.freq) {
+    const label = escapeHtml(RECURRENCE_LABELS[task.recurrence.freq]);
+    metaParts.push(`<span class="task-recurrence" title="${label}" aria-label="${label}">↻</span>`);
+  }
+  if (task.reminder?.offset) {
+    const label = escapeHtml(REMINDER_LABELS[task.reminder.offset]);
+    metaParts.push(`<span class="task-reminder" title="${label}" aria-label="${label}">🔔</span>`);
+  }
 
   li.innerHTML = `
     <span class="task-check" data-sketch="checkbox">
@@ -515,6 +539,23 @@ const renderQuickPreview = () => {
 
 taskTitleInput.addEventListener('input', renderQuickPreview);
 
+/**
+ * Récurrence et rappel n'ont de sens qu'avec une échéance : ils la suivent. Une
+ * seule fonction gouverne l'état des deux champs pour ne pas dupliquer la règle.
+ */
+const syncDueDependentFields = () => {
+  const avecDate = taskDueInput.value !== '';
+  [taskRecurrenceInput, taskReminderInput].forEach((field) => {
+    field.disabled = !avecDate;
+    // un champ désactivé doit aussi être vidé, sinon le serveur refuserait une
+    // récurrence ou un rappel sans échéance à l'appui
+    if (!avecDate) field.value = '';
+  });
+};
+
+taskDueInput.addEventListener('input', syncDueDependentFields);
+syncDueDependentFields();
+
 /** Vide le composeur sans toucher au tri, qui vit dans le même <form>. */
 const clearComposer = () => {
   taskTitleInput.value = '';
@@ -522,6 +563,9 @@ const clearComposer = () => {
   taskDueInput.value = '';
   taskCategorySelect.value = '';
   taskPrioritySelect.value = '';
+  taskRecurrenceInput.value = '';
+  taskReminderInput.value = '';
+  syncDueDependentFields();
 };
 
 taskForm.addEventListener('submit', async (e) => {
@@ -545,6 +589,10 @@ taskForm.addEventListener('submit', async (e) => {
       dueDate: toIso(taskDueInput.value) || parsed.dueDate,
       category: taskCategorySelect.value || parsed.category,
       priority: taskPrioritySelect.value || parsed.priority,
+      recurrence: taskRecurrenceInput.value
+        ? { freq: taskRecurrenceInput.value, interval: 1, until: null }
+        : undefined,
+      reminder: taskReminderInput.value ? { offset: taskReminderInput.value } : undefined,
     });
     clearComposer();
     renderQuickPreview();
