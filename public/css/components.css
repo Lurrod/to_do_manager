@@ -775,3 +775,49 @@
   /* un trait d'encre marque où la ligne va tomber */
   box-shadow: inset 0 3px 0 -1px var(--ink);
 }
+
+/* ------------------------- bandeau de mise à jour ------------------------- */
+
+/* Note collée en haut du cahier. Elle ne paraît que sur une version déjà
+   téléchargée : le reste se passe en silence. Le trait vient de drawably —
+   aucune bordure CSS ici, comme partout ailleurs. */
+.maj {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-2) var(--gap-3);
+  margin: 0 var(--gap-5);
+  padding: var(--gap-2) var(--gap-3);
+  background: color-mix(in srgb, var(--highlighter) 22%, var(--paper-sheet));
+}
+
+.maj-body {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap-1) var(--gap-2);
+  min-width: 0;
+}
+
+.maj-title {
+  font-family: var(--font-hand);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.maj-detail {
+  font-size: var(--step-sm);
+  color: var(--ink-soft);
+}
+
+.maj-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  flex-shrink: 0;
+}

@@ -47,6 +47,29 @@
       </div>
     </header>
 
+    <!-- Note épinglée en haut du cahier : n'apparaît qu'une version prête à
+         poser. Le téléchargement, lui, reste silencieux. -->
+    <div id="maj-banner" class="maj" role="status" hidden>
+      <div class="maj-body">
+        <b class="maj-title" id="maj-title"></b>
+        <span class="maj-detail" id="maj-detail"></span>
+      </div>
+      <div class="maj-actions">
+        <button
+          id="maj-install"
+          class="btn"
+          type="button"
+          data-sketch="button"
+          data-variant="solid"
+        >
+          Redémarrer maintenant
+        </button>
+        <button id="maj-later" class="btn" type="button" data-sketch="button" data-tone="neutral">
+          Plus tard
+        </button>
+      </div>
+    </div>
+
     <hr class="rule rule--top" data-sketch="divider" />
 
     <div class="layout">

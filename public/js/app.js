@@ -9,9 +9,11 @@ import { initBackup } from './backup.js';
 import { initDragDrop } from './dragdrop.js';
 import { initFilters, showOverdueCount } from './filters.js';
 import { initKeyboard } from './keyboard.js';
+import { initMisesAJour } from './maj.js';
 import { bindBackdrop, closeModal, openModal } from './modal.js';
 import { initPalette } from './palette.js';
 import { parseQuickEntry } from './parse.js';
+import { initPreferences } from './preferences.js';
 import { resetSteps, toggleSteps } from './steps.js';
 import { initTrash } from './trash.js';
 
@@ -744,8 +746,27 @@ document.querySelectorAll('.modal').forEach(bindBackdrop);
 sketchAll();
 updateGreeting();
 
+/** Les réglages, détenus à un seul endroit ; tout ce qui les suit s'y abonne. */
+const preferences = initPreferences({
+  lire: api.fetchPreferences,
+  ecrire: api.savePreferences,
+});
+
+const misesAJour = initMisesAJour({
+  lireSysteme: api.fetchSysteme,
+  agir: api.agirMaj,
+  // lue à chaque fois : elle peut changer pendant que le Cahier est ouvert
+  prevenir: () => preferences.valeurs()?.misesAJour?.prevenir !== false,
+  toast,
+});
+
 (async () => {
   // les catégories d'abord : le rendu des tâches y lit les couleurs
   await loadCategories();
   await refresh({ page: 1 });
+
+  // après la liste, jamais avant : ni les réglages ni l'état de la mise à jour
+  // ne doivent retarder l'ouverture du cahier
+  await preferences.charger();
+  await misesAJour.rafraichir();
 })();

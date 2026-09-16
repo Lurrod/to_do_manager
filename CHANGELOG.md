@@ -8,6 +8,18 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
+## [Non publié]
+
+### Modifié
+
+- **La mise à jour se propose dans le Cahier, plus dans une boîte Windows.**
+  Un bandeau de papier s'affiche en haut de la page, avec les mots de
+  l'application : « La version 3.1.0 est prête. » Rien ne s'affiche tant que la
+  version n'est pas téléchargée, et « Plus tard » ne la fait pas revenir toutes
+  les minutes — elle se posera à la fermeture, comme avant.
+- Un redémarrage qui échoue s'explique désormais dans ce même bandeau, au lieu
+  d'une seconde boîte de dialogue.
+
 ## [3.0.1] — 2026-09-17
 
 ### Modifié

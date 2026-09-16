@@ -394,6 +394,13 @@ ne perd rien : elle se pose à la fermeture suivante. Hors ligne, il ne se passe
 rien et rien ne s'affiche — le Cahier s'utilise sans réseau. La logique est dans
 `lib/updates.js`, testable sans ouvrir de fenêtre.
 
+La proposition paraît **dans la page**, sur un bandeau de papier, et non dans une
+boîte de dialogue Windows. La fenêtre étant bridée (`contextIsolation: true`,
+aucun préchargement privilégié), le processus principal ne peut rien lui envoyer
+directement : il écrit dans un état partagé (`lib/maj-etat.js`) que le serveur —
+qui tourne dans ce même processus — expose en `GET /systeme`. Aucun pont Node
+n'est ouvert vers la page ; elle ne voit qu'une réponse JSON de plus.
+
 Les failles se signalent en privé — voir [SECURITY.md](SECURITY.md), qui dit aussi
 ce que l'application ne protège pas. Les versions se lisent dans
 [CHANGELOG.md](CHANGELOG.md).

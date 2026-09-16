@@ -40,6 +40,16 @@ describe('routes des préférences', () => {
     expect(res.body).toEqual(DEFAUTS);
   });
 
+  test('le schema est servi pour que la page Reglages se construise seule', async () => {
+    const res = await request(monter(fauxDepot())).get('/preferences/schema');
+
+    expect(res.status).toBe(200);
+    // la page doit y trouver de quoi dessiner chaque champ sans rien deviner
+    expect(res.body.sections.apparence.titre).toEqual(expect.any(String));
+    expect(res.body.schema.apparence.densite.type).toBe('choix');
+    expect(res.body.schema.apparence.densite.valeurs.length).toBeGreaterThan(1);
+  });
+
   test('PUT enregistre le patch et rend le document résultant', async () => {
     const depot = fauxDepot();
 

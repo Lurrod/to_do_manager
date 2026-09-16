@@ -60,6 +60,13 @@ presque tout le reste :
   qui entre par là n'atteint la base tel quel.
 - **Aucun texte interpolé dans un script** : les notifications passent leur
   contenu à PowerShell par l'environnement, jamais par la ligne de commande.
+- **Les actions sur la mise à jour sont gardées par l'origine** : `POST
+/systeme/maj/*` refuse une requête portant un en-tête `Origin` qui n'est pas
+  celui du serveur. Sans cela, n'importe quelle page ouverte dans un navigateur
+  du poste pourrait faire redémarrer le Cahier — elle ne lirait pas la réponse,
+  mais elle n'a pas besoin de la lire pour couper l'application. La lecture
+  (`GET /systeme`) reste ouverte : sans en-tête CORS, le navigateur refuse déjà
+  sa réponse à une page tierce.
 
 ## Mise à jour automatique : sur quoi repose la confiance
 
