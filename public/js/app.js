@@ -299,15 +299,14 @@ const renderTrash = (tasks) => {
 const openTrash = async () => {
   try {
     const { tasks } = await api.listTrash({ page: 1, limit: 50 });
-    // la ligne qui portait le focus est sur le point d'être détruite
-    const hadFocus = trashModal.contains(document.activeElement);
-
     renderTrash(tasks || []);
     openModal(trashModal);
 
-    // sans cela le focus retombe sur <body>, hors du piège : l'utilisateur
-    // d'une aide technique perd le fil au moment précis où sa ligne disparaît
-    if (hadFocus && !trashModal.contains(document.activeElement)) {
+    // openModal place lui-même le focus à la première ouverture. Ce rattrapage
+    // ne sert qu'au cas où la modale était déjà ouverte et où renderTrash vient
+    // de détruire la ligne qui portait le focus : il retomberait sur <body>,
+    // hors du piège.
+    if (!trashModal.contains(document.activeElement)) {
       (trashList.querySelector('.trash-restore') || closeTrashBtn).focus();
     }
   } catch (error) {
