@@ -660,10 +660,6 @@ nextPageBtn.addEventListener('click', () => {
 document.querySelectorAll('.modal').forEach(bindBackdrop);
 
 document.addEventListener('keydown', (e) => {
-  // ce module reste écouté tant que la page vit ; si son DOM a été remplacé
-  // sans qu'il soit rechargé (rechargement de test), il n'a plus rien à faire
-  if (!taskList.isConnected) return;
-
   if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     // la palette se referme sur elle-même ; une autre modale garde la main

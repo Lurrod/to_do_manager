@@ -94,10 +94,24 @@ const bodyFor = (url, method, body) => {
   return {};
 };
 
+// app.js (et les modules qu'il importe en cascade, tel modal.js) posent des
+// écouteurs sur `document`, qui survit au remplacement du <body> : sans ce
+// suivi, chaque test traînerait les écouteurs de tous les tests précédents,
+// qui rejoueraient leurs actions sur les données du test en cours.
+let bootListeners = [];
+
 const boot = async () => {
   document.body.innerHTML = BODY;
   vi.resetModules();
+
+  const add = document.addEventListener.bind(document);
+  const spy = vi.spyOn(document, 'addEventListener').mockImplementation((...args) => {
+    bootListeners.push(args);
+    add(...args);
+  });
   await import('../../public/js/app.js');
+  spy.mockRestore();
+
   await settle();
 };
 
@@ -150,6 +164,8 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  bootListeners.forEach((args) => document.removeEventListener(...args));
+  bootListeners = [];
   document.body.innerHTML = '';
 });
 
