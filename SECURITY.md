@@ -93,14 +93,16 @@ fait, c'est le compte qui est le périmètre de sécurité.
 - L'audit complet, outils de développement compris, tourne à chaque CI sans
   bloquer : ces paquets ne partent pas dans l'installeur.
 - Dependabot ouvre une PR groupée par semaine.
+- **Les dépendances de production ne portent aujourd'hui aucune faille connue**
+  (`npm audit --omit=dev` : 0). C'est un état, pas une garantie : il se vérifie
+  à chaque exécution de la CI.
 
 ### Risques acceptés, à date
 
 | Sujet                                | Pourquoi il reste                                                                                                                                                                                          |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `qs` (modérée), via Express 4        | Express 4 épingle sa propre copie ; seul Express 5 la relève. Les routes concernées ne sont pas exposées hors boucle locale.                                                                               |
 | `electron` 32, `electron-builder` 24 | Les versions majeures suivantes cassent sur Node 22. Montée liée à un changement de socle Node, pas à une PR automatique.                                                                                  |
 | Installeur non signé                 | Pas de certificat de signature de code. SmartScreen avertit à la première installation, et l'authenticité des mises à jour se réduit au compte GitHub (voir plus haut). Bloquant pour un déploiement géré. |
 
-Ces trois points sont des décisions, pas des oublis. Ils se relisent à chaque
+Ces deux points sont des décisions, pas des oublis. Ils se relisent à chaque
 version majeure.

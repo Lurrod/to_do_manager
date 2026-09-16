@@ -20,9 +20,9 @@ updates:
         update-types: [minor, patch]
     ignore:
       # Electron 33+ et electron-builder 25+ cassent sur Node 22 (require() d'un
-      # module ESM). L'épinglage est délibéré et documenté dans
-      # docs/passage-en-app.md ; il se lèvera quand le socle Node changera, pas
-      # au fil d'une PR automatique.
+      # module ESM). L'épinglage est délibéré et documenté dans SECURITY.md,
+      # parmi les risques acceptés ; il se lèvera quand le socle Node changera,
+      # pas au fil d'une PR automatique.
       - dependency-name: electron
         update-types: [version-update:semver-major]
       - dependency-name: electron-builder
