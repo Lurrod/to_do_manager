@@ -701,4 +701,28 @@ describe('Export / import', () => {
     const apres = (await request(app).get('/export')).body;
     expect(apres.tasks).toEqual(avant.tasks);
   });
+
+  test('GET /export.md rend le cahier en Markdown', async () => {
+    await seed();
+
+    const res = await request(app).get('/export.md');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/markdown/);
+    expect(res.text).toContain('## Perso');
+    expect(res.text).toContain('- [ ] Relire le brief');
+    expect(res.text).not.toContain('Ancienne');
+  });
+
+  test('GET /export.csv rend un tableau à colonnes stables', async () => {
+    await seed();
+
+    const res = await request(app).get('/export.csv');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.text.split('\n')[0]).toBe(
+      'id,title,description,completed,priority,category,dueDate,createdAt,deletedAt'
+    );
+  });
 });

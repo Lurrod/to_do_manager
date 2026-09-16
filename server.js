@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 const { exportShape, validateImport, HEX_COLOR } = require('./lib/portable');
+const { toMarkdown, toCsv } = require('./lib/formats');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -547,6 +548,28 @@ app.post('/import', async (req, res) => {
       categories: categoryDocs.length,
       backup,
     });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+app.get('/export.md', async (req, res) => {
+  try {
+    const tasks = await Task.find().sort({ category: 1, createdAt: 1 }).lean();
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="cahier-${fileStamp()}.md"`);
+    res.status(200).send(toMarkdown(tasks));
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+app.get('/export.csv', async (req, res) => {
+  try {
+    const tasks = await Task.find().sort({ createdAt: 1, _id: 1 }).lean();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="cahier-${fileStamp()}.csv"`);
+    res.status(200).send(toCsv(tasks));
   } catch (error) {
     fail(res, error);
   }
