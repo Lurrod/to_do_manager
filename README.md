@@ -53,6 +53,13 @@ tant que `CORS_ORIGIN` n'est pas défini.
 ## Fonctionnalités
 
 - **Tâches** : créer, modifier, terminer, supprimer — avec **annulation** de la suppression
+- **Étapes** : une tâche porte des sous-tâches (un seul niveau) ; cocher le dossier coche ses
+  étapes, la corbeille emporte et rend la famille entière
+- **Récurrence** : quotidienne, hebdomadaire ou mensuelle — cocher une occurrence crée
+  immédiatement la suivante, calée sur l'échéance précédente (donc sans dérive en cas de
+  retard) ; les étapes sont reprises, décochées
+- **Étiquettes** : plusieurs mots-clés transversaux par tâche, cliquables pour filtrer — la
+  catégorie reste le classement principal, unique et coloré
 - **Priorité** : basse / moyenne / haute, marquée d'un astérisque au stylo en marge
 - **Catégories** : créer / supprimer, couleur personnalisée, filtrage
 - **Filtres de statut** : toutes / à faire / terminées
@@ -87,7 +94,12 @@ tant que `CORS_ORIGIN` n'est pas défini.
   "dueDate": "ISO date | null",
   "category": "string (32 max)",
   "priority": "low | medium | high | vide",
-  "deletedAt": "ISO date | null"
+  "deletedAt": "ISO date | null",
+  "parentId": "string | null — la tâche dont celle-ci est une étape",
+  "tags": ["string (24 max, minuscules)"],
+  "order": 0,
+  "recurrence": { "freq": "daily | weekly | monthly | vide", "interval": 1, "until": "ISO date | null" },
+  "reminder": { "offset": "atDue | 1h | 1d | vide", "at": "ISO date | null", "sentAt": "ISO date | null" }
 }
 ```
 
@@ -95,6 +107,10 @@ tant que `CORS_ORIGIN` n'est pas défini.
 routes n'appliquent qu'une liste blanche de champs. Une suppression est douce —
 la tâche part à la corbeille, reste restaurable, et disparaît définitivement au
 démarrage suivant passé 7 jours.
+
+Les champs de structure (`parentId`, `tags`, `order`, `recurrence`, `reminder`) sont
+installés par une **migration idempotente au démarrage** : une base écrite avant leur
+existence les reçoit au premier lancement, et relancer le serveur ne réécrit rien.
 
 ---
 
@@ -106,6 +122,7 @@ démarrage suivant passé 7 jours.
 | `GET`    | `/tasks/stats`            | Totaux, compte par catégorie et retard         |
 | `GET`    | `/tasks/trash`            | Liste paginée de la corbeille                  |
 | `GET`    | `/tasks/:id`              | Détail d'une tâche                             |
+| `GET`    | `/tasks/:id/children`     | Étapes d'une tâche                             |
 | `POST`   | `/tasks`                  | Crée une tâche                                 |
 | `PUT`    | `/tasks/:id`              | Met à jour une tâche                           |
 | `DELETE` | `/tasks/:id`              | Met la tâche à la corbeille                    |
@@ -129,6 +146,7 @@ démarrage suivant passé 7 jours.
 | `status`   | `all`, `active`, `done`              | `all`      |
 | `due`      | `all`, `overdue`, `today`, `week`, `none` — horizons emboîtés | `all` |
 | `category` | `all`, `none`, ou un nom             | `all`      |
+| `tag`      | une étiquette (24 caractères max, insensible à la casse) | — |
 | `q`        | recherche titre + description (100 caractères max) | — |
 
 Réponse : `{ tasks, total, totalPages, currentPage }`. Le tri est toujours
@@ -137,6 +155,25 @@ départagé par `_id`, sans quoi paginer pourrait répéter ou sauter des tâche
 `GET /tasks/stats` renvoie `{ total, done, active, overdue, byCategory }` : `overdue`
 compte les tâches non terminées dont l'échéance est passée — c'est le nombre affiché
 sur l'onglet « en retard ».
+
+`GET /tasks` ne renvoie que les **racines** : lister les étapes rendrait la pagination
+incohérente, une page de cinq pouvant n'afficher qu'un dossier et ses quatre étapes. Chaque
+racine porte `childCount` et `childDone`. Conséquence assumée : **la recherche ne trouve pas
+une étape** — chercher « acompte » ne remonte pas l'étape « verser l'acompte » nichée sous
+« Devis ».
+
+### Récurrence
+
+La suivante naît **au moment où l'occurrence est cochée**, pas par un planificateur : le Cahier
+est un outil de bureau, qui n'est pas forcément allumé le jour J. Un planificateur produirait
+des trous dans la série.
+
+Sa date part de l'**échéance précédente**, jamais de la date de complétion : une hebdomadaire
+cochée avec trois jours de retard revient le mardi suivant, pas le vendredi. Sans cela, « tous
+les mardis » dériverait d'un cran à chaque retard.
+
+Une récurrence exige une échéance — c'est elle qu'on fait avancer. Une mensuelle posée un 31
+retombe sur le dernier jour des mois plus courts (28, 29 ou 30), et ne saute pas de mois.
 
 ### Exemple — créer une tâche
 
