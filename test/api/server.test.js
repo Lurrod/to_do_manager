@@ -719,6 +719,22 @@ describe('Export / import', () => {
     expect(liste.body.tasks.some((t) => t.title === 'Ancienne façon')).toBe(true);
   });
 
+  test('un aller-retour conserve la hiérarchie', async () => {
+    const parentRes = await request(app).post('/tasks').send({ title: 'Devis' });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Verser l’acompte', parentId: parentRes.body._id });
+
+    const avant = (await request(app).get('/export')).body;
+    await request(app)
+      .post('/import?mode=replace')
+      .set('X-Confirm', 'replace')
+      .send({ tasks: avant.tasks, categories: avant.categories });
+
+    const etapes = await request(app).get(`/tasks/${parentRes.body._id}/children`);
+    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Verser l’acompte']);
+  });
+
   test('un fichier aux identifiants dupliqués est refusé avant d’effacer quoi que ce soit', async () => {
     await seed();
     const avant = (await request(app).get('/export')).body;

@@ -123,4 +123,24 @@ describe('validateImport', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('retient les champs de structure ajoutés par la vague 2', () => {
+    const { tasks } = validateImport({
+      tasks: [
+        task({
+          parentId: '6aaa396cb6aaf45240b8b999',
+          tags: ['maison'],
+          order: 1234,
+          recurrence: { freq: 'weekly', interval: 2, until: null },
+          reminder: { offset: '1d', at: '2026-09-20T08:00:00.000Z', sentAt: null },
+        }),
+      ],
+    });
+
+    expect(tasks[0].parentId).toBe('6aaa396cb6aaf45240b8b999');
+    expect(tasks[0].tags).toEqual(['maison']);
+    expect(tasks[0].order).toBe(1234);
+    expect(tasks[0].recurrence.freq).toBe('weekly');
+    expect(tasks[0].reminder.offset).toBe('1d');
+  });
 });
