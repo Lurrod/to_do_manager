@@ -1038,6 +1038,50 @@ describe('Sous-tâches', () => {
     expect(devis.childCount).toBe(0);
   });
 
+  test('cocher un parent coche toutes ses étapes', async () => {
+    const parentId = await parent();
+    await request(app).post('/tasks').send({ title: 'Une', parentId });
+    await request(app).post('/tasks').send({ title: 'Deux', parentId });
+
+    await request(app).put(`/tasks/${parentId}`).send({ completed: true });
+
+    const etapes = await request(app).get(`/tasks/${parentId}/children`);
+    expect(etapes.body.tasks.every((t) => t.completed)).toBe(true);
+  });
+
+  test('décocher un parent décoche ses étapes', async () => {
+    const parentId = await parent();
+    await request(app).post('/tasks').send({ title: 'Une', parentId });
+    await request(app).put(`/tasks/${parentId}`).send({ completed: true });
+
+    await request(app).put(`/tasks/${parentId}`).send({ completed: false });
+
+    const etapes = await request(app).get(`/tasks/${parentId}/children`);
+    expect(etapes.body.tasks.every((t) => t.completed)).toBe(false);
+  });
+
+  test('cocher la dernière étape ne coche pas le parent', async () => {
+    const parentId = await parent();
+    const seule = await request(app).post('/tasks').send({ title: 'Seule étape', parentId });
+
+    await request(app).put(`/tasks/${seule.body._id}`).send({ completed: true });
+
+    // un parent peut porter du travail propre au-delà de ses étapes : le
+    // cocher à sa place serait décider pour l'utilisateur
+    const apres = await request(app).get(`/tasks/${parentId}`);
+    expect(apres.body.completed).toBe(false);
+  });
+
+  test('modifier autre chose que `completed` ne touche pas aux étapes', async () => {
+    const parentId = await parent();
+    const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
+
+    await request(app).put(`/tasks/${parentId}`).send({ title: 'Devis revu' });
+
+    const apres = await request(app).get(`/tasks/${etape.body._id}`);
+    expect(apres.body.completed).toBe(false);
+  });
+
   test('rattacher une tâche qui a déjà des étapes est refusé', async () => {
     const grandParent = await parent('Grand-parent');
     const pere = await parent('Père');

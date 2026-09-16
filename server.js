@@ -555,6 +555,17 @@ app.put('/tasks/:id', async (req, res) => {
       runValidators: true,
     });
     if (!task) return res.status(404).json({ error: 'Tâche non trouvée' });
+
+    // cocher un dossier coche ce qu'il contient ; l'inverse n'est pas vrai —
+    // un parent peut porter du travail propre au-delà de ses étapes, et le
+    // cocher à la place de l'utilisateur serait décider pour lui
+    if (Object.hasOwn(champs, 'completed') && !task.parentId) {
+      await Task.updateMany(
+        { parentId: task._id, deletedAt: null },
+        { $set: { completed: champs.completed } }
+      );
+    }
+
     res.status(200).json(task);
   } catch (error) {
     fail(res, error);
