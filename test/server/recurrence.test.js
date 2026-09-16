@@ -5,11 +5,17 @@ const d = (iso) => new Date(iso);
 
 describe('nextDueDate', () => {
   test('sans récurrence, il n’y a pas de suite', () => {
-    expect(nextDueDate(d('2026-09-15T09:00:00'), { freq: '', interval: 1, until: null })).toBeNull();
+    expect(
+      nextDueDate(d('2026-09-15T09:00:00'), { freq: '', interval: 1, until: null })
+    ).toBeNull();
   });
 
   test('quotidienne : le lendemain, à la même heure', () => {
-    const suite = nextDueDate(d('2026-09-15T09:30:00'), { freq: 'daily', interval: 1, until: null });
+    const suite = nextDueDate(d('2026-09-15T09:30:00'), {
+      freq: 'daily',
+      interval: 1,
+      until: null,
+    });
     expect(suite.getFullYear()).toBe(2026);
     expect(suite.getMonth()).toBe(8);
     expect(suite.getDate()).toBe(16);
@@ -18,7 +24,11 @@ describe('nextDueDate', () => {
   });
 
   test('l’intervalle saute d’autant de pas', () => {
-    const suite = nextDueDate(d('2026-09-15T09:00:00'), { freq: 'daily', interval: 3, until: null });
+    const suite = nextDueDate(d('2026-09-15T09:00:00'), {
+      freq: 'daily',
+      interval: 3,
+      until: null,
+    });
     expect(suite.getDate()).toBe(18);
   });
 

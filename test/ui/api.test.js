@@ -9,7 +9,10 @@ const ok = (body = {}) => ({
 });
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async () => ok({ tasks: [] })));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ok({ tasks: [] }))
+  );
 });
 
 afterEach(() => {

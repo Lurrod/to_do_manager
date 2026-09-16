@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+resources/
+data/
+backups/
+public/vendor/
+package-lock.json

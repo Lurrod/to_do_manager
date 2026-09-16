@@ -19,18 +19,18 @@ même `dbPath` WiredTiger en même temps.
 
 ## Structure des fichiers
 
-| Fichier | Rôle | Chantier 1 |
-|---------|------|------------|
-| `lib/portable.js` | Forme de l'export JSON, liste blanche et validation d'import — **aucun accès base** | **Créé** |
-| `lib/formats.js` | Rendu Markdown et CSV — **fonctions pures** | **Créé** |
-| `server.js` | API Express | **Modifié** : `GET /export`, `GET /export.md`, `GET /export.csv`, `POST /import` |
-| `scripts/backup.js` | Dump horodaté via HTTP | **Créé** |
-| `package.json` | `npm run backup`, `testMatch` élargi à `test/server/` | **Modifié** |
-| `.gitignore` | ignorer `backups/` | **Modifié** |
-| `test/server/portable.test.js` | Jest, unitaire, sans base | **Créé** |
-| `test/server/formats.test.js` | Jest, unitaire, sans base | **Créé** |
-| `test/api/server.test.js` | Jest + Supertest | **Modifié** : les quatre routes |
-| `README.md` | Documentation | **Modifié** |
+| Fichier                        | Rôle                                                                                | Chantier 1                                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `lib/portable.js`              | Forme de l'export JSON, liste blanche et validation d'import — **aucun accès base** | **Créé**                                                                         |
+| `lib/formats.js`               | Rendu Markdown et CSV — **fonctions pures**                                         | **Créé**                                                                         |
+| `server.js`                    | API Express                                                                         | **Modifié** : `GET /export`, `GET /export.md`, `GET /export.csv`, `POST /import` |
+| `scripts/backup.js`            | Dump horodaté via HTTP                                                              | **Créé**                                                                         |
+| `package.json`                 | `npm run backup`, `testMatch` élargi à `test/server/`                               | **Modifié**                                                                      |
+| `.gitignore`                   | ignorer `backups/`                                                                  | **Modifié**                                                                      |
+| `test/server/portable.test.js` | Jest, unitaire, sans base                                                           | **Créé**                                                                         |
+| `test/server/formats.test.js`  | Jest, unitaire, sans base                                                           | **Créé**                                                                         |
+| `test/api/server.test.js`      | Jest + Supertest                                                                    | **Modifié** : les quatre routes                                                  |
+| `README.md`                    | Documentation                                                                       | **Modifié**                                                                      |
 
 **Pourquoi un dossier `lib/` et un dossier `test/server/`.** `server.js` est à 475 lignes ;
 les quatre routes et leur validation lui en ajouteraient ~200, et surtout la validation
@@ -77,6 +77,7 @@ interroge donc `GET /export` et dit clairement quoi faire si le serveur est éte
 ## Task 1 : forme de l'export et liste blanche d'import
 
 **Files:**
+
 - Create: `lib/portable.js`
 - Create: `test/server/portable.test.js`
 - Modify: `package.json` (champ `jest.testMatch`)
@@ -126,7 +127,11 @@ const task = (extra = {}) => ({
 
 describe('exportShape', () => {
   test('enveloppe les données avec une version de schéma', () => {
-    const shape = exportShape({ tasks: [task()], categories: [], now: new Date('2026-09-16T06:00:00Z') });
+    const shape = exportShape({
+      tasks: [task()],
+      categories: [],
+      now: new Date('2026-09-16T06:00:00Z'),
+    });
 
     expect(shape.app).toBe('cahier');
     expect(shape.schemaVersion).toBe(SCHEMA_VERSION);
@@ -138,7 +143,10 @@ describe('exportShape', () => {
 
 describe('validateImport', () => {
   test('accepte une charge utile bien formée', () => {
-    const result = validateImport({ tasks: [task()], categories: [{ name: 'Perso', color: '#2f7d51' }] });
+    const result = validateImport({
+      tasks: [task()],
+      categories: [{ name: 'Perso', color: '#2f7d51' }],
+    });
 
     expect(result.errors).toEqual([]);
     expect(result.tasks).toHaveLength(1);
@@ -337,6 +345,7 @@ git commit -m "feat: forme portable des donnees et validation d'import"
 ## Task 2 : route `GET /export`
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -460,6 +469,7 @@ git commit -m "feat: export JSON complet de la base"
 ## Task 3 : route `POST /import`
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -468,95 +478,98 @@ git commit -m "feat: export JSON complet de la base"
 Ajouter **dans** le `describe('Export / import', …)` créé à la task 2 :
 
 ```js
-  test('POST /import en mode merge ajoute sans écraser l’existant', async () => {
-    await seed();
-    const avant = (await request(app).get('/export')).body;
+test('POST /import en mode merge ajoute sans écraser l’existant', async () => {
+  await seed();
+  const avant = (await request(app).get('/export')).body;
 
-    const res = await request(app)
-      .post('/import')
-      .send({
-        mode: 'merge',
-        tasks: [{ title: 'Venue de la sauvegarde' }],
-        categories: [{ name: 'Travail', color: '#1f2f5c' }],
-      });
+  const res = await request(app)
+    .post('/import')
+    .send({
+      mode: 'merge',
+      tasks: [{ title: 'Venue de la sauvegarde' }],
+      categories: [{ name: 'Travail', color: '#1f2f5c' }],
+    });
 
-    expect(res.status).toBe(200);
-    const apres = (await request(app).get('/export')).body;
-    expect(apres.tasks).toHaveLength(avant.tasks.length + 1);
-    expect(apres.categories.map((c) => c.name)).toEqual(['Perso', 'Travail']);
-  });
+  expect(res.status).toBe(200);
+  const apres = (await request(app).get('/export')).body;
+  expect(apres.tasks).toHaveLength(avant.tasks.length + 1);
+  expect(apres.categories.map((c) => c.name)).toEqual(['Perso', 'Travail']);
+});
 
-  test('POST /import en mode replace exige un en-tête de confirmation', async () => {
-    await seed();
+test('POST /import en mode replace exige un en-tête de confirmation', async () => {
+  await seed();
 
-    const res = await request(app).post('/import').send({ mode: 'replace', tasks: [] });
+  const res = await request(app).post('/import').send({ mode: 'replace', tasks: [] });
 
-    expect(res.status).toBe(428);
-    expect(res.body.error).toMatch(/confirm/i);
-    // et surtout : rien n'a été effacé
-    const apres = (await request(app).get('/export')).body;
-    expect(apres.tasks).toHaveLength(2);
-  });
+  expect(res.status).toBe(428);
+  expect(res.body.error).toMatch(/confirm/i);
+  // et surtout : rien n'a été effacé
+  const apres = (await request(app).get('/export')).body;
+  expect(apres.tasks).toHaveLength(2);
+});
 
-  test('un export réimporté en replace reproduit la base à l’identique', async () => {
-    await seed();
-    const avant = (await request(app).get('/export')).body;
+test('un export réimporté en replace reproduit la base à l’identique', async () => {
+  await seed();
+  const avant = (await request(app).get('/export')).body;
 
-    // on abîme la base entre les deux : sans cela le test passerait sans rien faire
-    await request(app).post('/tasks').send({ title: 'Intrus' });
-    await request(app).post('/categories').send({ name: 'Intruse', color: '#c8402f' });
+  // on abîme la base entre les deux : sans cela le test passerait sans rien faire
+  await request(app).post('/tasks').send({ title: 'Intrus' });
+  await request(app).post('/categories').send({ name: 'Intruse', color: '#c8402f' });
 
-    const res = await request(app)
-      .post('/import')
-      .set('X-Confirm', 'replace')
-      .send({ mode: 'replace', tasks: avant.tasks, categories: avant.categories });
+  const res = await request(app)
+    .post('/import')
+    .set('X-Confirm', 'replace')
+    .send({ mode: 'replace', tasks: avant.tasks, categories: avant.categories });
 
-    expect(res.status).toBe(200);
-    const apres = (await request(app).get('/export')).body;
-    expect(apres.tasks).toEqual(avant.tasks);
-    expect(apres.categories).toEqual(avant.categories);
-  });
+  expect(res.status).toBe(200);
+  const apres = (await request(app).get('/export')).body;
+  expect(apres.tasks).toEqual(avant.tasks);
+  expect(apres.categories).toEqual(avant.categories);
+});
 
-  test('un import malformé est refusé sans rien écrire', async () => {
-    await seed();
-    const avant = (await request(app).get('/export')).body;
+test('un import malformé est refusé sans rien écrire', async () => {
+  await seed();
+  const avant = (await request(app).get('/export')).body;
 
-    const res = await request(app)
-      .post('/import')
-      .set('X-Confirm', 'replace')
-      .send({ mode: 'replace', tasks: [{ title: 'Correcte' }, { title: '' }] });
+  const res = await request(app)
+    .post('/import')
+    .set('X-Confirm', 'replace')
+    .send({ mode: 'replace', tasks: [{ title: 'Correcte' }, { title: '' }] });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/tâche 2/i);
-    const apres = (await request(app).get('/export')).body;
-    expect(apres.tasks).toEqual(avant.tasks);
-  });
+  expect(res.status).toBe(400);
+  expect(res.body.error).toMatch(/tâche 2/i);
+  const apres = (await request(app).get('/export')).body;
+  expect(apres.tasks).toEqual(avant.tasks);
+});
 
-  test('POST /import rejette un mode inconnu', async () => {
-    const res = await request(app).post('/import').send({ mode: 'ecraser', tasks: [] });
+test('POST /import rejette un mode inconnu', async () => {
+  const res = await request(app).post('/import').send({ mode: 'ecraser', tasks: [] });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/mode/i);
-  });
+  expect(res.status).toBe(400);
+  expect(res.body.error).toMatch(/mode/i);
+});
 
-  test('un replace dépose une sauvegarde avant d’effacer', async () => {
-    await seed();
+test('un replace dépose une sauvegarde avant d’effacer', async () => {
+  await seed();
 
-    await request(app)
-      .post('/import')
-      .set('X-Confirm', 'replace')
-      .send({ mode: 'replace', tasks: [{ title: 'Seule survivante' }] });
+  await request(app)
+    .post('/import')
+    .set('X-Confirm', 'replace')
+    .send({ mode: 'replace', tasks: [{ title: 'Seule survivante' }] });
 
-    const fichiers = fs.readdirSync(process.env.BACKUP_DIR);
-    expect(fichiers.some((f) => f.startsWith('avant-remplacement-'))).toBe(true);
-    const depose = JSON.parse(
-      fs.readFileSync(
-        path.join(process.env.BACKUP_DIR, fichiers.find((f) => f.startsWith('avant-remplacement-'))),
-        'utf8'
-      )
-    );
-    expect(depose.tasks).toHaveLength(2);
-  });
+  const fichiers = fs.readdirSync(process.env.BACKUP_DIR);
+  expect(fichiers.some((f) => f.startsWith('avant-remplacement-'))).toBe(true);
+  const depose = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        process.env.BACKUP_DIR,
+        fichiers.find((f) => f.startsWith('avant-remplacement-'))
+      ),
+      'utf8'
+    )
+  );
+  expect(depose.tasks).toHaveLength(2);
+});
 ```
 
 En tête du fichier de test, après les `require` existants, ajouter :
@@ -643,7 +656,8 @@ app.post('/import', async (req, res) => {
     const categoryDocs = categories.map((raw) => new Category(raw));
     for (const [index, doc] of taskDocs.entries()) {
       const invalid = doc.validateSync();
-      if (invalid) return res.status(400).json({ error: `Tâche ${index + 1} : ${invalid.message}` });
+      if (invalid)
+        return res.status(400).json({ error: `Tâche ${index + 1} : ${invalid.message}` });
     }
     for (const [index, doc] of categoryDocs.entries()) {
       const invalid = doc.validateSync();
@@ -665,7 +679,8 @@ app.post('/import', async (req, res) => {
       // qu'on laisse telle quelle. Une écriture en lot signale ses doublons
       // dans `writeErrors` plutôt que dans un `code` de premier niveau.
       const ignorerDoublons = (e) => {
-        const doublon = e.code === 11000 || (e.writeErrors || []).every((w) => w.err?.code === 11000);
+        const doublon =
+          e.code === 11000 || (e.writeErrors || []).every((w) => w.err?.code === 11000);
         if (!doublon) throw e;
       };
       await Task.insertMany(taskDocs, { ordered: false }).catch(ignorerDoublons);
@@ -704,6 +719,7 @@ git commit -m "feat: import d'une sauvegarde, en fusion ou en remplacement confi
 ## Task 4 : `GET /export.md` et `GET /export.csv`
 
 **Files:**
+
 - Create: `lib/formats.js`
 - Create: `test/server/formats.test.js`
 - Modify: `server.js`
@@ -777,7 +793,9 @@ describe('toCsv', () => {
   test('écrit un en-tête stable puis une ligne par tâche', () => {
     const lignes = toCsv([task({ title: 'Courses, urgentes' })]).split('\n');
 
-    expect(lignes[0]).toBe('id,title,description,completed,priority,category,dueDate,createdAt,deletedAt');
+    expect(lignes[0]).toBe(
+      'id,title,description,completed,priority,category,dueDate,createdAt,deletedAt'
+    );
     expect(lignes[1]).toContain('"Courses, urgentes"');
     expect(lignes).toHaveLength(2);
   });
@@ -895,29 +913,29 @@ Attendu : SUCCÈS, 8 tests.
 Ajouter **dans** le `describe('Export / import', …)` :
 
 ```js
-  test('GET /export.md rend le cahier en Markdown', async () => {
-    await seed();
+test('GET /export.md rend le cahier en Markdown', async () => {
+  await seed();
 
-    const res = await request(app).get('/export.md');
+  const res = await request(app).get('/export.md');
 
-    expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toMatch(/text\/markdown/);
-    expect(res.text).toContain('## Perso');
-    expect(res.text).toContain('- [ ] Relire le brief');
-    expect(res.text).not.toContain('Ancienne');
-  });
+  expect(res.status).toBe(200);
+  expect(res.headers['content-type']).toMatch(/text\/markdown/);
+  expect(res.text).toContain('## Perso');
+  expect(res.text).toContain('- [ ] Relire le brief');
+  expect(res.text).not.toContain('Ancienne');
+});
 
-  test('GET /export.csv rend un tableau à colonnes stables', async () => {
-    await seed();
+test('GET /export.csv rend un tableau à colonnes stables', async () => {
+  await seed();
 
-    const res = await request(app).get('/export.csv');
+  const res = await request(app).get('/export.csv');
 
-    expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toMatch(/text\/csv/);
-    expect(res.text.split('\n')[0]).toBe(
-      'id,title,description,completed,priority,category,dueDate,createdAt,deletedAt'
-    );
-  });
+  expect(res.status).toBe(200);
+  expect(res.headers['content-type']).toMatch(/text\/csv/);
+  expect(res.text.split('\n')[0]).toBe(
+    'id,title,description,completed,priority,category,dueDate,createdAt,deletedAt'
+  );
+});
 ```
 
 - [ ] **Step 6 : lancer les tests pour vérifier qu'ils échouent**
@@ -982,6 +1000,7 @@ git commit -m "feat: exports lisibles en Markdown et en CSV"
 ## Task 5 : `npm run backup`
 
 **Files:**
+
 - Create: `scripts/backup.js`
 - Modify: `package.json`
 - Modify: `.gitignore`
@@ -1037,7 +1056,9 @@ const stamp = () => new Date().toISOString().replace(/:/g, '-').slice(0, 19);
 
   const poids = (fs.statSync(fichier).size / 1024).toFixed(1);
   console.log(`Sauvegarde écrite : ${fichier}`);
-  console.log(`${payload.tasks.length} tâche(s), ${payload.categories.length} catégorie(s), ${poids} ko`);
+  console.log(
+    `${payload.tasks.length} tâche(s), ${payload.categories.length} catégorie(s), ${poids} ko`
+  );
 })();
 ```
 
@@ -1089,6 +1110,7 @@ git commit -m "feat: script de sauvegarde horodatee"
 > chantier : la retirer ne casse rien de ce qui précède.
 
 **Files:**
+
 - Modify: `public/index.html`
 - Modify: `public/css/components.css`
 - Modify: `public/js/palette.js`
@@ -1099,7 +1121,15 @@ Dans `public/index.html`, dans le panneau « Statut » de la barre latérale, ju
 bouton `id="open-trash"` :
 
 ```html
-        <a class="btn side-action" id="export-link" href="/export" download data-sketch="button" data-tone="neutral">Sauvegarder</a>
+<a
+  class="btn side-action"
+  id="export-link"
+  href="/export"
+  download
+  data-sketch="button"
+  data-tone="neutral"
+  >Sauvegarder</a
+>
 ```
 
 - [ ] **Step 2 : styler le lien comme le bouton voisin**
@@ -1129,13 +1159,13 @@ Dans `public/js/palette.js`, ajouter une entrée à la fin de `PALETTE_COMMANDS`
 Remplacer dans le test « la palette liste ses commandes » :
 
 ```js
-    expect(nbCmd).toBe(8);
+expect(nbCmd).toBe(8);
 ```
 
 par :
 
 ```js
-    expect(nbCmd).toBe(9);
+expect(nbCmd).toBe(9);
 ```
 
 C'est le seul test existant que ce chantier a le droit de modifier, et uniquement parce que
@@ -1170,6 +1200,7 @@ git commit -m "feat: bouton et commande de sauvegarde dans l'interface"
 ## Task 7 : documenter
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1 : compléter le tableau de l'API**
@@ -1177,22 +1208,23 @@ git commit -m "feat: bouton et commande de sauvegarde dans l'interface"
 Ajouter, après la ligne `DELETE /tasks/:id/purge` :
 
 ```markdown
-| `GET`    | `/export`                 | Sauvegarde JSON complète (corbeille comprise)  |
-| `GET`    | `/export.md`              | Le cahier en Markdown, groupé par catégorie    |
-| `GET`    | `/export.csv`             | Tableau CSV à colonnes stables                 |
-| `POST`   | `/import`                 | Remet une sauvegarde (`merge` ou `replace`)    |
+| `GET` | `/export` | Sauvegarde JSON complète (corbeille comprise) |
+| `GET` | `/export.md` | Le cahier en Markdown, groupé par catégorie |
+| `GET` | `/export.csv` | Tableau CSV à colonnes stables |
+| `POST` | `/import` | Remet une sauvegarde (`merge` ou `replace`) |
 ```
 
 - [ ] **Step 2 : ajouter une section « Sauvegarde »**
 
 Insérer avant la section « Tests » :
 
-```markdown
+````markdown
 ## Sauvegarde
 
 ```bash
 npm run backup     # écrit backups/cahier-<horodatage>.json (serveur allumé)
 ```
+````
 
 Le bouton **Sauvegarder** de la barre latérale télécharge le même JSON, et `Ctrl+K` →
 « sauvegarder » fait de même au clavier.
@@ -1218,6 +1250,7 @@ n'est écrit.
 `export.csv` neutralise les cellules commençant par `=`, `+`, `-` ou `@` en les préfixant
 d'une apostrophe — sans quoi un tableur les exécuterait comme des formules. C'est pourquoi le
 format d'aller-retour est le JSON, pas le CSV.
+
 ```
 
 - [ ] **Step 3 : compléter l'arborescence**
@@ -1225,25 +1258,29 @@ format d'aller-retour est le JSON, pas le CSV.
 Dans le bloc « Structure », après la ligne `├── public/…`, ajouter :
 
 ```
+
 ├── lib/
-│   ├── portable.js         # Forme de l'export, liste blanche d'import
-│   └── formats.js          # Rendus Markdown et CSV (fonctions pures)
-├── scripts/backup.js       # Sauvegarde horodatée via l'API
-├── backups/                # Sauvegardes (ignoré par git)
+│ ├── portable.js # Forme de l'export, liste blanche d'import
+│ └── formats.js # Rendus Markdown et CSV (fonctions pures)
+├── scripts/backup.js # Sauvegarde horodatée via l'API
+├── backups/ # Sauvegardes (ignoré par git)
+
 ```
 
 Et sous `test/` :
 
 ```
-│   ├── server/*.test.js    # Jest, unitaire, sans base
-```
+
+│ ├── server/*.test.js # Jest, unitaire, sans base
+
+````
 
 - [ ] **Step 4 : committer**
 
 ```bash
 git add README.md
 git commit -m "docs: documenter la sauvegarde, l'import et les exports lisibles"
-```
+````
 
 ---
 

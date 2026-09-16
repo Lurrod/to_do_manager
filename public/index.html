@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -85,11 +85,21 @@
         <section class="panel" data-sketch="card">
           <h2 class="panel-title">Statut</h2>
           <div class="filters" role="group" aria-label="Filtrer par statut">
-            <button class="btn pill is-active" data-filter="all" data-sketch="button" data-variant="solid" aria-pressed="true">
+            <button
+              class="btn pill is-active"
+              data-filter="all"
+              data-sketch="button"
+              data-variant="solid"
+              aria-pressed="true"
+            >
               Toutes
             </button>
-            <button class="btn pill" data-filter="active" data-sketch="button" aria-pressed="false">À faire</button>
-            <button class="btn pill" data-filter="done" data-sketch="button" aria-pressed="false">Rayées</button>
+            <button class="btn pill" data-filter="active" data-sketch="button" aria-pressed="false">
+              À faire
+            </button>
+            <button class="btn pill" data-filter="done" data-sketch="button" aria-pressed="false">
+              Rayées
+            </button>
           </div>
           <button
             id="open-trash"
@@ -100,7 +110,15 @@
           >
             Corbeille
           </button>
-          <a class="btn side-action" id="export-link" href="/export" download data-sketch="button" data-tone="neutral">Sauvegarder</a>
+          <a
+            class="btn side-action"
+            id="export-link"
+            href="/export"
+            download
+            data-sketch="button"
+            data-tone="neutral"
+            >Sauvegarder</a
+          >
           <button
             id="open-restore"
             class="btn side-action"
@@ -116,15 +134,47 @@
         <section class="panel" data-sketch="card">
           <h2 class="panel-title">Échéance</h2>
           <div class="filters" role="group" aria-label="Filtrer par échéance">
-            <button class="btn pill due-pill is-active" data-due="all" data-sketch="button" data-variant="solid" aria-pressed="true">
+            <button
+              class="btn pill due-pill is-active"
+              data-due="all"
+              data-sketch="button"
+              data-variant="solid"
+              aria-pressed="true"
+            >
               Tout
             </button>
-            <button class="btn pill due-pill" data-due="overdue" data-sketch="button" aria-pressed="false">
+            <button
+              class="btn pill due-pill"
+              data-due="overdue"
+              data-sketch="button"
+              aria-pressed="false"
+            >
               En retard <b class="due-badge" id="due-overdue-count" hidden>0</b>
             </button>
-            <button class="btn pill due-pill" data-due="today" data-sketch="button" aria-pressed="false">Aujourd'hui</button>
-            <button class="btn pill due-pill" data-due="week" data-sketch="button" aria-pressed="false">Semaine</button>
-            <button class="btn pill due-pill" data-due="none" data-sketch="button" aria-pressed="false">Sans date</button>
+            <button
+              class="btn pill due-pill"
+              data-due="today"
+              data-sketch="button"
+              aria-pressed="false"
+            >
+              Aujourd'hui
+            </button>
+            <button
+              class="btn pill due-pill"
+              data-due="week"
+              data-sketch="button"
+              aria-pressed="false"
+            >
+              Semaine
+            </button>
+            <button
+              class="btn pill due-pill"
+              data-due="none"
+              data-sketch="button"
+              aria-pressed="false"
+            >
+              Sans date
+            </button>
           </div>
         </section>
 
@@ -139,7 +189,8 @@
         <header class="page-head">
           <div class="page-head-left">
             <h1 class="display">
-              <span class="greeting" data-sketch="underline">Bonjour</span><span class="display-dot">.</span>
+              <span class="greeting" data-sketch="underline">Bonjour</span
+              ><span class="display-dot">.</span>
             </h1>
             <p class="subtitle" id="subtitle">Quelles tâches aujourd'hui ?</p>
           </div>
@@ -173,7 +224,12 @@
           <p class="quick-preview" id="quick-preview" aria-live="polite" hidden></p>
 
           <span class="field" data-sketch="textarea">
-            <textarea id="task-desc" placeholder="Notes en marge (optionnel)" rows="2" maxlength="500"></textarea>
+            <textarea
+              id="task-desc"
+              placeholder="Notes en marge (optionnel)"
+              rows="2"
+              maxlength="500"
+            ></textarea>
           </span>
 
           <div class="composer-row">
@@ -217,7 +273,9 @@
                 <option value="manual">Tri : manuel</option>
               </select>
             </span>
-            <button type="submit" class="btn" data-sketch="button" data-variant="solid">Ajouter</button>
+            <button type="submit" class="btn" data-sketch="button" data-variant="solid">
+              Ajouter
+            </button>
           </div>
         </form>
 
@@ -235,14 +293,24 @@
         </div>
 
         <nav class="pagination" aria-label="Pagination">
-          <button id="prev-page" class="btn" data-sketch="button" data-tone="neutral">← Précédent</button>
+          <button id="prev-page" class="btn" data-sketch="button" data-tone="neutral">
+            ← Précédent
+          </button>
           <span id="page-info" class="page-info">Page 1</span>
-          <button id="next-page" class="btn" data-sketch="button" data-tone="neutral">Suivant →</button>
+          <button id="next-page" class="btn" data-sketch="button" data-tone="neutral">
+            Suivant →
+          </button>
         </nav>
       </main>
     </div>
 
-    <div id="edit-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <div
+      id="edit-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-modal-title"
+    >
       <div class="modal-content" data-sketch="card">
         <h2 id="edit-modal-title" class="modal-title">Modifier la tâche</h2>
         <span class="field" data-sketch="input">
@@ -268,10 +336,22 @@
           </span>
         </div>
         <div class="modal-actions">
-          <button id="close-modal" class="btn" type="button" data-sketch="button" data-tone="neutral">
+          <button
+            id="close-modal"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
             Annuler
           </button>
-          <button id="save-edit" class="btn" type="button" data-sketch="button" data-variant="solid">
+          <button
+            id="save-edit"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-variant="solid"
+          >
             Enregistrer
           </button>
         </div>
@@ -285,17 +365,35 @@
           Les tâches associées garderont leur titre mais perdront cette catégorie.
         </p>
         <div class="modal-actions">
-          <button id="cancel-delete-category" class="btn" type="button" data-sketch="button" data-tone="neutral">
+          <button
+            id="cancel-delete-category"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
             Annuler
           </button>
-          <button id="confirm-delete-category" class="btn" type="button" data-sketch="button" data-tone="danger">
+          <button
+            id="confirm-delete-category"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="danger"
+          >
             Supprimer
           </button>
         </div>
       </div>
     </div>
 
-    <div id="trash-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="trash-modal-title">
+    <div
+      id="trash-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="trash-modal-title"
+    >
       <div class="modal-content modal-content--wide" data-sketch="card">
         <h2 id="trash-modal-title" class="modal-title">Corbeille</h2>
         <p class="modal-text">
@@ -306,14 +404,26 @@
         <p id="trash-empty" class="modal-text" hidden>La corbeille est vide.</p>
 
         <div class="modal-actions">
-          <button id="close-trash" class="btn" type="button" data-sketch="button" data-tone="neutral">
+          <button
+            id="close-trash"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
             Fermer
           </button>
         </div>
       </div>
     </div>
 
-    <div id="palette-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="palette-title">
+    <div
+      id="palette-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="palette-title"
+    >
       <div class="modal-content" data-sketch="card">
         <h2 id="palette-title" class="modal-title">Aller à…</h2>
         <span class="field" data-sketch="input">

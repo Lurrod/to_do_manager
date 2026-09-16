@@ -61,7 +61,10 @@ export const initFilters = ({ getState, setState, refresh }) => {
       // on quitte l'horizon plutôt que de le laisser mentir
       const due = getState().due === 'overdue' && status !== 'active' ? 'all' : getState().due;
       if (due !== getState().due) {
-        activatePill(duePills, duePills.find((p) => p.dataset.due === due));
+        activatePill(
+          duePills,
+          duePills.find((p) => p.dataset.due === due)
+        );
       }
 
       setState({ status, due });
@@ -78,7 +81,10 @@ export const initFilters = ({ getState, setState, refresh }) => {
       // chose, et la rangée « Statut » doit dire la vérité sur ce qui est filtré
       const status = due === 'overdue' ? 'active' : getState().status;
       if (status !== getState().status) {
-        activatePill(filterPills, filterPills.find((p) => p.dataset.filter === status));
+        activatePill(
+          filterPills,
+          filterPills.find((p) => p.dataset.filter === status)
+        );
       }
 
       setState({ due, status });

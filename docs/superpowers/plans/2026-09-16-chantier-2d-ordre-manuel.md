@@ -45,6 +45,7 @@ de leur parent, déjà rendu par `GET /tasks/:id/children`.
 ## Task 1 : le calcul du rang
 
 **Files:**
+
 - Create: `lib/ordering.js`
 - Create: `test/server/ordering.test.js`
 
@@ -185,6 +186,7 @@ git commit -m "feat: calcul de rang par indexation fractionnaire"
 ## Task 2 : le tri manuel et la route de déplacement
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -261,7 +263,9 @@ describe('Ordre manuel', () => {
     const [, , c] = await trois();
     const fantome = new mongoose.Types.ObjectId().toString();
 
-    const res = await request(app).patch(`/tasks/${c}/order`).send({ before: fantome, after: null });
+    const res = await request(app)
+      .patch(`/tasks/${c}/order`)
+      .send({ before: fantome, after: null });
 
     expect(res.status).toBe(400);
   });
@@ -269,9 +273,7 @@ describe('Ordre manuel', () => {
   test('l’intervalle épuisé déclenche une renumérotation, et l’ordre est conservé', async () => {
     const [a, b, c] = await trois();
     // on colle A et B à un cheveu l'un de l'autre
-    await mongoose.connection
-      .collection('tasks')
-      .updateOne({ title: 'A' }, { $set: { order: 1 } });
+    await mongoose.connection.collection('tasks').updateOne({ title: 'A' }, { $set: { order: 1 } });
     await mongoose.connection
       .collection('tasks')
       .updateOne({ title: 'B' }, { $set: { order: 1 + 1e-9 } });
@@ -289,7 +291,9 @@ describe('Ordre manuel', () => {
   test('déplacer une tâche qui n’existe pas répond 404', async () => {
     const fantome = new mongoose.Types.ObjectId().toString();
 
-    const res = await request(app).patch(`/tasks/${fantome}/order`).send({ before: null, after: null });
+    const res = await request(app)
+      .patch(`/tasks/${fantome}/order`)
+      .send({ before: null, after: null });
 
     expect(res.status).toBe(404);
   });
@@ -399,6 +403,7 @@ git commit -m "feat: tri manuel et deplacement d'une tache"
 ## Task 3 : le glisser-déposer
 
 **Files:**
+
 - Modify: `public/js/api.js`, `public/js/app.js`, `public/index.html`, `public/css/components.css`
 - Test: `test/ui/app.test.js`
 
@@ -407,7 +412,7 @@ git commit -m "feat: tri manuel et deplacement d'une tache"
 Dans `public/index.html`, dans le `<select id="sort-select">`, après les options existantes :
 
 ```html
-              <option value="manual">Tri : manuel</option>
+<option value="manual">Tri : manuel</option>
 ```
 
 - [ ] **Step 2 : écrire le test qui échoue**
@@ -481,9 +486,9 @@ describe('glisser-déposer', () => {
 Le faux serveur doit accepter `PATCH` : dans `mutate`, ajouter avant le `return {}` final :
 
 ```js
-  if (method === 'PATCH' && url.endsWith('/order')) {
-    return { message: 'ordre mis à jour' };
-  }
+if (method === 'PATCH' && url.endsWith('/order')) {
+  return { message: 'ordre mis à jour' };
+}
 ```
 
 - [ ] **Step 3 : lancer les tests pour vérifier qu'ils échouent**
@@ -529,9 +534,9 @@ export const moveTask = (id, voisines) =>
 Dans `public/js/app.js`, dans la construction d'une ligne, poser l'attribut selon le tri :
 
 ```js
-  // réordonner à la main une liste triée par priorité produirait un ordre
-  // que le tri réécraserait au prochain chargement
-  const saisissable = state.sort === 'manual';
+// réordonner à la main une liste triée par priorité produirait un ordre
+// que le tri réécraserait au prochain chargement
+const saisissable = state.sort === 'manual';
 ```
 
 et sur l'élément de ligne : `draggable="${saisissable}"`.
@@ -619,7 +624,7 @@ git commit -m "feat: reordonner les taches au glisser-deposer"
 ```
 
 ```markdown
-| `PATCH`  | `/tasks/:id/order`        | Déplace une tâche entre deux voisines           |
+| `PATCH` | `/tasks/:id/order` | Déplace une tâche entre deux voisines |
 ```
 
 - [ ] **Step 2 : committer**

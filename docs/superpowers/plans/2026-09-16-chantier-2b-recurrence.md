@@ -18,17 +18,17 @@ Aucune dépendance nouvelle. Le champ `recurrence` est déjà en base (migration
 
 ## Structure des fichiers
 
-| Fichier | Rôle | Chantier 2b |
-|---------|------|-------------|
-| `lib/recurrence.js` | Calcul de la date suivante — **fonction pure** | **Créé** |
-| `server.js` | API Express | **Modifié** : validation, régénération à la complétion |
-| `public/js/app.js` | Rendu et composeur | **Modifié** : champ de récurrence, pictogramme |
-| `public/index.html` | Balisage | **Modifié** : sélecteur de récurrence |
-| `public/css/components.css` | Styles | **Modifié** : pictogramme |
-| `test/server/recurrence.test.js` | Jest, unitaire, sans base | **Créé** |
-| `test/api/server.test.js` | Jest + Supertest | **Modifié** |
-| `test/ui/app.test.js` | Vitest | **Modifié** |
-| `README.md` | Documentation | **Modifié** |
+| Fichier                          | Rôle                                           | Chantier 2b                                            |
+| -------------------------------- | ---------------------------------------------- | ------------------------------------------------------ |
+| `lib/recurrence.js`              | Calcul de la date suivante — **fonction pure** | **Créé**                                               |
+| `server.js`                      | API Express                                    | **Modifié** : validation, régénération à la complétion |
+| `public/js/app.js`               | Rendu et composeur                             | **Modifié** : champ de récurrence, pictogramme         |
+| `public/index.html`              | Balisage                                       | **Modifié** : sélecteur de récurrence                  |
+| `public/css/components.css`      | Styles                                         | **Modifié** : pictogramme                              |
+| `test/server/recurrence.test.js` | Jest, unitaire, sans base                      | **Créé**                                               |
+| `test/api/server.test.js`        | Jest + Supertest                               | **Modifié**                                            |
+| `test/ui/app.test.js`            | Vitest                                         | **Modifié**                                            |
+| `README.md`                      | Documentation                                  | **Modifié**                                            |
 
 ---
 
@@ -69,6 +69,7 @@ série s'arrête d'elle-même.
 ## Task 1 : le calcul de la date suivante
 
 **Files:**
+
 - Create: `lib/recurrence.js`
 - Create: `test/server/recurrence.test.js`
 
@@ -84,11 +85,17 @@ const d = (iso) => new Date(iso);
 
 describe('nextDueDate', () => {
   test('sans récurrence, il n’y a pas de suite', () => {
-    expect(nextDueDate(d('2026-09-15T09:00:00'), { freq: '', interval: 1, until: null })).toBeNull();
+    expect(
+      nextDueDate(d('2026-09-15T09:00:00'), { freq: '', interval: 1, until: null })
+    ).toBeNull();
   });
 
   test('quotidienne : le lendemain, à la même heure', () => {
-    const suite = nextDueDate(d('2026-09-15T09:30:00'), { freq: 'daily', interval: 1, until: null });
+    const suite = nextDueDate(d('2026-09-15T09:30:00'), {
+      freq: 'daily',
+      interval: 1,
+      until: null,
+    });
     expect(suite.getFullYear()).toBe(2026);
     expect(suite.getMonth()).toBe(8);
     expect(suite.getDate()).toBe(16);
@@ -97,7 +104,11 @@ describe('nextDueDate', () => {
   });
 
   test('l’intervalle saute d’autant de pas', () => {
-    const suite = nextDueDate(d('2026-09-15T09:00:00'), { freq: 'daily', interval: 3, until: null });
+    const suite = nextDueDate(d('2026-09-15T09:00:00'), {
+      freq: 'daily',
+      interval: 3,
+      until: null,
+    });
     expect(suite.getDate()).toBe(18);
   });
 
@@ -109,20 +120,32 @@ describe('nextDueDate', () => {
   });
 
   test('mensuelle : le même quantième le mois suivant', () => {
-    const suite = nextDueDate(d('2026-09-15T09:00:00'), { freq: 'monthly', interval: 1, until: null });
+    const suite = nextDueDate(d('2026-09-15T09:00:00'), {
+      freq: 'monthly',
+      interval: 1,
+      until: null,
+    });
     expect(suite.getMonth()).toBe(9);
     expect(suite.getDate()).toBe(15);
   });
 
   test('mensuelle depuis un 31 : rabattue sur la fin du mois visé, pas débordée', () => {
     // sans garde, setMonth ferait glisser le 31 janvier au 3 mars
-    const suite = nextDueDate(d('2026-01-31T09:00:00'), { freq: 'monthly', interval: 1, until: null });
+    const suite = nextDueDate(d('2026-01-31T09:00:00'), {
+      freq: 'monthly',
+      interval: 1,
+      until: null,
+    });
     expect(suite.getMonth()).toBe(1);
     expect(suite.getDate()).toBe(28);
   });
 
   test('mensuelle depuis un 31 vers un mois de 30 jours', () => {
-    const suite = nextDueDate(d('2026-08-31T09:00:00'), { freq: 'monthly', interval: 1, until: null });
+    const suite = nextDueDate(d('2026-08-31T09:00:00'), {
+      freq: 'monthly',
+      interval: 1,
+      until: null,
+    });
     expect(suite.getMonth()).toBe(8);
     expect(suite.getDate()).toBe(30);
   });
@@ -150,7 +173,9 @@ describe('nextDueDate', () => {
   });
 
   test('une fréquence inconnue ne produit rien plutôt qu’une date fausse', () => {
-    expect(nextDueDate(d('2026-09-15T09:00:00'), { freq: 'yearly', interval: 1, until: null })).toBeNull();
+    expect(
+      nextDueDate(d('2026-09-15T09:00:00'), { freq: 'yearly', interval: 1, until: null })
+    ).toBeNull();
   });
 });
 ```
@@ -239,6 +264,7 @@ git commit -m "feat: calcul de l'echeance suivante d'une tache recurrente"
 ## Task 2 : une récurrence exige une échéance
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -280,7 +306,11 @@ describe('Récurrence', () => {
   test('retirer l’échéance d’une tâche récurrente est refusé', async () => {
     const creee = await request(app)
       .post('/tasks')
-      .send({ title: 'Récurrente', dueDate: dans(1), recurrence: { freq: 'daily', interval: 1, until: null } });
+      .send({
+        title: 'Récurrente',
+        dueDate: dans(1),
+        recurrence: { freq: 'daily', interval: 1, until: null },
+      });
 
     const res = await request(app).put(`/tasks/${creee.body._id}`).send({ dueDate: null });
 
@@ -291,7 +321,11 @@ describe('Récurrence', () => {
   test('une fréquence inconnue est refusée', async () => {
     const res = await request(app)
       .post('/tasks')
-      .send({ title: 'Bizarre', dueDate: dans(1), recurrence: { freq: 'yearly', interval: 1, until: null } });
+      .send({
+        title: 'Bizarre',
+        dueDate: dans(1),
+        recurrence: { freq: 'yearly', interval: 1, until: null },
+      });
 
     expect(res.status).toBe(400);
   });
@@ -344,20 +378,20 @@ const recurrenceInvalide = (champsApres) => {
 Dans `POST /tasks`, après le contrôle de parentage :
 
 ```js
-    const refusRecurrence = recurrenceInvalide(champs);
-    if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
+const refusRecurrence = recurrenceInvalide(champs);
+if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
 ```
 
 Dans `PUT /tasks/:id`, après le contrôle de parentage :
 
 ```js
-    // le contrôle porte sur l'état résultant, pas sur la seule modification :
-    // retirer l'échéance d'une tâche déjà récurrente la laisserait sans ancrage
-    const avant = await Task.findOne({ _id: req.params.id, deletedAt: null }).lean();
-    if (!avant) return res.status(404).json({ error: 'Tâche non trouvée' });
+// le contrôle porte sur l'état résultant, pas sur la seule modification :
+// retirer l'échéance d'une tâche déjà récurrente la laisserait sans ancrage
+const avant = await Task.findOne({ _id: req.params.id, deletedAt: null }).lean();
+if (!avant) return res.status(404).json({ error: 'Tâche non trouvée' });
 
-    const refusRecurrence = recurrenceInvalide({ ...avant, ...champs });
-    if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
+const refusRecurrence = recurrenceInvalide({ ...avant, ...champs });
+if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -378,6 +412,7 @@ git commit -m "feat: une recurrence exige une echeance"
 ## Task 3 : cocher une récurrente crée la suivante
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -386,115 +421,113 @@ git commit -m "feat: une recurrence exige une echeance"
 Ajouter **dans** le `describe('Récurrence', …)` :
 
 ```js
-  /** Crée une tâche récurrente et renvoie le corps de la réponse. */
-  const recurrente = async (extra = {}) => {
-    const res = await request(app)
-      .post('/tasks')
-      .send({
-        title: 'Sortir les poubelles',
-        dueDate: dans(1),
-        recurrence: { freq: 'weekly', interval: 1, until: null },
-        ...extra,
-      });
-    return res.body;
-  };
-
-  test('cocher une récurrente crée la suivante', async () => {
-    const tache = await recurrente();
-
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
-
-    const liste = await request(app).get('/tasks?limit=50&status=active');
-    const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
-    expect(suivante).toBeDefined();
-    expect(suivante._id).not.toBe(tache._id);
-    expect(suivante.completed).toBe(false);
-  });
-
-  test('la suivante est calée sur l’échéance précédente, pas sur aujourd’hui', async () => {
-    // échéance il y a trois jours : cochée en retard
-    const tache = await recurrente({ dueDate: dans(-3) });
-
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
-
-    const liste = await request(app).get('/tasks?limit=50&status=active');
-    const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
-    const attendue = new Date(tache.dueDate);
-    attendue.setDate(attendue.getDate() + 7);
-    expect(new Date(suivante.dueDate).toISOString()).toBe(attendue.toISOString());
-  });
-
-  test('l’occurrence cochée reste en place, cochée', async () => {
-    const tache = await recurrente();
-
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
-
-    const ancienne = await request(app).get(`/tasks/${tache._id}`);
-    expect(ancienne.body.completed).toBe(true);
-    expect(ancienne.body.recurrence.freq).toBe('weekly');
-  });
-
-  test('la suivante reprend la récurrence à l’identique', async () => {
-    const tache = await recurrente({ recurrence: { freq: 'daily', interval: 3, until: null } });
-
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
-
-    const liste = await request(app).get('/tasks?limit=50&status=active');
-    const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
-    expect(suivante.recurrence.freq).toBe('daily');
-    expect(suivante.recurrence.interval).toBe(3);
-  });
-
-  test('une récurrence arrivée au bout de `until` ne régénère rien', async () => {
-    const fin = new Date();
-    fin.setDate(fin.getDate() + 2);
-    const tache = await recurrente({
-      recurrence: { freq: 'weekly', interval: 1, until: fin.toISOString() },
+/** Crée une tâche récurrente et renvoie le corps de la réponse. */
+const recurrente = async (extra = {}) => {
+  const res = await request(app)
+    .post('/tasks')
+    .send({
+      title: 'Sortir les poubelles',
+      dueDate: dans(1),
+      recurrence: { freq: 'weekly', interval: 1, until: null },
+      ...extra,
     });
+  return res.body;
+};
 
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+test('cocher une récurrente crée la suivante', async () => {
+  const tache = await recurrente();
 
-    const liste = await request(app).get('/tasks?limit=50&status=active');
-    expect(liste.body.tasks.find((t) => t.title === 'Sortir les poubelles')).toBeUndefined();
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+  const liste = await request(app).get('/tasks?limit=50&status=active');
+  const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
+  expect(suivante).toBeDefined();
+  expect(suivante._id).not.toBe(tache._id);
+  expect(suivante.completed).toBe(false);
+});
+
+test('la suivante est calée sur l’échéance précédente, pas sur aujourd’hui', async () => {
+  // échéance il y a trois jours : cochée en retard
+  const tache = await recurrente({ dueDate: dans(-3) });
+
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+  const liste = await request(app).get('/tasks?limit=50&status=active');
+  const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
+  const attendue = new Date(tache.dueDate);
+  attendue.setDate(attendue.getDate() + 7);
+  expect(new Date(suivante.dueDate).toISOString()).toBe(attendue.toISOString());
+});
+
+test('l’occurrence cochée reste en place, cochée', async () => {
+  const tache = await recurrente();
+
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+  const ancienne = await request(app).get(`/tasks/${tache._id}`);
+  expect(ancienne.body.completed).toBe(true);
+  expect(ancienne.body.recurrence.freq).toBe('weekly');
+});
+
+test('la suivante reprend la récurrence à l’identique', async () => {
+  const tache = await recurrente({ recurrence: { freq: 'daily', interval: 3, until: null } });
+
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+  const liste = await request(app).get('/tasks?limit=50&status=active');
+  const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
+  expect(suivante.recurrence.freq).toBe('daily');
+  expect(suivante.recurrence.interval).toBe(3);
+});
+
+test('une récurrence arrivée au bout de `until` ne régénère rien', async () => {
+  const fin = new Date();
+  fin.setDate(fin.getDate() + 2);
+  const tache = await recurrente({
+    recurrence: { freq: 'weekly', interval: 1, until: fin.toISOString() },
   });
 
-  test('décocher une récurrente ne crée rien', async () => {
-    const tache = await recurrente();
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
 
-    const avant = (await request(app).get('/tasks?limit=50')).body.total;
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: false });
-    const apres = (await request(app).get('/tasks?limit=50')).body.total;
+  const liste = await request(app).get('/tasks?limit=50&status=active');
+  expect(liste.body.tasks.find((t) => t.title === 'Sortir les poubelles')).toBeUndefined();
+});
 
-    expect(apres).toBe(avant);
-  });
+test('décocher une récurrente ne crée rien', async () => {
+  const tache = await recurrente();
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
 
-  test('cocher deux fois la même occurrence ne crée qu’une suivante', async () => {
-    const tache = await recurrente();
+  const avant = (await request(app).get('/tasks?limit=50')).body.total;
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: false });
+  const apres = (await request(app).get('/tasks?limit=50')).body.total;
 
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+  expect(apres).toBe(avant);
+});
 
-    const liste = await request(app).get('/tasks?limit=50');
-    const toutes = liste.body.tasks.filter((t) => t.title === 'Sortir les poubelles');
-    expect(toutes).toHaveLength(2);
-  });
+test('cocher deux fois la même occurrence ne crée qu’une suivante', async () => {
+  const tache = await recurrente();
 
-  test('la suivante reprend les étapes, décochées', async () => {
-    const tache = await recurrente({ title: 'Courses' });
-    const etape = await request(app)
-      .post('/tasks')
-      .send({ title: 'Pain', parentId: tache._id });
-    await request(app).put(`/tasks/${etape.body._id}`).send({ completed: true });
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
 
-    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+  const liste = await request(app).get('/tasks?limit=50');
+  const toutes = liste.body.tasks.filter((t) => t.title === 'Sortir les poubelles');
+  expect(toutes).toHaveLength(2);
+});
 
-    const liste = await request(app).get('/tasks?limit=50&status=active');
-    const suivante = liste.body.tasks.find((t) => t.title === 'Courses');
-    const etapes = await request(app).get(`/tasks/${suivante._id}/children`);
-    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Pain']);
-    expect(etapes.body.tasks[0].completed).toBe(false);
-  });
+test('la suivante reprend les étapes, décochées', async () => {
+  const tache = await recurrente({ title: 'Courses' });
+  const etape = await request(app).post('/tasks').send({ title: 'Pain', parentId: tache._id });
+  await request(app).put(`/tasks/${etape.body._id}`).send({ completed: true });
+
+  await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+  const liste = await request(app).get('/tasks?limit=50&status=active');
+  const suivante = liste.body.tasks.find((t) => t.title === 'Courses');
+  const etapes = await request(app).get(`/tasks/${suivante._id}/children`);
+  expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Pain']);
+  expect(etapes.body.tasks[0].completed).toBe(false);
+});
 ```
 
 - [ ] **Step 2 : lancer les tests pour vérifier qu'ils échouent**
@@ -574,12 +607,12 @@ const regenererRecurrence = async (task) => {
 Dans `PUT /tasks/:id`, après la propagation du cochage aux étapes :
 
 ```js
-    // une tâche récurrente cochée fait naître la suivante tout de suite : un
-    // planificateur supposerait que le processus tourne le jour J, ce qui
-    // n'est pas le cas d'un outil de bureau
-    if (champs.completed === true) {
-      await regenererRecurrence(task);
-    }
+// une tâche récurrente cochée fait naître la suivante tout de suite : un
+// planificateur supposerait que le processus tourne le jour J, ce qui
+// n'est pas le cas d'un outil de bureau
+if (champs.completed === true) {
+  await regenererRecurrence(task);
+}
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -600,6 +633,7 @@ git commit -m "feat: cocher une tache recurrente cree l'occurrence suivante"
 ## Task 4 : la récurrence dans l'interface
 
 **Files:**
+
 - Modify: `public/index.html`, `public/css/components.css`, `public/js/app.js`
 - Test: `test/ui/app.test.js`
 
@@ -610,7 +644,9 @@ Ajouter à `test/ui/app.test.js` :
 ```js
 describe('récurrence', () => {
   test('une tâche récurrente porte un pictogramme', async () => {
-    server.tasks = [task('Poubelles', { recurrence: { freq: 'weekly', interval: 1, until: null } })];
+    server.tasks = [
+      task('Poubelles', { recurrence: { freq: 'weekly', interval: 1, until: null } }),
+    ];
     await boot();
 
     const marque = document.querySelector('.task-recurrence');
@@ -631,7 +667,9 @@ describe('récurrence', () => {
     document.getElementById('task-title').value = 'Poubelles';
     document.getElementById('task-due-date').value = '2026-09-22T09:00';
     document.getElementById('task-recurrence').value = 'weekly';
-    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    document
+      .getElementById('task-form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await settle();
 
     const creation = server.calls.find((c) => c.method === 'POST');
@@ -664,14 +702,14 @@ npm run test:ui -- -t "récurrence"
 Dans `public/index.html`, dans `.composer-row`, après le sélecteur de priorité :
 
 ```html
-            <span class="field" data-sketch="select">
-              <select id="task-recurrence" aria-label="Récurrence" disabled>
-                <option value="">Ne se répète pas</option>
-                <option value="daily">Chaque jour</option>
-                <option value="weekly">Chaque semaine</option>
-                <option value="monthly">Chaque mois</option>
-              </select>
-            </span>
+<span class="field" data-sketch="select">
+  <select id="task-recurrence" aria-label="Récurrence" disabled>
+    <option value="">Ne se répète pas</option>
+    <option value="daily">Chaque jour</option>
+    <option value="weekly">Chaque semaine</option>
+    <option value="monthly">Chaque mois</option>
+  </select>
+</span>
 ```
 
 - [ ] **Step 3b : ajouter le style**
@@ -746,8 +784,8 @@ syncRecurrenceEnabled();
 6. Après une création réussie, remettre le champ à zéro là où les autres le sont :
 
 ```js
-  taskRecurrenceInput.value = '';
-  syncRecurrenceEnabled();
+taskRecurrenceInput.value = '';
+syncRecurrenceEnabled();
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -778,6 +816,7 @@ git commit -m "feat: choisir et voir la recurrence d'une tache"
 ## Task 5 : documenter
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1 : ajouter la fonctionnalité**

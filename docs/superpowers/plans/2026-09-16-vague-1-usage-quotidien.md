@@ -14,17 +14,17 @@
 
 ## Structure des fichiers
 
-| Fichier | Rôle | Vague 1 |
-|---------|------|---------|
-| `server.js` | API Express | **Modifié** : helpers de date, `dueClause`, `buildFilter`, `/tasks/stats`, `GET /tasks/trash`, `DELETE /tasks/:id/purge` |
-| `public/js/parse.js` | Saisie rapide en langage naturel — **module pur** | **Créé** |
-| `public/js/app.js` | État, rendu, événements | **Modifié** : `state.due`, onglets, aperçu de saisie, corbeille, raccourcis |
-| `public/js/api.js` | Client HTTP | **Modifié** : `listTrash`, `purgeTask` |
-| `public/index.html` | Balisage | **Modifié** : panneau Échéance, aperçu, modales corbeille et palette |
-| `public/css/components.css` | Styles | **Modifié** : badge, aperçu, corbeille, palette |
-| `test/api/server.test.js` | Jest + Supertest | **Modifié** : filtre `due`, stats, corbeille |
-| `test/ui/parse.test.js` | Vitest | **Créé** |
-| `test/ui/app.test.js` | Vitest + happy-dom | **Modifié** : onglets, saisie rapide, corbeille, raccourcis |
+| Fichier                     | Rôle                                              | Vague 1                                                                                                                  |
+| --------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `server.js`                 | API Express                                       | **Modifié** : helpers de date, `dueClause`, `buildFilter`, `/tasks/stats`, `GET /tasks/trash`, `DELETE /tasks/:id/purge` |
+| `public/js/parse.js`        | Saisie rapide en langage naturel — **module pur** | **Créé**                                                                                                                 |
+| `public/js/app.js`          | État, rendu, événements                           | **Modifié** : `state.due`, onglets, aperçu de saisie, corbeille, raccourcis                                              |
+| `public/js/api.js`          | Client HTTP                                       | **Modifié** : `listTrash`, `purgeTask`                                                                                   |
+| `public/index.html`         | Balisage                                          | **Modifié** : panneau Échéance, aperçu, modales corbeille et palette                                                     |
+| `public/css/components.css` | Styles                                            | **Modifié** : badge, aperçu, corbeille, palette                                                                          |
+| `test/api/server.test.js`   | Jest + Supertest                                  | **Modifié** : filtre `due`, stats, corbeille                                                                             |
+| `test/ui/parse.test.js`     | Vitest                                            | **Créé**                                                                                                                 |
+| `test/ui/app.test.js`       | Vitest + happy-dom                                | **Modifié** : onglets, saisie rapide, corbeille, raccourcis                                                              |
 
 `parse.js` est un fichier séparé — et pas une fonction de plus dans `util.js` — parce qu'il est
 le seul morceau de logique métier du client : isolé, il se teste sans DOM et se relit d'un bloc.
@@ -34,6 +34,7 @@ le seul morceau de logique métier du client : isolé, il se teste sans DOM et s
 ## Task 1 : filtre temporel `due` côté serveur
 
 **Files:**
+
 - Modify: `server.js:146-155` (après le helper `toInt`) et `server.js:200-224` (`buildFilter`)
 - Test: `test/api/server.test.js`
 
@@ -43,64 +44,78 @@ Ajouter ce bloc à la fin de `test/api/server.test.js`, à l'intérieur du `desc
 existant (avant sa dernière accolade fermante) :
 
 ```js
-  describe('GET /tasks — filtre temporel', () => {
-    /** Échéance à J+offset, midi, pour rester loin des bornes de minuit. */
-    const at = (offsetDays) => {
-      const d = new Date();
-      d.setHours(12, 0, 0, 0);
-      d.setDate(d.getDate() + offsetDays);
-      return d.toISOString();
-    };
+describe('GET /tasks — filtre temporel', () => {
+  /** Échéance à J+offset, midi, pour rester loin des bornes de minuit. */
+  const at = (offsetDays) => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString();
+  };
 
-    beforeEach(async () => {
-      await request(app).post('/tasks').send({ title: 'hier', dueDate: at(-1) });
-      await request(app).post('/tasks').send({ title: 'aujourdhui', dueDate: at(0) });
-      await request(app).post('/tasks').send({ title: 'dans3j', dueDate: at(3) });
-      await request(app).post('/tasks').send({ title: 'dans30j', dueDate: at(30) });
-      await request(app).post('/tasks').send({ title: 'sansdate' });
-    });
-
-    const titlesFor = async (query) => {
-      const res = await request(app).get(`/tasks?limit=100&${query}`);
-      expect(res.status).toBe(200);
-      return res.body.tasks.map((t) => t.title).sort();
-    };
-
-    test('due=overdue ne renvoie que les échéances dépassées', async () => {
-      expect(await titlesFor('due=overdue')).toEqual(['hier']);
-    });
-
-    test('due=today inclut le retard et le jour même', async () => {
-      expect(await titlesFor('due=today')).toEqual(['aujourdhui', 'hier']);
-    });
-
-    test('due=week couvre sept jours, retard inclus', async () => {
-      expect(await titlesFor('due=week')).toEqual(['aujourdhui', 'dans3j', 'hier']);
-    });
-
-    test('due=none ne renvoie que les tâches sans échéance', async () => {
-      expect(await titlesFor('due=none')).toEqual(['sansdate']);
-    });
-
-    test('une valeur inconnue de due est ignorée', async () => {
-      expect(await titlesFor('due=nimportequoi')).toHaveLength(5);
-    });
-
-    test('un opérateur Mongo injecté dans due est ignoré', async () => {
-      expect(await titlesFor('due[$ne]=null')).toHaveLength(5);
-    });
-
-    test('due se combine avec le statut et la recherche', async () => {
-      // chaque leurre n'est écarté que par un seul des trois filtres : si l'un
-      // d'eux cesse d'agir, un intrus apparaît et le test tombe
-      await request(app).post('/tasks').send({ title: 'hier futur', dueDate: at(30) });
-      await request(app).post('/tasks').send({ title: 'course', dueDate: at(-1) });
-      const fini = await request(app).post('/tasks').send({ title: 'hier fini', dueDate: at(-1) });
-      await request(app).put(`/tasks/${fini.body._id}`).send({ completed: true });
-
-      expect(await titlesFor('due=overdue&status=active&q=hier')).toEqual(['hier']);
-    });
+  beforeEach(async () => {
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'hier', dueDate: at(-1) });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'aujourdhui', dueDate: at(0) });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'dans3j', dueDate: at(3) });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'dans30j', dueDate: at(30) });
+    await request(app).post('/tasks').send({ title: 'sansdate' });
   });
+
+  const titlesFor = async (query) => {
+    const res = await request(app).get(`/tasks?limit=100&${query}`);
+    expect(res.status).toBe(200);
+    return res.body.tasks.map((t) => t.title).sort();
+  };
+
+  test('due=overdue ne renvoie que les échéances dépassées', async () => {
+    expect(await titlesFor('due=overdue')).toEqual(['hier']);
+  });
+
+  test('due=today inclut le retard et le jour même', async () => {
+    expect(await titlesFor('due=today')).toEqual(['aujourdhui', 'hier']);
+  });
+
+  test('due=week couvre sept jours, retard inclus', async () => {
+    expect(await titlesFor('due=week')).toEqual(['aujourdhui', 'dans3j', 'hier']);
+  });
+
+  test('due=none ne renvoie que les tâches sans échéance', async () => {
+    expect(await titlesFor('due=none')).toEqual(['sansdate']);
+  });
+
+  test('une valeur inconnue de due est ignorée', async () => {
+    expect(await titlesFor('due=nimportequoi')).toHaveLength(5);
+  });
+
+  test('un opérateur Mongo injecté dans due est ignoré', async () => {
+    expect(await titlesFor('due[$ne]=null')).toHaveLength(5);
+  });
+
+  test('due se combine avec le statut et la recherche', async () => {
+    // chaque leurre n'est écarté que par un seul des trois filtres : si l'un
+    // d'eux cesse d'agir, un intrus apparaît et le test tombe
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'hier futur', dueDate: at(30) });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'course', dueDate: at(-1) });
+    const fini = await request(app)
+      .post('/tasks')
+      .send({ title: 'hier fini', dueDate: at(-1) });
+    await request(app).put(`/tasks/${fini.body._id}`).send({ completed: true });
+
+    expect(await titlesFor('due=overdue&status=active&q=hier')).toEqual(['hier']);
+  });
+});
 ```
 
 - [ ] **Step 2 : lancer le test pour vérifier qu'il échoue**
@@ -151,9 +166,9 @@ const dueClause = (due, now = new Date()) => {
 Puis dans `buildFilter`, après le bloc `category` et avant le bloc `term` :
 
 ```js
-  // asString neutralise ?due[$ne]=null : un objet devient chaîne vide, donc aucun filtre
-  const due = dueClause(asString(query.due, 16));
-  if (due) Object.assign(filter, due);
+// asString neutralise ?due[$ne]=null : un objet devient chaîne vide, donc aucun filtre
+const due = dueClause(asString(query.due, 16));
+if (due) Object.assign(filter, due);
 ```
 
 - [ ] **Step 4 : lancer le test pour vérifier qu'il passe**
@@ -176,6 +191,7 @@ git commit -m "feat: filtre temporel due sur GET /tasks"
 ## Task 2 : compteur `overdue` dans `/tasks/stats`
 
 **Files:**
+
 - Modify: `server.js` (route `GET /tasks/stats`, et le commentaire de `buildFilter`)
 - Test: `test/api/server.test.js`
 
@@ -198,27 +214,27 @@ par
 Ajouter dans le même `describe('Tasks API', …)` :
 
 ```js
-  test('GET /tasks/stats compte les tâches en retard non terminées', async () => {
-    const past = new Date();
-    past.setDate(past.getDate() - 2);
-    const future = new Date();
-    future.setDate(future.getDate() + 2);
+test('GET /tasks/stats compte les tâches en retard non terminées', async () => {
+  const past = new Date();
+  past.setDate(past.getDate() - 2);
+  const future = new Date();
+  future.setDate(future.getDate() + 2);
 
-    await request(app).post('/tasks').send({ title: 'retard', dueDate: past.toISOString() });
-    await request(app).post('/tasks').send({ title: 'a venir', dueDate: future.toISOString() });
-    await request(app).post('/tasks').send({ title: 'sans date' });
+  await request(app).post('/tasks').send({ title: 'retard', dueDate: past.toISOString() });
+  await request(app).post('/tasks').send({ title: 'a venir', dueDate: future.toISOString() });
+  await request(app).post('/tasks').send({ title: 'sans date' });
 
-    const done = await request(app)
-      .post('/tasks')
-      .send({ title: 'retard mais fini', dueDate: past.toISOString() });
-    await request(app).put(`/tasks/${done.body._id}`).send({ completed: true });
+  const done = await request(app)
+    .post('/tasks')
+    .send({ title: 'retard mais fini', dueDate: past.toISOString() });
+  await request(app).put(`/tasks/${done.body._id}`).send({ completed: true });
 
-    const res = await request(app).get('/tasks/stats');
-    expect(res.status).toBe(200);
-    expect(res.body.total).toBe(4);
-    // la tâche terminée ne compte pas : elle n'est plus un rappel
-    expect(res.body.overdue).toBe(1);
-  });
+  const res = await request(app).get('/tasks/stats');
+  expect(res.status).toBe(200);
+  expect(res.body.total).toBe(4);
+  // la tâche terminée ne compte pas : elle n'est plus un rappel
+  expect(res.body.overdue).toBe(1);
+});
 ```
 
 - [ ] **Step 2 : lancer le test pour vérifier qu'il échoue**
@@ -234,25 +250,25 @@ Attendu : ÉCHEC avec `expect(received).toBe(expected) // Expected: 1, Received:
 Dans `server.js`, route `GET /tasks/stats`, remplacer le `Promise.all` et la réponse par :
 
 ```js
-    const [total, done, overdue, byCategory] = await Promise.all([
-      Task.countDocuments(base),
-      Task.countDocuments({ ...base, completed: true }),
-      // une tâche terminée n'est plus un rappel, même si son échéance est passée
-      Task.countDocuments({
-        ...base,
-        completed: false,
-        dueDate: { $ne: null, $lt: startOfDay(new Date()) },
-      }),
-      Task.aggregate([{ $match: base }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
-    ]);
+const [total, done, overdue, byCategory] = await Promise.all([
+  Task.countDocuments(base),
+  Task.countDocuments({ ...base, completed: true }),
+  // une tâche terminée n'est plus un rappel, même si son échéance est passée
+  Task.countDocuments({
+    ...base,
+    completed: false,
+    dueDate: { $ne: null, $lt: startOfDay(new Date()) },
+  }),
+  Task.aggregate([{ $match: base }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
+]);
 
-    res.status(200).json({
-      total,
-      done,
-      active: total - done,
-      overdue,
-      byCategory: byCategory.map(({ _id, count }) => ({ category: _id || '', count })),
-    });
+res.status(200).json({
+  total,
+  done,
+  active: total - done,
+  overdue,
+  byCategory: byCategory.map(({ _id, count }) => ({ category: _id || '', count })),
+});
 ```
 
 - [ ] **Step 4 : lancer le test pour vérifier qu'il passe**
@@ -275,6 +291,7 @@ git commit -m "feat: compteur des tâches en retard dans /tasks/stats"
 ## Task 3 : onglets temporels dans l'interface
 
 **Files:**
+
 - Modify: `public/index.html` (panneau « Statut », y ajouter un panneau « Échéance »)
 - Modify: `public/css/components.css` (après le bloc `.pill`, ligne 115)
 - Modify: `public/js/app.js` (sélecteurs, `state`, `queryFor`, `updateCounters`, `EMPTY_COPY`, événements)
@@ -286,7 +303,10 @@ Ajouter à la fin de `test/ui/app.test.js` :
 
 ```js
 describe('onglets temporels', () => {
-  const lastListUrl = () => calls().filter((u) => u.startsWith('/tasks?')).pop();
+  const lastListUrl = () =>
+    calls()
+      .filter((u) => u.startsWith('/tasks?'))
+      .pop();
 
   test('la vue par défaut ne contraint pas l’échéance', async () => {
     await boot();
@@ -333,9 +353,9 @@ describe('onglets temporels', () => {
     const params = new URL(lastListUrl(), 'http://test').searchParams;
     expect(params.get('status')).toBe('done');
     expect(params.get('due')).toBe('all');
-    expect(document.querySelector('.due-pill[data-due="all"]').classList.contains('is-active')).toBe(
-      true
-    );
+    expect(
+      document.querySelector('.due-pill[data-due="all"]').classList.contains('is-active')
+    ).toBe(true);
   });
 
   test('revenir sur « à faire » ne quitte pas l’horizon : rien ne se contredit', async () => {
@@ -357,12 +377,12 @@ describe('onglets temporels', () => {
     document.querySelector('.due-pill[data-due="today"]').click();
     await settle();
 
-    expect(
-      document.querySelector('.due-pill[data-due="today"]').getAttribute('aria-pressed')
-    ).toBe('true');
-    expect(
-      document.querySelector('.due-pill[data-due="all"]').getAttribute('aria-pressed')
-    ).toBe('false');
+    expect(document.querySelector('.due-pill[data-due="today"]').getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    expect(document.querySelector('.due-pill[data-due="all"]').getAttribute('aria-pressed')).toBe(
+      'false'
+    );
   });
 
   test('le badge nomme ce qu’il compte', async () => {
@@ -442,31 +462,43 @@ Dans `public/index.html`, juste après la `<section>` du panneau « Statut » (c
 `role="group" aria-label="Filtrer par statut"`) et avant le `<p class="margin-note">` :
 
 ```html
-        <section class="panel" data-sketch="card">
-          <h2 class="panel-title">Échéance</h2>
-          <div class="filters" role="group" aria-label="Filtrer par échéance">
-            <button class="btn pill due-pill is-active" data-due="all" data-sketch="button" data-variant="solid" aria-pressed="true">
-              Tout
-            </button>
-            <button class="btn pill due-pill" data-due="overdue" data-sketch="button" aria-pressed="false">
-              En retard <b class="due-badge" id="due-overdue-count" hidden>0</b>
-            </button>
-            <button class="btn pill due-pill" data-due="today" data-sketch="button" aria-pressed="false">Aujourd'hui</button>
-            <button class="btn pill due-pill" data-due="week" data-sketch="button" aria-pressed="false">Semaine</button>
-            <button class="btn pill due-pill" data-due="none" data-sketch="button" aria-pressed="false">Sans date</button>
-          </div>
-        </section>
+<section class="panel" data-sketch="card">
+  <h2 class="panel-title">Échéance</h2>
+  <div class="filters" role="group" aria-label="Filtrer par échéance">
+    <button
+      class="btn pill due-pill is-active"
+      data-due="all"
+      data-sketch="button"
+      data-variant="solid"
+      aria-pressed="true"
+    >
+      Tout
+    </button>
+    <button class="btn pill due-pill" data-due="overdue" data-sketch="button" aria-pressed="false">
+      En retard <b class="due-badge" id="due-overdue-count" hidden>0</b>
+    </button>
+    <button class="btn pill due-pill" data-due="today" data-sketch="button" aria-pressed="false">
+      Aujourd'hui
+    </button>
+    <button class="btn pill due-pill" data-due="week" data-sketch="button" aria-pressed="false">
+      Semaine
+    </button>
+    <button class="btn pill due-pill" data-due="none" data-sketch="button" aria-pressed="false">
+      Sans date
+    </button>
+  </div>
+</section>
 ```
 
 Remplacer aussi la note de marge pour annoncer les nouveaux raccourcis (ils arrivent en Task 8,
 la note peut être posée dès maintenant) :
 
 ```html
-        <p class="margin-note">
-          <span class="kbd">↵</span> ajouter · <span class="kbd">/</span> chercher ·
-          <span class="kbd">Ctrl</span>+<span class="kbd">K</span> palette ·
-          <span class="kbd">Esc</span> fermer
-        </p>
+<p class="margin-note">
+  <span class="kbd">↵</span> ajouter · <span class="kbd">/</span> chercher ·
+  <span class="kbd">Ctrl</span>+<span class="kbd">K</span> palette ·
+  <span class="kbd">Esc</span> fermer
+</p>
 ```
 
 - [ ] **Step 3b : ajouter le style**
@@ -520,28 +552,28 @@ const dueOverdueCount = $('due-overdue-count');
 5. Dans `updateEmptyState`, remplacer le calcul de `key` par :
 
 ```js
-  let key = 'blank';
-  if (state.query) key = 'search';
-  else if (state.due !== 'all') key = 'horizon';
-  else if (state.status === 'done') key = 'done';
-  else if (state.status === 'active' && state.stats.total > 0) key = 'cleared';
-  else if (state.category !== 'all') key = 'category';
+let key = 'blank';
+if (state.query) key = 'search';
+else if (state.due !== 'all') key = 'horizon';
+else if (state.status === 'done') key = 'done';
+else if (state.status === 'active' && state.stats.total > 0) key = 'cleared';
+else if (state.category !== 'all') key = 'category';
 ```
 
 6. À la fin de `updateCounters`, avant la fermeture de la fonction, ajouter :
 
 ```js
-  const overdue = state.stats.overdue || 0;
-  dueOverdueCount.textContent = overdue;
-  dueOverdueCount.hidden = overdue === 0;
+const overdue = state.stats.overdue || 0;
+dueOverdueCount.textContent = overdue;
+dueOverdueCount.hidden = overdue === 0;
 
-  // sans cela le nom accessible du bouton devient « En retard 3 », un nombre
-  // posé là sans dire de quoi il parle
-  const overduePill = duePills.find((p) => p.dataset.due === 'overdue');
-  overduePill.setAttribute(
-    'aria-label',
-    overdue === 0 ? 'En retard' : `En retard, ${overdue} tâche${overdue > 1 ? 's' : ''}`
-  );
+// sans cela le nom accessible du bouton devient « En retard 3 », un nombre
+// posé là sans dire de quoi il parle
+const overduePill = duePills.find((p) => p.dataset.due === 'overdue');
+overduePill.setAttribute(
+  'aria-label',
+  overdue === 0 ? 'En retard' : `En retard, ${overdue} tâche${overdue > 1 ? 's' : ''}`
+);
 ```
 
 7. Remplacer le bloc `filterPills.forEach(…)` existant par le code ci-dessous, qui factorise le
@@ -587,7 +619,10 @@ filterPills.forEach((pill) => {
     // on quitte l'horizon plutôt que de le laisser mentir
     const due = state.due === 'overdue' && status !== 'active' ? 'all' : state.due;
     if (due !== state.due) {
-      activatePill(duePills, duePills.find((p) => p.dataset.due === due));
+      activatePill(
+        duePills,
+        duePills.find((p) => p.dataset.due === due)
+      );
     }
 
     state = { ...state, status, due };
@@ -604,7 +639,10 @@ duePills.forEach((pill) => {
     // chose, et la rangée « Statut » doit dire la vérité sur ce qui est filtré
     const status = due === 'overdue' ? 'active' : state.status;
     if (status !== state.status) {
-      activatePill(filterPills, filterPills.find((p) => p.dataset.filter === status));
+      activatePill(
+        filterPills,
+        filterPills.find((p) => p.dataset.filter === status)
+      );
     }
 
     state = { ...state, due, status };
@@ -642,6 +680,7 @@ git commit -m "feat: onglets temporels et badge des tâches en retard"
 ## Task 4 : module `parse.js` — saisie rapide en langage naturel
 
 **Files:**
+
 - Create: `public/js/parse.js`
 - Test: `test/ui/parse.test.js`
 
@@ -959,7 +998,8 @@ const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])(?=[\s.,
 const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})(?=[\s.,!?;:]|$)/u;
 const RE_IN = /(^|\s)dans\s+(\d{1,3})\s*(jours?|j|semaines?|sem)\b/iu;
 const RE_RELATIVE = /(^|\s)(apr[èe]s-demain|demain|aujourd['’]?hui|auj)\b/iu;
-const RE_WEEKDAY = /(^|\s)(?:(?:ce|cette)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/iu;
+const RE_WEEKDAY =
+  /(^|\s)(?:(?:ce|cette)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/iu;
 const RE_DATE = /(^|\s)(?:le\s+)?(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/iu;
 // seul « à » introduit une heure : accepter « a » nu ferait de « il y a 3h »
 // une échéance, alors que c'est la tournure la plus banale du français
@@ -1149,6 +1189,7 @@ voulait pas. C'est précisément la raison d'être de l'aperçu — ne jamais de
 ## Task 5 : brancher la saisie rapide sur le composeur
 
 **Files:**
+
 - Modify: `public/index.html` (champ titre du composeur)
 - Modify: `public/css/components.css`
 - Modify: `public/js/app.js` (import, aperçu, soumission)
@@ -1170,8 +1211,7 @@ describe('saisie rapide', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   };
 
-  const posted = () =>
-    server.calls.filter((c) => c.method === 'POST' && c.url === '/tasks').length;
+  const posted = () => server.calls.filter((c) => c.method === 'POST' && c.url === '/tasks').length;
 
   test('l’aperçu montre ce qui a été compris', async () => {
     await boot();
@@ -1238,13 +1278,13 @@ Ce bloc a besoin que le faux serveur retienne le corps des requêtes. Dans le `v
 de `beforeEach`, remplacer la ligne :
 
 ```js
-      server.calls.push({ url, method });
+server.calls.push({ url, method });
 ```
 
 par :
 
 ```js
-      server.calls.push({ url, method, body: options.body ? JSON.parse(options.body) : null });
+server.calls.push({ url, method, body: options.body ? JSON.parse(options.body) : null });
 ```
 
 - [ ] **Step 2 : lancer les tests pour vérifier qu'ils échouent**
@@ -1260,16 +1300,16 @@ Attendu : ÉCHEC — `#quick-preview` est `null`, `TypeError: Cannot read proper
 Dans `public/index.html`, remplacer le champ titre du composeur par :
 
 ```html
-          <span class="field" data-sketch="input">
-            <input
-              type="text"
-              id="task-title"
-              placeholder="Que dois-tu faire ? (ex. Dentiste demain 14h #Santé !haute)"
-              required
-              maxlength="200"
-            />
-          </span>
-          <p class="quick-preview" id="quick-preview" aria-live="polite" hidden></p>
+<span class="field" data-sketch="input">
+  <input
+    type="text"
+    id="task-title"
+    placeholder="Que dois-tu faire ? (ex. Dentiste demain 14h #Santé !haute)"
+    required
+    maxlength="200"
+  />
+</span>
+<p class="quick-preview" id="quick-preview" aria-live="polite" hidden></p>
 ```
 
 Le `maxlength` passe de 120 à 200 : les motifs consommés ne comptent pas dans le titre final,
@@ -1408,6 +1448,7 @@ git commit -m "feat: saisie rapide en langage naturel avec apercu"
 ## Task 6 : corbeille — routes API
 
 **Files:**
+
 - Modify: `server.js` (après la route `GET /tasks/stats`, et après `POST /tasks/:id/restore`)
 - Modify: `public/js/api.js`
 - Test: `test/api/server.test.js`
@@ -1417,71 +1458,71 @@ git commit -m "feat: saisie rapide en langage naturel avec apercu"
 Ajouter dans le `describe('Tasks API', …)` :
 
 ```js
-  describe('corbeille', () => {
-    /** Crée une tâche puis la supprime ; renvoie son identifiant. */
-    const trashed = async (title) => {
-      const created = await request(app).post('/tasks').send({ title });
-      await request(app).delete(`/tasks/${created.body._id}`);
-      return created.body._id;
-    };
+describe('corbeille', () => {
+  /** Crée une tâche puis la supprime ; renvoie son identifiant. */
+  const trashed = async (title) => {
+    const created = await request(app).post('/tasks').send({ title });
+    await request(app).delete(`/tasks/${created.body._id}`);
+    return created.body._id;
+  };
 
-    test('GET /tasks/trash liste les tâches supprimées, la plus récente en tête', async () => {
-      await trashed('premiere');
-      await trashed('seconde');
-      await request(app).post('/tasks').send({ title: 'vivante' });
+  test('GET /tasks/trash liste les tâches supprimées, la plus récente en tête', async () => {
+    await trashed('premiere');
+    await trashed('seconde');
+    await request(app).post('/tasks').send({ title: 'vivante' });
 
-      const res = await request(app).get('/tasks/trash');
-      expect(res.status).toBe(200);
-      expect(res.body.total).toBe(2);
-      expect(res.body.tasks.map((t) => t.title)).toEqual(['seconde', 'premiere']);
-    });
-
-    test('GET /tasks/trash pagine', async () => {
-      await trashed('a');
-      await trashed('b');
-      await trashed('c');
-
-      const res = await request(app).get('/tasks/trash?limit=2&page=2');
-      expect(res.body.totalPages).toBe(2);
-      expect(res.body.currentPage).toBe(2);
-      expect(res.body.tasks).toHaveLength(1);
-    });
-
-    test('« trash » n’est pas confondu avec un identifiant', async () => {
-      const res = await request(app).get('/tasks/trash');
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('tasks');
-    });
-
-    test('DELETE /tasks/:id/purge supprime définitivement', async () => {
-      const id = await trashed('a purger');
-
-      const res = await request(app).delete(`/tasks/${id}/purge`);
-      expect(res.status).toBe(200);
-
-      const after = await request(app).get('/tasks/trash');
-      expect(after.body.total).toBe(0);
-
-      const restore = await request(app).post(`/tasks/${id}/restore`);
-      expect(restore.status).toBe(404);
-    });
-
-    test('purger une tâche vivante est refusé', async () => {
-      const created = await request(app).post('/tasks').send({ title: 'vivante' });
-
-      const res = await request(app).delete(`/tasks/${created.body._id}/purge`);
-      expect(res.status).toBe(404);
-
-      const still = await request(app).get(`/tasks/${created.body._id}`);
-      expect(still.status).toBe(200);
-    });
-
-    test('les tâches en corbeille ne remontent pas dans GET /tasks', async () => {
-      await trashed('supprimee');
-      const res = await request(app).get('/tasks?limit=100');
-      expect(res.body.tasks).toHaveLength(0);
-    });
+    const res = await request(app).get('/tasks/trash');
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(2);
+    expect(res.body.tasks.map((t) => t.title)).toEqual(['seconde', 'premiere']);
   });
+
+  test('GET /tasks/trash pagine', async () => {
+    await trashed('a');
+    await trashed('b');
+    await trashed('c');
+
+    const res = await request(app).get('/tasks/trash?limit=2&page=2');
+    expect(res.body.totalPages).toBe(2);
+    expect(res.body.currentPage).toBe(2);
+    expect(res.body.tasks).toHaveLength(1);
+  });
+
+  test('« trash » n’est pas confondu avec un identifiant', async () => {
+    const res = await request(app).get('/tasks/trash');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('tasks');
+  });
+
+  test('DELETE /tasks/:id/purge supprime définitivement', async () => {
+    const id = await trashed('a purger');
+
+    const res = await request(app).delete(`/tasks/${id}/purge`);
+    expect(res.status).toBe(200);
+
+    const after = await request(app).get('/tasks/trash');
+    expect(after.body.total).toBe(0);
+
+    const restore = await request(app).post(`/tasks/${id}/restore`);
+    expect(restore.status).toBe(404);
+  });
+
+  test('purger une tâche vivante est refusé', async () => {
+    const created = await request(app).post('/tasks').send({ title: 'vivante' });
+
+    const res = await request(app).delete(`/tasks/${created.body._id}/purge`);
+    expect(res.status).toBe(404);
+
+    const still = await request(app).get(`/tasks/${created.body._id}`);
+    expect(still.status).toBe(200);
+  });
+
+  test('les tâches en corbeille ne remontent pas dans GET /tasks', async () => {
+    await trashed('supprimee');
+    const res = await request(app).get('/tasks?limit=100');
+    expect(res.body.tasks).toHaveLength(0);
+  });
+});
 ```
 
 - [ ] **Step 2 : lancer les tests pour vérifier qu'ils échouent**
@@ -1573,6 +1614,7 @@ git commit -m "feat: routes de corbeille (liste et purge definitive)"
 ## Task 7 : corbeille — interface
 
 **Files:**
+
 - Modify: `public/index.html` (bouton dans la barre latérale + modale)
 - Modify: `public/css/components.css`
 - Modify: `public/js/app.js`
@@ -1584,20 +1626,20 @@ Le faux serveur de `test/ui/app.test.js` ne connaît pas encore `/tasks/trash`. 
 ajouter **avant** la ligne `if (url.startsWith('/tasks?'))` :
 
 ```js
-  if (url.startsWith('/tasks/trash')) {
-    const tasks = server.trash.map((entry) => entry.task);
-    return { tasks, total: tasks.length, totalPages: 1, currentPage: 1 };
-  }
+if (url.startsWith('/tasks/trash')) {
+  const tasks = server.trash.map((entry) => entry.task);
+  return { tasks, total: tasks.length, totalPages: 1, currentPage: 1 };
+}
 ```
 
 Et dans `mutate`, avant le bloc `if (method === 'DELETE')` :
 
 ```js
-  if (method === 'DELETE' && url.endsWith('/purge')) {
-    const purged = url.replace('/tasks/', '').replace('/purge', '');
-    server.trash = server.trash.filter((entry) => entry.task._id !== purged);
-    return { message: 'Tâche supprimée définitivement' };
-  }
+if (method === 'DELETE' && url.endsWith('/purge')) {
+  const purged = url.replace('/tasks/', '').replace('/purge', '');
+  server.trash = server.trash.filter((entry) => entry.task._id !== purged);
+  return { message: 'Tâche supprimée définitivement' };
+}
 ```
 
 `idFrom` doit ignorer le suffixe `/purge` — remplacer sa définition par :
@@ -1685,37 +1727,43 @@ Dans `public/index.html`, remplacer le panneau « Statut » pour y glisser le bo
 en pied de panneau — ajouter cette ligne juste avant la fermeture `</section>` du panneau « Statut » :
 
 ```html
-          <button
-            id="open-trash"
-            class="btn trash-open"
-            type="button"
-            data-sketch="button"
-            data-tone="neutral"
-          >
-            Corbeille
-          </button>
+<button
+  id="open-trash"
+  class="btn trash-open"
+  type="button"
+  data-sketch="button"
+  data-tone="neutral"
+>
+  Corbeille
+</button>
 ```
 
 Puis, juste avant `<div class="toast-container" …>`, ajouter la modale :
 
 ```html
-    <div id="trash-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="trash-modal-title">
-      <div class="modal-content modal-content--wide" data-sketch="card">
-        <h2 id="trash-modal-title" class="modal-title">Corbeille</h2>
-        <p class="modal-text">
-          Les tâches supprimées restent ici sept jours, puis disparaissent au démarrage suivant.
-        </p>
+<div
+  id="trash-modal"
+  class="modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="trash-modal-title"
+>
+  <div class="modal-content modal-content--wide" data-sketch="card">
+    <h2 id="trash-modal-title" class="modal-title">Corbeille</h2>
+    <p class="modal-text">
+      Les tâches supprimées restent ici sept jours, puis disparaissent au démarrage suivant.
+    </p>
 
-        <ul id="trash-list" class="trash-list"></ul>
-        <p id="trash-empty" class="modal-text" hidden>La corbeille est vide.</p>
+    <ul id="trash-list" class="trash-list"></ul>
+    <p id="trash-empty" class="modal-text" hidden>La corbeille est vide.</p>
 
-        <div class="modal-actions">
-          <button id="close-trash" class="btn" type="button" data-sketch="button" data-tone="neutral">
-            Fermer
-          </button>
-        </div>
-      </div>
+    <div class="modal-actions">
+      <button id="close-trash" class="btn" type="button" data-sketch="button" data-tone="neutral">
+        Fermer
+      </button>
     </div>
+  </div>
+</div>
 ```
 
 - [ ] **Step 3b : ajouter le style**
@@ -1881,6 +1929,7 @@ git commit -m "feat: ecran corbeille avec restauration et purge confirmee"
 ## Task 8 : raccourcis clavier et palette de commandes
 
 **Files:**
+
 - Modify: `public/index.html` (modale palette)
 - Modify: `public/css/components.css`
 - Modify: `public/js/app.js`
@@ -1964,7 +2013,9 @@ describe('clavier', () => {
     await settle();
 
     expect(document.getElementById('palette-modal').classList.contains('active')).toBe(false);
-    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    const url = calls()
+      .filter((u) => u.startsWith('/tasks?'))
+      .pop();
     expect(new URL(url, 'http://test').searchParams.get('due')).toBe('overdue');
   });
 });
@@ -1983,15 +2034,21 @@ Attendu : ÉCHEC — `press('n')` ne fait rien, `document.activeElement.id` vaut
 Dans `public/index.html`, juste avant `<div class="toast-container" …>` :
 
 ```html
-    <div id="palette-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="palette-title">
-      <div class="modal-content" data-sketch="card">
-        <h2 id="palette-title" class="modal-title">Aller à…</h2>
-        <span class="field" data-sketch="input">
-          <input type="text" id="palette-input" placeholder="Une commande…" autocomplete="off" />
-        </span>
-        <ul id="palette-list" class="palette-list"></ul>
-      </div>
-    </div>
+<div
+  id="palette-modal"
+  class="modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="palette-title"
+>
+  <div class="modal-content" data-sketch="card">
+    <h2 id="palette-title" class="modal-title">Aller à…</h2>
+    <span class="field" data-sketch="input">
+      <input type="text" id="palette-input" placeholder="Une commande…" autocomplete="off" />
+    </span>
+    <ul id="palette-list" class="palette-list"></ul>
+  </div>
+</div>
 ```
 
 - [ ] **Step 3b : ajouter le style**
@@ -2050,8 +2107,8 @@ const paletteList = $('palette-list');
 3. Dans `render()`, juste après `sketchAll(taskList);`, ajouter :
 
 ```js
-  // le curseur clavier survit au rendu tant qu'il reste dans la page
-  applyCursor();
+// le curseur clavier survit au rendu tant qu'il reste dans la page
+applyCursor();
 ```
 
 4. Avant la déclaration de `render`, ajouter :
@@ -2103,9 +2160,7 @@ const selectDue = (due) => {
 
 const renderPalette = () => {
   const needle = paletteInput.value.trim().toLowerCase();
-  const matches = PALETTE_COMMANDS.filter(({ label }) =>
-    label.toLowerCase().includes(needle)
-  );
+  const matches = PALETTE_COMMANDS.filter(({ label }) => label.toLowerCase().includes(needle));
 
   unsketchAll(paletteList);
   paletteList.innerHTML = '';
@@ -2239,6 +2294,7 @@ git commit -m "feat: raccourcis clavier et palette de commandes"
 > juste après, et la task 8 crée alors son module directement.
 
 **Files:**
+
 - Create: `public/js/filters.js`, `public/js/trash.js`
 - Modify: `public/js/app.js`
 - Test: la suite existante, **sans modification**
@@ -2246,10 +2302,10 @@ git commit -m "feat: raccourcis clavier et palette de commandes"
 **Décision — découper par responsabilité, pas par couche.** Deux blocs sortent proprement, et ce
 sont les deux qui sont finis :
 
-| Module | Contenu | Pourquoi il sort seul |
-|--------|---------|------------------------|
-| `filters.js` | `activatePill`, câblage des deux rangées de pastilles, invariant échéance/statut | Un seul sujet, une seule invariante à tenir, aucune dépendance au rendu des tâches |
-| `trash.js` | `renderTrash`, `openTrash`, la confirmation en deux temps, le rattrapage du focus | Ne touche qu'à sa modale ; ne lit jamais `state` |
+| Module       | Contenu                                                                           | Pourquoi il sort seul                                                              |
+| ------------ | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `filters.js` | `activatePill`, câblage des deux rangées de pastilles, invariant échéance/statut  | Un seul sujet, une seule invariante à tenir, aucune dépendance au rendu des tâches |
+| `trash.js`   | `renderTrash`, `openTrash`, la confirmation en deux temps, le rattrapage du focus | Ne touche qu'à sa modale ; ne lit jamais `state`                                   |
 
 `palette.js` ne figure plus ici : la task 8 le crée directement, plutôt que d'écrire son code
 dans `app.js` pour l'en extraire ensuite.
@@ -2300,6 +2356,7 @@ git commit -m "refactor: sortir les filtres et la palette de app.js"
 ## Task 9 : mettre le README à jour
 
 **Files:**
+
 - Modify: `README.md` (sections « Fonctionnalités », « API », « Paramètres de GET /tasks », « Structure »)
 
 - [ ] **Step 1 : ajouter les nouvelles fonctionnalités**
@@ -2322,7 +2379,7 @@ Dans la section « Fonctionnalités », ajouter :
 Ajouter la ligne :
 
 ```markdown
-| `due`      | `all`, `overdue`, `today`, `week`, `none` — horizons emboîtés | `all` |
+| `due` | `all`, `overdue`, `today`, `week`, `none` — horizons emboîtés | `all` |
 ```
 
 - [ ] **Step 3 : compléter le tableau de l'API**
@@ -2330,8 +2387,8 @@ Ajouter la ligne :
 Ajouter les lignes :
 
 ```markdown
-| `GET`    | `/tasks/trash`            | Liste paginée de la corbeille                  |
-| `DELETE` | `/tasks/:id/purge`        | Supprime définitivement (corbeille seulement)  |
+| `GET` | `/tasks/trash` | Liste paginée de la corbeille |
+| `DELETE` | `/tasks/:id/purge` | Supprime définitivement (corbeille seulement) |
 ```
 
 Et préciser, sous le tableau, que `GET /tasks/stats` renvoie désormais `overdue`.

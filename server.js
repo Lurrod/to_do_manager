@@ -52,10 +52,7 @@ app.use((err, req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, 'public')));
 // la lib drawably est servie telle quelle depuis node_modules (ESM, zero build)
-app.use(
-  '/vendor/drawably',
-  express.static(path.join(__dirname, 'node_modules', 'drawably'))
-);
+app.use('/vendor/drawably', express.static(path.join(__dirname, 'node_modules', 'drawably')));
 
 const isRemoteUri = (uri) =>
   typeof uri === 'string' &&
@@ -699,10 +696,7 @@ app.get('/tasks/trash', async (req, res) => {
     const total = await Task.countDocuments(filter);
     const { limit, totalPages, currentPage, skip } = paginate(req.query, total);
 
-    const tasks = await Task.find(filter)
-      .sort({ deletedAt: -1, _id: -1 })
-      .skip(skip)
-      .limit(limit);
+    const tasks = await Task.find(filter).sort({ deletedAt: -1, _id: -1 }).skip(skip).limit(limit);
 
     res.status(200).json({ tasks, total, totalPages, currentPage });
   } catch (error) {
@@ -1095,7 +1089,8 @@ app.post('/import', async (req, res) => {
     const categoryDocs = categories.map((raw) => new Category(raw));
     for (const [index, doc] of taskDocs.entries()) {
       const invalid = doc.validateSync();
-      if (invalid) return res.status(400).json({ error: `Tâche ${index + 1} : ${invalid.message}` });
+      if (invalid)
+        return res.status(400).json({ error: `Tâche ${index + 1} : ${invalid.message}` });
     }
     for (const [index, doc] of categoryDocs.entries()) {
       const invalid = doc.validateSync();
@@ -1144,7 +1139,8 @@ app.post('/import', async (req, res) => {
       // qu'on laisse telle quelle. Une écriture en lot signale ses doublons
       // dans `writeErrors` plutôt que dans un `code` de premier niveau.
       const ignorerDoublons = (e) => {
-        const doublon = e.code === 11000 || (e.writeErrors || []).every((w) => w.err?.code === 11000);
+        const doublon =
+          e.code === 11000 || (e.writeErrors || []).every((w) => w.err?.code === 11000);
         if (!doublon) throw e;
       };
       await Task.insertMany(taskDocs, { ordered: false }).catch(ignorerDoublons);

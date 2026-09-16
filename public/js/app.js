@@ -15,14 +15,7 @@ import { parseQuickEntry } from './parse.js';
 import { resetSteps, toggleSteps } from './steps.js';
 import { initTrash } from './trash.js';
 
-import {
-  progress,
-  resketch,
-  setText,
-  sketchAll,
-  strike,
-  unsketchAll,
-} from './sketch.js';
+import { progress, resketch, setText, sketchAll, strike, unsketchAll } from './sketch.js';
 
 import {
   $,

@@ -6,7 +6,7 @@
 étapes ; la corbeille emporte et rend la famille entière.
 
 **Architecture :** une migration idempotente au démarrage donne aux tâches existantes **tous**
-les champs de la vague 2 *et* celui de la vague 4, en une seule passe. `GET /tasks` ne renvoie
+les champs de la vague 2 _et_ celui de la vague 4, en une seule passe. `GET /tasks` ne renvoie
 plus que les racines, chacune accompagnée du compte de ses étapes, calculé par un `$lookup`
 dans le pipeline d'agrégation qui existe déjà.
 
@@ -24,17 +24,17 @@ documents existants.
 
 ## Structure des fichiers
 
-| Fichier | Rôle | Chantier 2a |
-|---------|------|-------------|
-| `server.js` | API Express | **Modifié** : schéma, migration, `parentId`, `$lookup`, cascade corbeille |
-| `lib/portable.js` | Liste blanche d'import | **Modifié** : les nouveaux champs doivent survivre à un aller-retour |
-| `public/js/app.js` | État, rendu, événements | **Modifié** : affichage et création d'étapes |
-| `public/js/api.js` | Client HTTP | **Modifié** : `listChildren` |
-| `public/index.html` | Balisage | **Modifié** : bloc des étapes dans une tâche |
-| `public/css/components.css` | Styles | **Modifié** : étapes, jauge |
-| `test/api/server.test.js` | Jest + Supertest | **Modifié** |
-| `test/ui/app.test.js` | Vitest | **Modifié** |
-| `README.md` | Documentation | **Modifié** |
+| Fichier                     | Rôle                    | Chantier 2a                                                               |
+| --------------------------- | ----------------------- | ------------------------------------------------------------------------- |
+| `server.js`                 | API Express             | **Modifié** : schéma, migration, `parentId`, `$lookup`, cascade corbeille |
+| `lib/portable.js`           | Liste blanche d'import  | **Modifié** : les nouveaux champs doivent survivre à un aller-retour      |
+| `public/js/app.js`          | État, rendu, événements | **Modifié** : affichage et création d'étapes                              |
+| `public/js/api.js`          | Client HTTP             | **Modifié** : `listChildren`                                              |
+| `public/index.html`         | Balisage                | **Modifié** : bloc des étapes dans une tâche                              |
+| `public/css/components.css` | Styles                  | **Modifié** : étapes, jauge                                               |
+| `test/api/server.test.js`   | Jest + Supertest        | **Modifié**                                                               |
+| `test/ui/app.test.js`       | Vitest                  | **Modifié**                                                               |
+| `README.md`                 | Documentation           | **Modifié**                                                               |
 
 ---
 
@@ -79,6 +79,7 @@ Le refus est explicite : `400`, pas un silence.
 ## Task 1 : migration idempotente au démarrage
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -98,7 +99,9 @@ describe('Migration de schéma', () => {
 
     await migrateSchema();
 
-    const migree = await mongoose.connection.collection('tasks').findOne({ title: 'Ancienne façon' });
+    const migree = await mongoose.connection
+      .collection('tasks')
+      .findOne({ title: 'Ancienne façon' });
     expect(migree.parentId).toBeNull();
     expect(migree.tags).toEqual([]);
     expect(migree.recurrence).toEqual({ freq: '', interval: 1, until: null });
@@ -116,7 +119,9 @@ describe('Migration de schéma', () => {
 
     await migrateSchema();
 
-    const apres = await mongoose.connection.collection('tasks').findOne({ _id: new mongoose.Types.ObjectId(creee.body._id) });
+    const apres = await mongoose.connection
+      .collection('tasks')
+      .findOne({ _id: new mongoose.Types.ObjectId(creee.body._id) });
     expect(apres.order).toBe(42);
     expect(apres.tags).toEqual(['garder']);
   });
@@ -128,9 +133,13 @@ describe('Migration de schéma', () => {
     });
 
     await migrateSchema();
-    const apresUn = await mongoose.connection.collection('tasks').findOne({ title: 'Deux passages' });
+    const apresUn = await mongoose.connection
+      .collection('tasks')
+      .findOne({ title: 'Deux passages' });
     await migrateSchema();
-    const apresDeux = await mongoose.connection.collection('tasks').findOne({ title: 'Deux passages' });
+    const apresDeux = await mongoose.connection
+      .collection('tasks')
+      .findOne({ title: 'Deux passages' });
 
     expect(apresDeux).toEqual(apresUn);
   });
@@ -234,14 +243,14 @@ async function migrateSchema() {
 Dans le bloc `if (process.env.NODE_ENV !== 'test')`, remplacer :
 
 ```js
-      await purgeDeletedTasks();
+await purgeDeletedTasks();
 ```
 
 par :
 
 ```js
-      await migrateSchema();
-      await purgeDeletedTasks();
+await migrateSchema();
+await purgeDeletedTasks();
 ```
 
 Et en bas du fichier, remplacer `module.exports = app;` par :
@@ -271,6 +280,7 @@ git commit -m "feat: migration idempotente des champs de structure et de rappel"
 ## Task 2 : créer et lire une étape
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -409,9 +419,9 @@ const parentageInvalide = async (parentId, enfantId = null) => {
 Dans `buildFilter`, après `const filter = { deletedAt: null };` :
 
 ```js
-  // seules les racines sont listées : compter les étapes rendrait la
-  // pagination incohérente, une page de 5 pouvant n'afficher qu'un dossier
-  filter.parentId = null;
+// seules les racines sont listées : compter les étapes rendrait la
+// pagination incohérente, une page de 5 pouvant n'afficher qu'un dossier
+filter.parentId = null;
 ```
 
 Remplacer la route `POST /tasks` par :
@@ -494,6 +504,7 @@ git commit -m "feat: rattacher une tache a un parent, sur un seul niveau"
 ## Task 3 : compte des étapes sur chaque racine
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -502,39 +513,39 @@ git commit -m "feat: rattacher une tache a un parent, sur un seul niveau"
 Ajouter **dans** le `describe('Sous-tâches', …)` :
 
 ```js
-  test('chaque racine porte le compte de ses étapes', async () => {
-    const parentId = await parent();
-    const faite = await request(app).post('/tasks').send({ title: 'Faite', parentId });
-    await request(app).put(`/tasks/${faite.body._id}`).send({ completed: true });
-    await request(app).post('/tasks').send({ title: 'À faire', parentId });
+test('chaque racine porte le compte de ses étapes', async () => {
+  const parentId = await parent();
+  const faite = await request(app).post('/tasks').send({ title: 'Faite', parentId });
+  await request(app).put(`/tasks/${faite.body._id}`).send({ completed: true });
+  await request(app).post('/tasks').send({ title: 'À faire', parentId });
 
-    const res = await request(app).get('/tasks?limit=50');
-    const devis = res.body.tasks.find((t) => t.title === 'Devis');
+  const res = await request(app).get('/tasks?limit=50');
+  const devis = res.body.tasks.find((t) => t.title === 'Devis');
 
-    expect(devis.childCount).toBe(2);
-    expect(devis.childDone).toBe(1);
-  });
+  expect(devis.childCount).toBe(2);
+  expect(devis.childDone).toBe(1);
+});
 
-  test('une racine sans étape porte des compteurs à zéro, pas des champs absents', async () => {
-    await parent('Seule');
+test('une racine sans étape porte des compteurs à zéro, pas des champs absents', async () => {
+  await parent('Seule');
 
-    const res = await request(app).get('/tasks?limit=50');
-    const seule = res.body.tasks.find((t) => t.title === 'Seule');
+  const res = await request(app).get('/tasks?limit=50');
+  const seule = res.body.tasks.find((t) => t.title === 'Seule');
 
-    expect(seule.childCount).toBe(0);
-    expect(seule.childDone).toBe(0);
-  });
+  expect(seule.childCount).toBe(0);
+  expect(seule.childDone).toBe(0);
+});
 
-  test('une étape à la corbeille ne compte plus', async () => {
-    const parentId = await parent();
-    const etape = await request(app).post('/tasks').send({ title: 'Jetée', parentId });
-    await request(app).delete(`/tasks/${etape.body._id}`);
+test('une étape à la corbeille ne compte plus', async () => {
+  const parentId = await parent();
+  const etape = await request(app).post('/tasks').send({ title: 'Jetée', parentId });
+  await request(app).delete(`/tasks/${etape.body._id}`);
 
-    const res = await request(app).get('/tasks?limit=50');
-    const devis = res.body.tasks.find((t) => t.title === 'Devis');
+  const res = await request(app).get('/tasks?limit=50');
+  const devis = res.body.tasks.find((t) => t.title === 'Devis');
 
-    expect(devis.childCount).toBe(0);
-  });
+  expect(devis.childCount).toBe(0);
+});
 ```
 
 - [ ] **Step 2 : lancer les tests pour vérifier qu'ils échouent**
@@ -562,7 +573,13 @@ const CHILD_COUNTS = [
       let: { racine: '$_id' },
       pipeline: [
         { $match: { $expr: { $eq: ['$parentId', '$$racine'] }, deletedAt: null } },
-        { $group: { _id: null, total: { $sum: 1 }, faites: { $sum: { $cond: ['$completed', 1, 0] } } } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            faites: { $sum: { $cond: ['$completed', 1, 0] } },
+          },
+        },
       ],
       as: 'etapes',
     },
@@ -581,17 +598,17 @@ const CHILD_COUNTS = [
 Dans la route `GET /tasks`, remplacer le pipeline par :
 
 ```js
-    const tasks = await Task.aggregate([
-      { $match: filter },
-      SORT_FIELDS,
-      { $sort: SORTS[sort] },
-      { $skip: skip },
-      { $limit: limit },
-      // le comptage vient après la pagination : compter les étapes de toute la
-      // base pour n'en afficher cinq serait du travail jeté
-      ...CHILD_COUNTS,
-      { $project: { noDue: 0, priorityRank: 0, etapes: 0 } },
-    ]);
+const tasks = await Task.aggregate([
+  { $match: filter },
+  SORT_FIELDS,
+  { $sort: SORTS[sort] },
+  { $skip: skip },
+  { $limit: limit },
+  // le comptage vient après la pagination : compter les étapes de toute la
+  // base pour n'en afficher cinq serait du travail jeté
+  ...CHILD_COUNTS,
+  { $project: { noDue: 0, priorityRank: 0, etapes: 0 } },
+]);
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -612,6 +629,7 @@ git commit -m "feat: compter les etapes de chaque racine dans la liste"
 ## Task 4 : cocher un parent coche ses étapes
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -620,49 +638,49 @@ git commit -m "feat: compter les etapes de chaque racine dans la liste"
 Ajouter **dans** le `describe('Sous-tâches', …)` :
 
 ```js
-  test('cocher un parent coche toutes ses étapes', async () => {
-    const parentId = await parent();
-    await request(app).post('/tasks').send({ title: 'Une', parentId });
-    await request(app).post('/tasks').send({ title: 'Deux', parentId });
+test('cocher un parent coche toutes ses étapes', async () => {
+  const parentId = await parent();
+  await request(app).post('/tasks').send({ title: 'Une', parentId });
+  await request(app).post('/tasks').send({ title: 'Deux', parentId });
 
-    await request(app).put(`/tasks/${parentId}`).send({ completed: true });
+  await request(app).put(`/tasks/${parentId}`).send({ completed: true });
 
-    const etapes = await request(app).get(`/tasks/${parentId}/children`);
-    expect(etapes.body.tasks.every((t) => t.completed)).toBe(true);
-  });
+  const etapes = await request(app).get(`/tasks/${parentId}/children`);
+  expect(etapes.body.tasks.every((t) => t.completed)).toBe(true);
+});
 
-  test('décocher un parent décoche ses étapes', async () => {
-    const parentId = await parent();
-    await request(app).post('/tasks').send({ title: 'Une', parentId });
-    await request(app).put(`/tasks/${parentId}`).send({ completed: true });
+test('décocher un parent décoche ses étapes', async () => {
+  const parentId = await parent();
+  await request(app).post('/tasks').send({ title: 'Une', parentId });
+  await request(app).put(`/tasks/${parentId}`).send({ completed: true });
 
-    await request(app).put(`/tasks/${parentId}`).send({ completed: false });
+  await request(app).put(`/tasks/${parentId}`).send({ completed: false });
 
-    const etapes = await request(app).get(`/tasks/${parentId}/children`);
-    expect(etapes.body.tasks.every((t) => t.completed)).toBe(false);
-  });
+  const etapes = await request(app).get(`/tasks/${parentId}/children`);
+  expect(etapes.body.tasks.every((t) => t.completed)).toBe(false);
+});
 
-  test('cocher la dernière étape ne coche pas le parent', async () => {
-    const parentId = await parent();
-    const seule = await request(app).post('/tasks').send({ title: 'Seule étape', parentId });
+test('cocher la dernière étape ne coche pas le parent', async () => {
+  const parentId = await parent();
+  const seule = await request(app).post('/tasks').send({ title: 'Seule étape', parentId });
 
-    await request(app).put(`/tasks/${seule.body._id}`).send({ completed: true });
+  await request(app).put(`/tasks/${seule.body._id}`).send({ completed: true });
 
-    // un parent peut porter du travail propre au-delà de ses étapes : le
-    // cocher à sa place serait décider pour l'utilisateur
-    const apres = await request(app).get(`/tasks/${parentId}`);
-    expect(apres.body.completed).toBe(false);
-  });
+  // un parent peut porter du travail propre au-delà de ses étapes : le
+  // cocher à sa place serait décider pour l'utilisateur
+  const apres = await request(app).get(`/tasks/${parentId}`);
+  expect(apres.body.completed).toBe(false);
+});
 
-  test('modifier autre chose que `completed` ne touche pas aux étapes', async () => {
-    const parentId = await parent();
-    const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
+test('modifier autre chose que `completed` ne touche pas aux étapes', async () => {
+  const parentId = await parent();
+  const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
 
-    await request(app).put(`/tasks/${parentId}`).send({ title: 'Devis revu' });
+  await request(app).put(`/tasks/${parentId}`).send({ title: 'Devis revu' });
 
-    const apres = await request(app).get(`/tasks/${etape.body._id}`);
-    expect(apres.body.completed).toBe(false);
-  });
+  const apres = await request(app).get(`/tasks/${etape.body._id}`);
+  expect(apres.body.completed).toBe(false);
+});
 ```
 
 - [ ] **Step 2 : lancer les tests pour vérifier qu'ils échouent**
@@ -678,14 +696,14 @@ Attendu : ÉCHEC — les étapes restent décochées.
 Dans la route `PUT /tasks/:id`, juste avant `res.status(200).json(task);` :
 
 ```js
-    // cocher un dossier coche ce qu'il contient ; l'inverse n'est pas vrai
-    // (voir le test « cocher la dernière étape ne coche pas le parent »)
-    if (Object.hasOwn(champs, 'completed') && !task.parentId) {
-      await Task.updateMany(
-        { parentId: task._id, deletedAt: null },
-        { $set: { completed: champs.completed } }
-      );
-    }
+// cocher un dossier coche ce qu'il contient ; l'inverse n'est pas vrai
+// (voir le test « cocher la dernière étape ne coche pas le parent »)
+if (Object.hasOwn(champs, 'completed') && !task.parentId) {
+  await Task.updateMany(
+    { parentId: task._id, deletedAt: null },
+    { $set: { completed: champs.completed } }
+  );
+}
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -706,6 +724,7 @@ git commit -m "feat: cocher un parent coche ses etapes"
 ## Task 5 : la corbeille emporte et rend la famille
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -714,64 +733,64 @@ git commit -m "feat: cocher un parent coche ses etapes"
 Ajouter **dans** le `describe('Sous-tâches', …)` :
 
 ```js
-  test('supprimer un parent envoie ses étapes à la corbeille avec lui', async () => {
-    const parentId = await parent();
-    await request(app).post('/tasks').send({ title: 'Une', parentId });
+test('supprimer un parent envoie ses étapes à la corbeille avec lui', async () => {
+  const parentId = await parent();
+  await request(app).post('/tasks').send({ title: 'Une', parentId });
 
-    await request(app).delete(`/tasks/${parentId}`);
+  await request(app).delete(`/tasks/${parentId}`);
 
-    const corbeille = await request(app).get('/tasks/trash?limit=50');
-    expect(corbeille.body.tasks.map((t) => t.title).sort()).toEqual(['Devis', 'Une']);
-  });
+  const corbeille = await request(app).get('/tasks/trash?limit=50');
+  expect(corbeille.body.tasks.map((t) => t.title).sort()).toEqual(['Devis', 'Une']);
+});
 
-  test('restaurer un parent ressort les étapes parties avec lui', async () => {
-    const parentId = await parent();
-    await request(app).post('/tasks').send({ title: 'Une', parentId });
-    await request(app).delete(`/tasks/${parentId}`);
+test('restaurer un parent ressort les étapes parties avec lui', async () => {
+  const parentId = await parent();
+  await request(app).post('/tasks').send({ title: 'Une', parentId });
+  await request(app).delete(`/tasks/${parentId}`);
 
-    await request(app).post(`/tasks/${parentId}/restore`);
+  await request(app).post(`/tasks/${parentId}/restore`);
 
-    const etapes = await request(app).get(`/tasks/${parentId}/children`);
-    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Une']);
-  });
+  const etapes = await request(app).get(`/tasks/${parentId}/children`);
+  expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Une']);
+});
 
-  test('restaurer un parent ne ressuscite pas une étape jetée avant lui', async () => {
-    const parentId = await parent();
-    const jeteeAvant = await request(app).post('/tasks').send({ title: 'Jetée avant', parentId });
-    await request(app).post('/tasks').send({ title: 'Partie avec', parentId });
+test('restaurer un parent ne ressuscite pas une étape jetée avant lui', async () => {
+  const parentId = await parent();
+  const jeteeAvant = await request(app).post('/tasks').send({ title: 'Jetée avant', parentId });
+  await request(app).post('/tasks').send({ title: 'Partie avec', parentId });
 
-    await request(app).delete(`/tasks/${jeteeAvant.body._id}`);
-    await request(app).delete(`/tasks/${parentId}`);
-    await request(app).post(`/tasks/${parentId}/restore`);
+  await request(app).delete(`/tasks/${jeteeAvant.body._id}`);
+  await request(app).delete(`/tasks/${parentId}`);
+  await request(app).post(`/tasks/${parentId}/restore`);
 
-    const etapes = await request(app).get(`/tasks/${parentId}/children`);
-    // « Jetée avant » avait été supprimée pour de bon par l'utilisateur :
-    // la ressortir serait annuler une décision qu'il a prise
-    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Partie avec']);
-  });
+  const etapes = await request(app).get(`/tasks/${parentId}/children`);
+  // « Jetée avant » avait été supprimée pour de bon par l'utilisateur :
+  // la ressortir serait annuler une décision qu'il a prise
+  expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Partie avec']);
+});
 
-  test('purger un parent purge ses étapes', async () => {
-    const parentId = await parent();
-    const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
-    await request(app).delete(`/tasks/${parentId}`);
+test('purger un parent purge ses étapes', async () => {
+  const parentId = await parent();
+  const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
+  await request(app).delete(`/tasks/${parentId}`);
 
-    await request(app).delete(`/tasks/${parentId}/purge`);
+  await request(app).delete(`/tasks/${parentId}/purge`);
 
-    const restante = await mongoose.connection
-      .collection('tasks')
-      .findOne({ _id: new mongoose.Types.ObjectId(etape.body._id) });
-    expect(restante).toBeNull();
-  });
+  const restante = await mongoose.connection
+    .collection('tasks')
+    .findOne({ _id: new mongoose.Types.ObjectId(etape.body._id) });
+  expect(restante).toBeNull();
+});
 
-  test('supprimer une étape seule ne touche pas au parent', async () => {
-    const parentId = await parent();
-    const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
+test('supprimer une étape seule ne touche pas au parent', async () => {
+  const parentId = await parent();
+  const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
 
-    await request(app).delete(`/tasks/${etape.body._id}`);
+  await request(app).delete(`/tasks/${etape.body._id}`);
 
-    const apres = await request(app).get(`/tasks/${parentId}`);
-    expect(apres.status).toBe(200);
-  });
+  const apres = await request(app).get(`/tasks/${parentId}`);
+  expect(apres.status).toBe(200);
+});
 ```
 
 - [ ] **Step 2 : lancer les tests pour vérifier qu'ils échouent**
@@ -801,7 +820,10 @@ app.delete('/tasks/:id', async (req, res) => {
     if (!task) return res.status(404).json({ error: 'Tâche non trouvée' });
 
     if (!task.parentId) {
-      await Task.updateMany({ parentId: task._id, deletedAt: null }, { $set: { deletedAt: quand } });
+      await Task.updateMany(
+        { parentId: task._id, deletedAt: null },
+        { $set: { deletedAt: quand } }
+      );
     }
 
     res.status(200).json({ message: 'Tâche supprimée', task });
@@ -847,9 +869,9 @@ app.post('/tasks/:id/restore', async (req, res) => {
 Dans `DELETE /tasks/:id/purge`, juste après la suppression réussie et avant la réponse :
 
 ```js
-    // une étape n'est atteignable qu'à travers son parent : la laisser en base
-    // créerait un document que plus aucune vue ne montre
-    await Task.deleteMany({ parentId: task._id });
+// une étape n'est atteignable qu'à travers son parent : la laisser en base
+// créerait un document que plus aucune vue ne montre
+await Task.deleteMany({ parentId: task._id });
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -870,6 +892,7 @@ git commit -m "feat: la corbeille emporte et rend la famille entiere"
 ## Task 6 : les nouveaux champs survivent à un aller-retour
 
 **Files:**
+
 - Modify: `lib/portable.js`
 - Test: `test/server/portable.test.js`, `test/api/server.test.js`
 
@@ -878,45 +901,45 @@ git commit -m "feat: la corbeille emporte et rend la famille entiere"
 Ajouter à `test/server/portable.test.js`, dans `describe('validateImport', …)` :
 
 ```js
-  test('retient les champs de structure ajoutés par la vague 2', () => {
-    const { tasks } = validateImport({
-      tasks: [
-        task({
-          parentId: '6aaa396cb6aaf45240b8b999',
-          tags: ['maison'],
-          order: 1234,
-          recurrence: { freq: 'weekly', interval: 2, until: null },
-          reminder: { offset: '1d', at: '2026-09-20T08:00:00.000Z', sentAt: null },
-        }),
-      ],
-    });
-
-    expect(tasks[0].parentId).toBe('6aaa396cb6aaf45240b8b999');
-    expect(tasks[0].tags).toEqual(['maison']);
-    expect(tasks[0].order).toBe(1234);
-    expect(tasks[0].recurrence.freq).toBe('weekly');
-    expect(tasks[0].reminder.offset).toBe('1d');
+test('retient les champs de structure ajoutés par la vague 2', () => {
+  const { tasks } = validateImport({
+    tasks: [
+      task({
+        parentId: '6aaa396cb6aaf45240b8b999',
+        tags: ['maison'],
+        order: 1234,
+        recurrence: { freq: 'weekly', interval: 2, until: null },
+        reminder: { offset: '1d', at: '2026-09-20T08:00:00.000Z', sentAt: null },
+      }),
+    ],
   });
+
+  expect(tasks[0].parentId).toBe('6aaa396cb6aaf45240b8b999');
+  expect(tasks[0].tags).toEqual(['maison']);
+  expect(tasks[0].order).toBe(1234);
+  expect(tasks[0].recurrence.freq).toBe('weekly');
+  expect(tasks[0].reminder.offset).toBe('1d');
+});
 ```
 
 Et à `test/api/server.test.js`, dans `describe('Export / import', …)` :
 
 ```js
-  test('un aller-retour conserve la hiérarchie', async () => {
-    const parentRes = await request(app).post('/tasks').send({ title: 'Devis' });
-    await request(app)
-      .post('/tasks')
-      .send({ title: 'Verser l’acompte', parentId: parentRes.body._id });
+test('un aller-retour conserve la hiérarchie', async () => {
+  const parentRes = await request(app).post('/tasks').send({ title: 'Devis' });
+  await request(app)
+    .post('/tasks')
+    .send({ title: 'Verser l’acompte', parentId: parentRes.body._id });
 
-    const avant = (await request(app).get('/export')).body;
-    await request(app)
-      .post('/import?mode=replace')
-      .set('X-Confirm', 'replace')
-      .send({ tasks: avant.tasks, categories: avant.categories });
+  const avant = (await request(app).get('/export')).body;
+  await request(app)
+    .post('/import?mode=replace')
+    .set('X-Confirm', 'replace')
+    .send({ tasks: avant.tasks, categories: avant.categories });
 
-    const etapes = await request(app).get(`/tasks/${parentRes.body._id}/children`);
-    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Verser l’acompte']);
-  });
+  const etapes = await request(app).get(`/tasks/${parentRes.body._id}/children`);
+  expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Verser l’acompte']);
+});
 ```
 
 - [ ] **Step 2 : lancer les tests pour vérifier qu'ils échouent**
@@ -970,6 +993,7 @@ git commit -m "feat: la sauvegarde conserve la hierarchie et les nouveaux champs
 ## Task 7 : les étapes dans l'interface
 
 **Files:**
+
 - Modify: `public/js/api.js`, `public/js/app.js`, `public/index.html`, `public/css/components.css`
 - Test: `test/ui/app.test.js`
 
@@ -986,10 +1010,10 @@ et, dans la fonction qui aiguille les requêtes (celle qui reconnaît `/tasks?`,
 `/tasks/trash`), ajouter une branche **avant** celle qui traite `/tasks/:id` :
 
 ```js
-  if (/^\/tasks\/[^/]+\/children$/.test(path)) {
-    const id = path.split('/')[2];
-    return ok({ tasks: server.children[id] || [], total: (server.children[id] || []).length });
-  }
+if (/^\/tasks\/[^/]+\/children$/.test(path)) {
+  const id = path.split('/')[2];
+  return ok({ tasks: server.children[id] || [], total: (server.children[id] || []).length });
+}
 ```
 
 Puis ajouter le bloc de tests :
@@ -1167,18 +1191,18 @@ Dans le gestionnaire de clic délégué de la liste (ou, s'il n'y en a pas, en c
 bouton au moment du rendu), ajouter :
 
 ```js
-  const steps = e.target.closest('.task-steps-toggle');
-  if (steps) {
-    toggleSteps(steps);
-    return;
-  }
+const steps = e.target.closest('.task-steps-toggle');
+if (steps) {
+  toggleSteps(steps);
+  return;
+}
 ```
 
 Enfin, dans `render()`, avant de reconstruire la liste, vider le cache :
 
 ```js
-  // une liste fraîchement rendue ne doit pas rouvrir sur des étapes périmées
-  stepsCache = {};
+// une liste fraîchement rendue ne doit pas rouvrir sur des étapes périmées
+stepsCache = {};
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -1208,6 +1232,7 @@ git commit -m "feat: afficher et deplier les etapes d'une tache"
 ## Task 8 : documenter
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1 : ajouter la fonctionnalité**
@@ -1242,7 +1267,7 @@ rien.
 - [ ] **Step 3 : compléter le tableau de l'API**
 
 ```markdown
-| `GET`    | `/tasks/:id/children`     | Étapes d'une tâche                             |
+| `GET` | `/tasks/:id/children` | Étapes d'une tâche |
 ```
 
 - [ ] **Step 4 : dire la limite de la recherche**

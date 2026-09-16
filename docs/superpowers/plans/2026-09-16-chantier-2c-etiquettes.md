@@ -40,6 +40,7 @@ de classement concurrents dans la même vue.
 ## Task 1 : normaliser une liste d'étiquettes
 
 **Files:**
+
 - Create: `lib/tags.js`
 - Create: `test/server/tags.test.js`
 
@@ -165,6 +166,7 @@ git commit -m "feat: normalisation des etiquettes"
 ## Task 2 : poser et filtrer des étiquettes
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -184,16 +186,24 @@ describe('Étiquettes', () => {
   });
 
   test('PUT /tasks/:id remplace les étiquettes', async () => {
-    const creee = await request(app).post('/tasks').send({ title: 'Courses', tags: ['maison'] });
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Courses', tags: ['maison'] });
 
-    const res = await request(app).put(`/tasks/${creee.body._id}`).send({ tags: ['Bureau'] });
+    const res = await request(app)
+      .put(`/tasks/${creee.body._id}`)
+      .send({ tags: ['Bureau'] });
 
     expect(res.body.tags).toEqual(['bureau']);
   });
 
   test('GET /tasks?tag=… ne renvoie que les tâches marquées', async () => {
-    await request(app).post('/tasks').send({ title: 'Avec', tags: ['maison'] });
-    await request(app).post('/tasks').send({ title: 'Sans', tags: ['bureau'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Avec', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Sans', tags: ['bureau'] });
 
     const res = await request(app).get('/tasks?limit=50&tag=maison');
 
@@ -201,7 +211,9 @@ describe('Étiquettes', () => {
   });
 
   test('le filtre par étiquette est insensible à la casse de la requête', async () => {
-    await request(app).post('/tasks').send({ title: 'Avec', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Avec', tags: ['maison'] });
 
     const res = await request(app).get('/tasks?limit=50&tag=MAISON');
 
@@ -209,7 +221,9 @@ describe('Étiquettes', () => {
   });
 
   test('un opérateur Mongo injecté dans tag est ignoré', async () => {
-    await request(app).post('/tasks').send({ title: 'Une', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Une', tags: ['maison'] });
     await request(app).post('/tasks').send({ title: 'Deux' });
 
     const res = await request(app).get('/tasks?limit=50&tag[$ne]=null');
@@ -218,9 +232,13 @@ describe('Étiquettes', () => {
   });
 
   test('le filtre par étiquette se combine avec le statut', async () => {
-    const faite = await request(app).post('/tasks').send({ title: 'Faite', tags: ['maison'] });
+    const faite = await request(app)
+      .post('/tasks')
+      .send({ title: 'Faite', tags: ['maison'] });
     await request(app).put(`/tasks/${faite.body._id}`).send({ completed: true });
-    await request(app).post('/tasks').send({ title: 'À faire', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'À faire', tags: ['maison'] });
 
     const res = await request(app).get('/tasks?limit=50&tag=maison&status=active');
 
@@ -270,22 +288,22 @@ const CREATE_FIELDS = [
 Dans `buildFilter`, après le filtre de catégorie :
 
 ```js
-  // asString neutralise ?tag[$ne]=null, et la normalisation fait que « MAISON »
-  // retrouve « maison » : les étiquettes sont rangées en minuscules
-  const tag = asString(query.tag, 24).toLowerCase();
-  if (tag) filter.tags = tag;
+// asString neutralise ?tag[$ne]=null, et la normalisation fait que « MAISON »
+// retrouve « maison » : les étiquettes sont rangées en minuscules
+const tag = asString(query.tag, 24).toLowerCase();
+if (tag) filter.tags = tag;
 ```
 
 Dans `POST /tasks`, juste avant `new Task(champs)` :
 
 ```js
-    if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
+if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
 ```
 
 Dans `PUT /tasks/:id`, au même endroit que les autres contrôles :
 
 ```js
-    if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
+if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
 ```
 
 - [ ] **Step 4 : lancer les tests pour vérifier qu'ils passent**
@@ -306,6 +324,7 @@ git commit -m "feat: poser et filtrer des etiquettes"
 ## Task 3 : les étiquettes en saisie rapide et à l'écran
 
 **Files:**
+
 - Modify: `public/js/parse.js`, `public/js/app.js`, `public/css/components.css`
 - Test: `test/ui/parse.test.js`, `test/ui/app.test.js`
 
@@ -377,7 +396,9 @@ describe('étiquettes à l’écran', () => {
     document.querySelector('.task-tag').click();
     await settle();
 
-    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    const url = calls()
+      .filter((u) => u.startsWith('/tasks?'))
+      .pop();
     expect(new URL(url, 'http://test').searchParams.get('tag')).toBe('maison');
   });
 
@@ -452,12 +473,12 @@ Dans `public/js/app.js`, dans `.task-meta` :
 Dans le gestionnaire de clic délégué :
 
 ```js
-  const tag = e.target.closest('.task-tag');
-  if (tag) {
-    state = { ...state, tag: tag.dataset.tag };
-    refresh({ page: 1 });
-    return;
-  }
+const tag = e.target.closest('.task-tag');
+if (tag) {
+  state = { ...state, tag: tag.dataset.tag };
+  refresh({ page: 1 });
+  return;
+}
 ```
 
 Ajouter `tag: ''` à l'état initial, et le transmettre là où les autres filtres le sont, dans la
@@ -493,6 +514,7 @@ git commit -m "feat: etiquettes en saisie rapide, affichees et filtrables"
 ## Task 4 : documenter
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1 : ajouter la fonctionnalité**
@@ -505,7 +527,7 @@ git commit -m "feat: etiquettes en saisie rapide, affichees et filtrables"
 - [ ] **Step 2 : compléter le tableau des paramètres de `GET /tasks`**
 
 ```markdown
-| `tag`      | une étiquette (24 caractères max, insensible à la casse) | — |
+| `tag` | une étiquette (24 caractères max, insensible à la casse) | — |
 ```
 
 - [ ] **Step 3 : committer**

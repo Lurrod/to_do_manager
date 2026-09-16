@@ -15,7 +15,11 @@ const task = (extra = {}) => ({
 
 describe('exportShape', () => {
   test('enveloppe les données avec une version de schéma', () => {
-    const shape = exportShape({ tasks: [task()], categories: [], now: new Date('2026-09-16T06:00:00Z') });
+    const shape = exportShape({
+      tasks: [task()],
+      categories: [],
+      now: new Date('2026-09-16T06:00:00Z'),
+    });
 
     expect(shape.app).toBe('cahier');
     expect(shape.schemaVersion).toBe(SCHEMA_VERSION);
@@ -27,7 +31,10 @@ describe('exportShape', () => {
 
 describe('validateImport', () => {
   test('accepte une charge utile bien formée', () => {
-    const result = validateImport({ tasks: [task()], categories: [{ name: 'Perso', color: '#2f7d51' }] });
+    const result = validateImport({
+      tasks: [task()],
+      categories: [{ name: 'Perso', color: '#2f7d51' }],
+    });
 
     expect(result.errors).toEqual([]);
     expect(result.tasks).toHaveLength(1);

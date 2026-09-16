@@ -23,8 +23,8 @@
   --highlighter: #f3d15b;
 
   /* typographie */
-  --font-hand: "Caveat", "Segoe Script", cursive;
-  --font-ui: "Karla", "Trebuchet MS", sans-serif;
+  --font-hand: 'Caveat', 'Segoe Script', cursive;
+  --font-ui: 'Karla', 'Trebuchet MS', sans-serif;
 
   --step-xs: 0.75rem;
   --step-sm: 0.85rem;

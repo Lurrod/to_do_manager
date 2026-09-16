@@ -356,7 +356,10 @@ describe('état vide', () => {
 });
 
 describe('onglets temporels', () => {
-  const lastListUrl = () => calls().filter((u) => u.startsWith('/tasks?')).pop();
+  const lastListUrl = () =>
+    calls()
+      .filter((u) => u.startsWith('/tasks?'))
+      .pop();
 
   test('la vue par défaut ne contraint pas l’échéance', async () => {
     await boot();
@@ -403,9 +406,9 @@ describe('onglets temporels', () => {
     const params = new URL(lastListUrl(), 'http://test').searchParams;
     expect(params.get('status')).toBe('done');
     expect(params.get('due')).toBe('all');
-    expect(document.querySelector('.due-pill[data-due="all"]').classList.contains('is-active')).toBe(
-      true
-    );
+    expect(
+      document.querySelector('.due-pill[data-due="all"]').classList.contains('is-active')
+    ).toBe(true);
   });
 
   test('revenir sur « à faire » ne quitte pas l’horizon : rien ne se contredit', async () => {
@@ -427,12 +430,12 @@ describe('onglets temporels', () => {
     document.querySelector('.due-pill[data-due="today"]').click();
     await settle();
 
-    expect(
-      document.querySelector('.due-pill[data-due="today"]').getAttribute('aria-pressed')
-    ).toBe('true');
-    expect(
-      document.querySelector('.due-pill[data-due="all"]').getAttribute('aria-pressed')
-    ).toBe('false');
+    expect(document.querySelector('.due-pill[data-due="today"]').getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    expect(document.querySelector('.due-pill[data-due="all"]').getAttribute('aria-pressed')).toBe(
+      'false'
+    );
   });
 
   test('le badge nomme ce qu’il compte', async () => {
@@ -503,8 +506,7 @@ describe('saisie rapide', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   };
 
-  const posted = () =>
-    server.calls.filter((c) => c.method === 'POST' && c.url === '/tasks').length;
+  const posted = () => server.calls.filter((c) => c.method === 'POST' && c.url === '/tasks').length;
 
   test('l’aperçu montre ce qui a été compris', async () => {
     await boot();
@@ -794,7 +796,9 @@ describe('clavier', () => {
     await settle();
 
     expect(document.getElementById('palette-modal').classList.contains('active')).toBe(false);
-    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    const url = calls()
+      .filter((u) => u.startsWith('/tasks?'))
+      .pop();
     expect(new URL(url, 'http://test').searchParams.get('due')).toBe('overdue');
   });
 });
@@ -806,7 +810,9 @@ describe('palette au clavier', () => {
   /** Ouvre la palette et rend son champ, point de départ de chaque test. */
   const openPalette = async () => {
     await boot();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
+    );
     return document.getElementById('palette-input');
   };
 
@@ -883,7 +889,9 @@ describe('palette au clavier', () => {
     await settle();
 
     expect(document.getElementById('palette-modal').classList.contains('active')).toBe(false);
-    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    const url = calls()
+      .filter((u) => u.startsWith('/tasks?'))
+      .pop();
     expect(new URL(url, 'http://test').searchParams.get('due')).toBe('all');
   });
 
@@ -943,7 +951,9 @@ describe('étapes', () => {
 
 describe('récurrence', () => {
   test('une tâche récurrente porte un pictogramme', async () => {
-    server.tasks = [task('Poubelles', { recurrence: { freq: 'weekly', interval: 1, until: null } })];
+    server.tasks = [
+      task('Poubelles', { recurrence: { freq: 'weekly', interval: 1, until: null } }),
+    ];
     await boot();
 
     const marque = document.querySelector('.task-recurrence');
@@ -964,7 +974,9 @@ describe('récurrence', () => {
     document.getElementById('task-title').value = 'Poubelles';
     document.getElementById('task-due-date').value = '2026-09-22T09:00';
     document.getElementById('task-recurrence').value = 'weekly';
-    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    document
+      .getElementById('task-form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await settle();
 
     const creation = server.calls.find((c) => c.method === 'POST');
@@ -1050,7 +1062,9 @@ describe('étiquettes à l’écran', () => {
     document.querySelector('.task-tag').click();
     await settle();
 
-    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    const url = calls()
+      .filter((u) => u.startsWith('/tasks?'))
+      .pop();
     expect(new URL(url, 'http://test').searchParams.get('tag')).toBe('maison');
   });
 
@@ -1147,7 +1161,9 @@ describe('restauration d’une sauvegarde', () => {
     await boot();
     server.calls = [];
 
-    choisirFichier(JSON.stringify({ tasks: [{ title: 'Venue de la sauvegarde' }], categories: [] }));
+    choisirFichier(
+      JSON.stringify({ tasks: [{ title: 'Venue de la sauvegarde' }], categories: [] })
+    );
     await settle();
 
     const envoi = server.calls.find((c) => c.url === '/import');

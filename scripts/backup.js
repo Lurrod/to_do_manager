@@ -36,5 +36,7 @@ const stamp = () => new Date().toISOString().replace(/:/g, '-').slice(0, 19);
 
   const poids = (fs.statSync(fichier).size / 1024).toFixed(1);
   console.log(`Sauvegarde écrite : ${fichier}`);
-  console.log(`${payload.tasks.length} tâche(s), ${payload.categories.length} catégorie(s), ${poids} ko`);
+  console.log(
+    `${payload.tasks.length} tâche(s), ${payload.categories.length} catégorie(s), ${poids} ko`
+  );
 })();

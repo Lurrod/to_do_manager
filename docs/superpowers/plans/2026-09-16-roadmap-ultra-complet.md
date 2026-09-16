@@ -20,12 +20,12 @@ du modèle** : une tâche = titre + description + 1 catégorie + 1 priorité + 1
 
 Trois vagues, du moins risqué au plus structurant :
 
-| Vague | Thème | Touche au schéma ? | Plan |
-|-------|-------|--------------------|------|
-| 1 | Usage quotidien : voir ce qui compte, saisir vite | Non | `2026-09-16-vague-1-usage-quotidien.md` — **livrée** |
-| 2 | Structure : sous-tâches, récurrence, tags, ordre | Oui | à écrire |
-| 3 | Durabilité : export, PWA, perf, outillage | Marginalement | à écrire |
-| 4 | Rappels : notification système, délai par tâche | Oui, via la migration de la vague 2 | à écrire |
+| Vague | Thème                                             | Touche au schéma ?                  | Plan                                                 |
+| ----- | ------------------------------------------------- | ----------------------------------- | ---------------------------------------------------- |
+| 1     | Usage quotidien : voir ce qui compte, saisir vite | Non                                 | `2026-09-16-vague-1-usage-quotidien.md` — **livrée** |
+| 2     | Structure : sous-tâches, récurrence, tags, ordre  | Oui                                 | à écrire                                             |
+| 3     | Durabilité : export, PWA, perf, outillage         | Marginalement                       | à écrire                                             |
+| 4     | Rappels : notification système, délai par tâche   | Oui, via la migration de la vague 2 | à écrire                                             |
 
 ---
 
@@ -38,13 +38,13 @@ Trois vagues, du moins risqué au plus structurant :
 
 Nouveau paramètre de `GET /tasks` (et de `GET /tasks/stats` pour le compteur).
 
-| `due` | Signification | Filtre Mongo |
-|-------|---------------|--------------|
-| `all` (défaut) | pas de contrainte | — |
-| `overdue` | échéance dépassée | `dueDate: { $ne: null, $lt: minuit_aujourd_hui }` |
-| `today` | échéance d'ici ce soir, **retard inclus** | `dueDate: { $ne: null, $lt: minuit_demain }` |
-| `week` | échéance sous 7 jours, **retard inclus** | `dueDate: { $ne: null, $lt: minuit_J+7 }` |
-| `none` | sans échéance | `dueDate: null` |
+| `due`          | Signification                             | Filtre Mongo                                      |
+| -------------- | ----------------------------------------- | ------------------------------------------------- |
+| `all` (défaut) | pas de contrainte                         | —                                                 |
+| `overdue`      | échéance dépassée                         | `dueDate: { $ne: null, $lt: minuit_aujourd_hui }` |
+| `today`        | échéance d'ici ce soir, **retard inclus** | `dueDate: { $ne: null, $lt: minuit_demain }`      |
+| `week`         | échéance sous 7 jours, **retard inclus**  | `dueDate: { $ne: null, $lt: minuit_J+7 }`         |
+| `none`         | sans échéance                             | `dueDate: null`                                   |
 
 **Décision — horizons emboîtés.** `today` inclut le retard, `week` inclut `today`. Une tâche
 en retard ne doit jamais disparaître d'une vue plus large : c'est exactement l'oubli que les
@@ -84,18 +84,19 @@ parseQuickEntry("Dentiste demain 14h #Santé !haute", { now, categories })
 
 Motifs reconnus (français) :
 
-| Motif | Exemple | Résultat |
-|-------|---------|----------|
-| `aujourd'hui` / `auj` | `auj` | jour même |
-| `demain`, `après-demain` | `demain` | J+1, J+2 |
-| jour de semaine | `mardi` | prochaine occurrence **strictement** future |
-| `dans N jour(s)/semaine(s)` | `dans 3 jours` | J+3 |
-| date numérique | `12/03`, `le 12/03/2027` | date ; année omise ⇒ prochaine occurrence |
-| heure | `14h`, `14h30`, `à 9h` | heure posée sur le jour trouvé |
-| `#catégorie` | `#Santé` | catégorie (recalée sur une catégorie connue si elle existe) |
-| `!priorité` | `!haute`, `!1` | `high` / `medium` / `low` |
+| Motif                       | Exemple                  | Résultat                                                    |
+| --------------------------- | ------------------------ | ----------------------------------------------------------- |
+| `aujourd'hui` / `auj`       | `auj`                    | jour même                                                   |
+| `demain`, `après-demain`    | `demain`                 | J+1, J+2                                                    |
+| jour de semaine             | `mardi`                  | prochaine occurrence **strictement** future                 |
+| `dans N jour(s)/semaine(s)` | `dans 3 jours`           | J+3                                                         |
+| date numérique              | `12/03`, `le 12/03/2027` | date ; année omise ⇒ prochaine occurrence                   |
+| heure                       | `14h`, `14h30`, `à 9h`   | heure posée sur le jour trouvé                              |
+| `#catégorie`                | `#Santé`                 | catégorie (recalée sur une catégorie connue si elle existe) |
+| `!priorité`                 | `!haute`, `!1`           | `high` / `medium` / `low`                                   |
 
 Règles de résolution :
+
 - jour sans heure ⇒ **09:00**.
 - heure sans jour ⇒ aujourd'hui si encore à venir, sinon demain.
 - ni jour ni heure ⇒ `dueDate: null`.
@@ -114,10 +115,10 @@ Le soft-delete existe déjà côté serveur (`deletedAt`, `POST /tasks/:id/resto
 7 jours au démarrage) mais aucun écran ne l'expose : passé le toast « Annuler », une tâche
 supprimée est inaccessible. Ajouts :
 
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| `GET` | `/tasks/trash` | liste paginée des tâches supprimées, triée par `deletedAt` décroissant |
-| `DELETE` | `/tasks/:id/purge` | suppression définitive d'une tâche déjà dans la corbeille |
+| Méthode  | Route              | Description                                                            |
+| -------- | ------------------ | ---------------------------------------------------------------------- |
+| `GET`    | `/tasks/trash`     | liste paginée des tâches supprimées, triée par `deletedAt` décroissant |
+| `DELETE` | `/tasks/:id/purge` | suppression définitive d'une tâche déjà dans la corbeille              |
 
 `DELETE /tasks/:id/purge` refuse (404) une tâche qui n'est pas dans la corbeille : la
 suppression définitive ne doit jamais être atteignable en un seul geste.
@@ -251,7 +252,7 @@ Maximum 100 identifiants par appel. Chaque action groupée est annulable par un 
 ### 3.2 PWA
 
 `manifest.webmanifest` + service worker : coquille applicative précachée
-(HTML/CSS/JS/polices), API en *network-first* avec repli sur le cache en lecture seule et
+(HTML/CSS/JS/polices), API en _network-first_ avec repli sur le cache en lecture seule et
 bandeau « hors-ligne » explicite. **Pas de file d'écritures différées** : une synchronisation
 différée sur une base locale mono-utilisateur ajoute un modèle de conflit pour un gain nul.
 
@@ -322,12 +323,12 @@ demanderait un `$expr` avec de l'arithmétique de dates à chaque passage, pour 
 `at` est recalculé à chaque écriture qui touche `dueDate` ou `reminder.offset` ; il vaut
 `null` dès que l'un des deux manque.
 
-| `offset` | `at` vaut |
-|----------|-----------|
+| `offset`      | `at` vaut             |
+| ------------- | --------------------- |
 | `''` (défaut) | `null` — aucun rappel |
-| `atDue` | `dueDate` |
-| `1h` | `dueDate` − 1 heure |
-| `1d` | `dueDate` − 24 heures |
+| `atDue`       | `dueDate`             |
+| `1h`          | `dueDate` − 1 heure   |
+| `1d`          | `dueDate` − 24 heures |
 
 **Décision — ce champ part dans la migration de la vague 2.** Il n'a rien à voir avec les
 sous-tâches, mais migrer deux fois une base pour ajouter deux champs est du travail en
@@ -373,6 +374,7 @@ la notification système s'est affichée sur un poste qu'on avait quitté.
 - [ ] Les tests ne déclenchent aucune notification réelle (émetteur injecté).
 
 ---
+
 ## Ordre d'exécution recommandé
 
 ```
@@ -389,7 +391,7 @@ migrations. L'outillage est reporté ; c'est un choix assumé, et il augmente le
 vague 2 puisque rien d'automatique ne gardera la migration.
 
 **Ce qui compense en partie : 3.1 passe en tête.** L'export/import est le seul élément qui
-protège des données irréversibles, et il livre de quoi sauvegarder la base *avant* que la
+protège des données irréversibles, et il livre de quoi sauvegarder la base _avant_ que la
 vague 2 en change la forme. Un export pris juste avant la migration est le filet minimal.
 
 La vague 4 suit immédiatement la vague 2 parce qu'elle dépend de sa migration : le champ

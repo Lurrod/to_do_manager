@@ -55,6 +55,7 @@ README plutôt qu'à faire à moitié.
 ## Task 1 : l'heure du rappel
 
 **Files:**
+
 - Create: `lib/reminders.js`
 - Create: `test/server/reminders.test.js`
 
@@ -204,6 +205,7 @@ git commit -m "feat: calcul de l'heure d'un rappel"
 ## Task 2 : le canal de notification
 
 **Files:**
+
 - Create: `lib/notify.js`
 - Create: `test/server/notify.test.js`
 
@@ -348,6 +350,7 @@ git commit -m "feat: canal de notification systeme, sans dependance"
 ## Task 3 : poser un rappel et le faire partir
 
 **Files:**
+
 - Modify: `server.js`
 - Test: `test/api/server.test.js`
 
@@ -390,7 +393,9 @@ describe('Rappels', () => {
       .post('/tasks')
       .send({ title: 'Dentiste', dueDate: dans(120), reminder: { offset: '1h' } });
 
-    const res = await request(app).put(`/tasks/${creee.body._id}`).send({ dueDate: dans(300) });
+    const res = await request(app)
+      .put(`/tasks/${creee.body._id}`)
+      .send({ dueDate: dans(300) });
 
     const attendue = new Date(new Date(res.body.dueDate).getTime() - 60 * 60 * 1000);
     expect(new Date(res.body.reminder.at).toISOString()).toBe(attendue.toISOString());
@@ -541,17 +546,17 @@ const poserHeureDeRappel = (apres) => {
 Dans `POST /tasks`, avant `new Task(champs)` :
 
 ```js
-    if (champs.reminder || champs.dueDate) champs.reminder = poserHeureDeRappel(champs);
+if (champs.reminder || champs.dueDate) champs.reminder = poserHeureDeRappel(champs);
 ```
 
 Dans `PUT /tasks/:id`, après le calcul de `avant` :
 
 ```js
-    // l'heure du rappel dépend de l'échéance ET du réglage : toucher à l'une
-    // ou à l'autre la refait
-    if (Object.hasOwn(champs, 'reminder') || Object.hasOwn(champs, 'dueDate')) {
-      champs.reminder = poserHeureDeRappel({ ...avant, ...champs });
-    }
+// l'heure du rappel dépend de l'échéance ET du réglage : toucher à l'une
+// ou à l'autre la refait
+if (Object.hasOwn(champs, 'reminder') || Object.hasOwn(champs, 'dueDate')) {
+  champs.reminder = poserHeureDeRappel({ ...avant, ...champs });
+}
 ```
 
 Ajouter le balayage, à côté de `purgeDeletedTasks` :
@@ -607,11 +612,11 @@ async function sweepReminders({ now = new Date(), envoyer = sendNotification } =
 Dans le bloc de démarrage, après la migration :
 
 ```js
-      await sweepReminders();
-      // le processus est un outil de bureau : tant qu'il tourne, il regarde
-      setInterval(() => {
-        sweepReminders().catch((e) => console.error('Balayage des rappels :', e.message));
-      }, 60 * 1000).unref();
+await sweepReminders();
+// le processus est un outil de bureau : tant qu'il tourne, il regarde
+setInterval(() => {
+  sweepReminders().catch((e) => console.error('Balayage des rappels :', e.message));
+}, 60 * 1000).unref();
 ```
 
 Et à l'export :
@@ -638,6 +643,7 @@ git commit -m "feat: poser des rappels et les faire partir"
 ## Task 4 : le rappel dans l'interface
 
 **Files:**
+
 - Modify: `public/index.html`, `public/css/components.css`, `public/js/app.js`
 - Test: `test/ui/app.test.js`
 
@@ -698,14 +704,14 @@ describe('rappels', () => {
 Dans `.composer-row`, après le sélecteur de récurrence :
 
 ```html
-            <span class="field" data-sketch="select">
-              <select id="task-reminder" aria-label="Rappel" disabled>
-                <option value="">Sans rappel</option>
-                <option value="atDue">Rappel : à l'heure</option>
-                <option value="1h">Rappel : 1 h avant</option>
-                <option value="1d">Rappel : la veille</option>
-              </select>
-            </span>
+<span class="field" data-sketch="select">
+  <select id="task-reminder" aria-label="Rappel" disabled>
+    <option value="">Sans rappel</option>
+    <option value="atDue">Rappel : à l'heure</option>
+    <option value="1h">Rappel : 1 h avant</option>
+    <option value="1d">Rappel : la veille</option>
+  </select>
+</span>
 ```
 
 - [ ] **Step 3 : ajouter le style**
@@ -748,6 +754,7 @@ git commit -m "feat: choisir et voir le rappel d'une tache"
 ## Task 5 : documenter, limite comprise
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1 : la fonctionnalité et sa limite**

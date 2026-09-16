@@ -48,9 +48,7 @@ export const initDragDrop = ({ taskList, moveTask, refresh, toast }) => {
     // demander au serveur pour ça
     if (!cible || !tireeId || cible.dataset.id === tireeId) return;
 
-    const lignes = [...taskList.querySelectorAll('.task')].filter(
-      (l) => l.dataset.id !== tireeId
-    );
+    const lignes = [...taskList.querySelectorAll('.task')].filter((l) => l.dataset.id !== tireeId);
     const index = lignes.indexOf(cible);
 
     try {

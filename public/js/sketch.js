@@ -169,7 +169,10 @@ const paint = (svg, w, h, layers, opts) => {
       if (!d) return;
       const path = document.createElementNS(SVG_NS, 'path');
       path.setAttribute('d', d);
-      path.setAttribute('class', paths.length > 1 ? `drawably-boil ${layer.className}` : layer.className);
+      path.setAttribute(
+        'class',
+        paths.length > 1 ? `drawably-boil ${layer.className}` : layer.className
+      );
       path.dataset.i = String(i);
       svg.append(path);
     });
@@ -198,9 +201,13 @@ export function strike(el, opts = {}) {
     const h = el.offsetHeight;
     if (!w || !h) return;
     // le trait déborde de quelques pixels et retombe : une main ne s'arrête pas pile
-    paint(svg, w, h, [
-      { className: 'drawably-outline', gen: (o) => roughLine(-3, h * 0.62, w + 3, h * 0.52, o) },
-    ], { seed, roughness: 1.3, boil: 0.4 });
+    paint(
+      svg,
+      w,
+      h,
+      [{ className: 'drawably-outline', gen: (o) => roughLine(-3, h * 0.62, w + 3, h * 0.52, o) }],
+      { seed, roughness: 1.3, boil: 0.4 }
+    );
   };
 
   draw();

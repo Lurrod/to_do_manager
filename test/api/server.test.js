@@ -33,14 +33,12 @@ beforeEach(async () => {
 
 describe('Tasks API', () => {
   test('POST /tasks creates a task', async () => {
-    const res = await request(app)
-      .post('/tasks')
-      .send({
-        title: 'Acheter du lait',
-        description: 'Avant 18h',
-        dueDate: '2026-12-31T23:59:59Z',
-        category: 'Courses',
-      });
+    const res = await request(app).post('/tasks').send({
+      title: 'Acheter du lait',
+      description: 'Avant 18h',
+      dueDate: '2026-12-31T23:59:59Z',
+      category: 'Courses',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('_id');
@@ -56,7 +54,9 @@ describe('Tasks API', () => {
 
   test('GET /tasks returns paginated list', async () => {
     for (let i = 0; i < 7; i += 1) {
-      await request(app).post('/tasks').send({ title: `Task ${i}` });
+      await request(app)
+        .post('/tasks')
+        .send({ title: `Task ${i}` });
     }
 
     const res = await request(app).get('/tasks?page=1&limit=5');
@@ -110,10 +110,18 @@ describe('Tasks API', () => {
     };
 
     beforeEach(async () => {
-      await request(app).post('/tasks').send({ title: 'hier', dueDate: at(-1) });
-      await request(app).post('/tasks').send({ title: 'aujourdhui', dueDate: at(0) });
-      await request(app).post('/tasks').send({ title: 'dans3j', dueDate: at(3) });
-      await request(app).post('/tasks').send({ title: 'dans30j', dueDate: at(30) });
+      await request(app)
+        .post('/tasks')
+        .send({ title: 'hier', dueDate: at(-1) });
+      await request(app)
+        .post('/tasks')
+        .send({ title: 'aujourdhui', dueDate: at(0) });
+      await request(app)
+        .post('/tasks')
+        .send({ title: 'dans3j', dueDate: at(3) });
+      await request(app)
+        .post('/tasks')
+        .send({ title: 'dans30j', dueDate: at(30) });
       await request(app).post('/tasks').send({ title: 'sansdate' });
     });
 
@@ -150,9 +158,15 @@ describe('Tasks API', () => {
     test('due se combine avec le statut et la recherche', async () => {
       // chaque leurre n'est écarté que par un seul des trois filtres : si l'un
       // d'eux cesse d'agir, un intrus apparaît et le test tombe
-      await request(app).post('/tasks').send({ title: 'hier futur', dueDate: at(30) });
-      await request(app).post('/tasks').send({ title: 'course', dueDate: at(-1) });
-      const fini = await request(app).post('/tasks').send({ title: 'hier fini', dueDate: at(-1) });
+      await request(app)
+        .post('/tasks')
+        .send({ title: 'hier futur', dueDate: at(30) });
+      await request(app)
+        .post('/tasks')
+        .send({ title: 'course', dueDate: at(-1) });
+      const fini = await request(app)
+        .post('/tasks')
+        .send({ title: 'hier fini', dueDate: at(-1) });
       await request(app).put(`/tasks/${fini.body._id}`).send({ completed: true });
 
       expect(await titlesFor('due=overdue&status=active&q=hier')).toEqual(['hier']);
@@ -280,10 +294,25 @@ describe('Tasks API', () => {
 describe('Tasks API — tri, filtres et recherche serveur', () => {
   const seed = async () => {
     const rows = [
-      { title: 'Payer le loyer', category: 'Perso', dueDate: '2026-01-10T09:00:00Z', priority: 'high' },
-      { title: 'Relire le devis (v2)', description: 'urgent', category: 'Boulot', dueDate: '2026-01-05T09:00:00Z' },
+      {
+        title: 'Payer le loyer',
+        category: 'Perso',
+        dueDate: '2026-01-10T09:00:00Z',
+        priority: 'high',
+      },
+      {
+        title: 'Relire le devis (v2)',
+        description: 'urgent',
+        category: 'Boulot',
+        dueDate: '2026-01-05T09:00:00Z',
+      },
       { title: 'Arroser les plantes', category: 'Perso' },
-      { title: 'Appeler le garage', category: 'Boulot', dueDate: '2026-02-01T09:00:00Z', priority: 'low' },
+      {
+        title: 'Appeler le garage',
+        category: 'Boulot',
+        dueDate: '2026-02-01T09:00:00Z',
+        priority: 'low',
+      },
       { title: 'Ranger le bureau', category: '' },
       { title: 'Sortir courir', category: 'Perso' },
     ];
@@ -460,7 +489,9 @@ describe('Tasks API — validation et corbeille', () => {
 
   test('PUT rejette une priorité inconnue', async () => {
     const created = await request(app).post('/tasks').send({ title: 'Priorité' });
-    const res = await request(app).put(`/tasks/${created.body._id}`).send({ priority: 'urgentissime' });
+    const res = await request(app)
+      .put(`/tasks/${created.body._id}`)
+      .send({ priority: 'urgentissime' });
 
     expect(res.status).toBe(400);
   });
@@ -494,9 +525,7 @@ describe('Tasks API — validation et corbeille', () => {
 
 describe('Categories API', () => {
   test('POST /categories creates a category', async () => {
-    const res = await request(app)
-      .post('/categories')
-      .send({ name: 'Travail', color: '#f3a366' });
+    const res = await request(app).post('/categories').send({ name: 'Travail', color: '#f3a366' });
 
     expect(res.status).toBe(201);
     expect(res.body.name).toBe('Travail');
@@ -534,9 +563,7 @@ describe('Categories API', () => {
 
   test('DELETE /categories/:name clears the category from associated tasks', async () => {
     await request(app).post('/categories').send({ name: 'Sport', color: '#0a0' });
-    const task = await request(app)
-      .post('/tasks')
-      .send({ title: 'Run', category: 'Sport' });
+    const task = await request(app).post('/tasks').send({ title: 'Run', category: 'Sport' });
 
     const del = await request(app).delete('/categories/Sport');
     expect(del.status).toBe(200);
@@ -870,7 +897,7 @@ describe('Erreurs de lecture du corps (body-parser)', () => {
     const res = await request(app)
       .post('/import')
       .set('Content-Type', 'application/json')
-      .send('{ ceci n\'est pas du JSON');
+      .send("{ ceci n'est pas du JSON");
 
     expect(res.status).toBe(400);
     expect(res.headers['content-type']).toMatch(/json/);
@@ -1345,16 +1372,24 @@ describe('Étiquettes', () => {
   });
 
   test('PUT /tasks/:id remplace les étiquettes', async () => {
-    const creee = await request(app).post('/tasks').send({ title: 'Courses', tags: ['maison'] });
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Courses', tags: ['maison'] });
 
-    const res = await request(app).put(`/tasks/${creee.body._id}`).send({ tags: ['Bureau'] });
+    const res = await request(app)
+      .put(`/tasks/${creee.body._id}`)
+      .send({ tags: ['Bureau'] });
 
     expect(res.body.tags).toEqual(['bureau']);
   });
 
   test('GET /tasks?tag=… ne renvoie que les tâches marquées', async () => {
-    await request(app).post('/tasks').send({ title: 'Avec', tags: ['maison'] });
-    await request(app).post('/tasks').send({ title: 'Sans', tags: ['bureau'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Avec', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Sans', tags: ['bureau'] });
 
     const res = await request(app).get('/tasks?limit=50&tag=maison');
 
@@ -1362,7 +1397,9 @@ describe('Étiquettes', () => {
   });
 
   test('le filtre par étiquette est insensible à la casse de la requête', async () => {
-    await request(app).post('/tasks').send({ title: 'Avec', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Avec', tags: ['maison'] });
 
     const res = await request(app).get('/tasks?limit=50&tag=MAISON');
 
@@ -1370,7 +1407,9 @@ describe('Étiquettes', () => {
   });
 
   test('un opérateur Mongo injecté dans tag est ignoré', async () => {
-    await request(app).post('/tasks').send({ title: 'Une', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Une', tags: ['maison'] });
     await request(app).post('/tasks').send({ title: 'Deux' });
 
     const res = await request(app).get('/tasks?limit=50&tag[$ne]=null');
@@ -1379,9 +1418,13 @@ describe('Étiquettes', () => {
   });
 
   test('le filtre par étiquette se combine avec le statut', async () => {
-    const faite = await request(app).post('/tasks').send({ title: 'Faite', tags: ['maison'] });
+    const faite = await request(app)
+      .post('/tasks')
+      .send({ title: 'Faite', tags: ['maison'] });
     await request(app).put(`/tasks/${faite.body._id}`).send({ completed: true });
-    await request(app).post('/tasks').send({ title: 'À faire', tags: ['maison'] });
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'À faire', tags: ['maison'] });
 
     const res = await request(app).get('/tasks?limit=50&tag=maison&status=active');
 
@@ -1533,7 +1576,9 @@ describe('Rappels', () => {
       .post('/tasks')
       .send({ title: 'Dentiste', dueDate: dans(120), reminder: { offset: '1h' } });
 
-    const res = await request(app).put(`/tasks/${creee.body._id}`).send({ dueDate: dans(300) });
+    const res = await request(app)
+      .put(`/tasks/${creee.body._id}`)
+      .send({ dueDate: dans(300) });
 
     const attendue = new Date(new Date(res.body.dueDate).getTime() - 60 * 60 * 1000);
     expect(new Date(res.body.reminder.at).toISOString()).toBe(attendue.toISOString());
@@ -1699,7 +1744,9 @@ describe('Actions groupées', () => {
     const [parentId] = await creer(['Devis']);
     await request(app).post('/tasks').send({ title: 'Une étape', parentId });
 
-    await request(app).post('/tasks/bulk').send({ ids: [parentId], action: 'complete' });
+    await request(app)
+      .post('/tasks/bulk')
+      .send({ ids: [parentId], action: 'complete' });
 
     const etapes = await request(app).get(`/tasks/${parentId}/children`);
     expect(etapes.body.tasks.every((t) => t.completed)).toBe(true);
@@ -1727,9 +1774,7 @@ describe('Actions groupées', () => {
   test('changer la catégorie de plusieurs tâches', async () => {
     const ids = await creer(['A', 'B']);
 
-    await request(app)
-      .post('/tasks/bulk')
-      .send({ ids, action: 'category', value: 'Perso' });
+    await request(app).post('/tasks/bulk').send({ ids, action: 'category', value: 'Perso' });
 
     const liste = await request(app).get('/tasks?limit=50&category=Perso');
     expect(liste.body.total).toBe(2);

@@ -192,7 +192,9 @@
   color: var(--ink-faint);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 140ms var(--ease), color 140ms var(--ease);
+  transition:
+    opacity 140ms var(--ease),
+    color 140ms var(--ease);
 }
 
 .cat-item:hover .cat-delete,

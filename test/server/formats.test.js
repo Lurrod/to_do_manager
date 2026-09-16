@@ -71,7 +71,9 @@ describe('toCsv', () => {
   test('écrit un en-tête stable puis une ligne par tâche', () => {
     const lignes = toCsv([task({ title: 'Courses, urgentes' })]).split('\n');
 
-    expect(lignes[0]).toBe('id,title,description,completed,priority,category,dueDate,createdAt,deletedAt');
+    expect(lignes[0]).toBe(
+      'id,title,description,completed,priority,category,dueDate,createdAt,deletedAt'
+    );
     expect(lignes[1]).toContain('"Courses, urgentes"');
     expect(lignes).toHaveLength(2);
   });

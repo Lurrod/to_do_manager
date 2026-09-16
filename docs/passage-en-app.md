@@ -17,11 +17,11 @@ Un installeur NSIS classique : on le double-clique, il propose un dossier, il po
 sur le bureau et dans le menu Démarrer, et l'application apparaît dans **Applications
 installées** pour être désinstallée comme n'importe quelle autre.
 
-| Mesuré sur cette machine | |
-|---|---|
-| Installeur `.exe` | **88 Mo** |
-| Application installée | **358 Mo** (`%LOCALAPPDATA%\Programs\Cahier`) |
-| Données après premier lancement | **201 Mo** (`%APPDATA%\Cahier\db`) |
+| Mesuré sur cette machine        |                                               |
+| ------------------------------- | --------------------------------------------- |
+| Installeur `.exe`               | **88 Mo**                                     |
+| Application installée           | **358 Mo** (`%LOCALAPPDATA%\Programs\Cahier`) |
+| Données après premier lancement | **201 Mo** (`%APPDATA%\Cahier\db`)            |
 
 Les données vivent **hors** de l'application : une mise à jour ne les touche pas, et
 désinstaller ne les efface pas.
@@ -68,8 +68,8 @@ noms pour la même application, donc trois bases. Il est maintenant posé explic
 ### L'avertissement SmartScreen
 
 L'exécutable n'est pas signé. Au premier lancement, Windows affichera **« Windows a protégé
-votre ordinateur »** ; il faut cliquer *Informations complémentaires* puis *Exécuter quand
-même*. Sans conséquence pour un usage personnel ; rédhibitoire pour distribuer à d'autres.
+votre ordinateur »** ; il faut cliquer _Informations complémentaires_ puis _Exécuter quand
+même_. Sans conséquence pour un usage personnel ; rédhibitoire pour distribuer à d'autres.
 
 Signer demande un certificat de signature de code (≈ 200 à 400 € par an, ou un certificat EV
 sur clé matérielle pour lever l'avertissement immédiatement). À décider seulement si le Cahier

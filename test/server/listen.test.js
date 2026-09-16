@@ -15,7 +15,8 @@ const fermer = (serveur) => new Promise((resolve) => serveur.close(resolve));
  */
 const serveurQuiEchoue = (code) => {
   const faux = new EventEmitter();
-  faux.listen = () => setImmediate(() => faux.emit('error', Object.assign(new Error(code), { code })));
+  faux.listen = () =>
+    setImmediate(() => faux.emit('error', Object.assign(new Error(code), { code })));
   faux.address = () => ({ port: 0 });
   return faux;
 };
@@ -48,9 +49,9 @@ describe('listenWithFallback', () => {
   test('abandonne après le nombre d’essais donné', async () => {
     const faux = serveurQuiEchoue('EADDRINUSE');
 
-    await expect(listenWithFallback(faux, { port: 3000, host: '127.0.0.1', tries: 2 })).rejects.toThrow(
-      /Aucun port libre/
-    );
+    await expect(
+      listenWithFallback(faux, { port: 3000, host: '127.0.0.1', tries: 2 })
+    ).rejects.toThrow(/Aucun port libre/);
   });
 
   test('une erreur qui n’est pas « port occupé » remonte telle quelle', async () => {
