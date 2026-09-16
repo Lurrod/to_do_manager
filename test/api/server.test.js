@@ -1333,3 +1333,67 @@ describe('Récurrence', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('Étiquettes', () => {
+  test('POST /tasks pose des étiquettes normalisées', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .send({ title: 'Courses', tags: [' Maison ', 'MAISON', 'urgent'] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.tags).toEqual(['maison', 'urgent']);
+  });
+
+  test('PUT /tasks/:id remplace les étiquettes', async () => {
+    const creee = await request(app).post('/tasks').send({ title: 'Courses', tags: ['maison'] });
+
+    const res = await request(app).put(`/tasks/${creee.body._id}`).send({ tags: ['Bureau'] });
+
+    expect(res.body.tags).toEqual(['bureau']);
+  });
+
+  test('GET /tasks?tag=… ne renvoie que les tâches marquées', async () => {
+    await request(app).post('/tasks').send({ title: 'Avec', tags: ['maison'] });
+    await request(app).post('/tasks').send({ title: 'Sans', tags: ['bureau'] });
+
+    const res = await request(app).get('/tasks?limit=50&tag=maison');
+
+    expect(res.body.tasks.map((t) => t.title)).toEqual(['Avec']);
+  });
+
+  test('le filtre par étiquette est insensible à la casse de la requête', async () => {
+    await request(app).post('/tasks').send({ title: 'Avec', tags: ['maison'] });
+
+    const res = await request(app).get('/tasks?limit=50&tag=MAISON');
+
+    expect(res.body.tasks.map((t) => t.title)).toEqual(['Avec']);
+  });
+
+  test('un opérateur Mongo injecté dans tag est ignoré', async () => {
+    await request(app).post('/tasks').send({ title: 'Une', tags: ['maison'] });
+    await request(app).post('/tasks').send({ title: 'Deux' });
+
+    const res = await request(app).get('/tasks?limit=50&tag[$ne]=null');
+
+    expect(res.body.tasks).toHaveLength(2);
+  });
+
+  test('le filtre par étiquette se combine avec le statut', async () => {
+    const faite = await request(app).post('/tasks').send({ title: 'Faite', tags: ['maison'] });
+    await request(app).put(`/tasks/${faite.body._id}`).send({ completed: true });
+    await request(app).post('/tasks').send({ title: 'À faire', tags: ['maison'] });
+
+    const res = await request(app).get('/tasks?limit=50&tag=maison&status=active');
+
+    expect(res.body.tasks.map((t) => t.title)).toEqual(['À faire']);
+  });
+
+  test('plus de dix étiquettes : les dix premières sont gardées', async () => {
+    const douze = Array.from({ length: 12 }, (_, i) => `tag${i}`);
+
+    const res = await request(app).post('/tasks').send({ title: 'Beaucoup', tags: douze });
+
+    expect(res.status).toBe(201);
+    expect(res.body.tags).toHaveLength(10);
+  });
+});

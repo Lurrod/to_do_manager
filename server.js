@@ -8,6 +8,7 @@ require('dotenv').config();
 const { exportShape, validateImport, HEX_COLOR } = require('./lib/portable');
 const { toMarkdown, toCsv } = require('./lib/formats');
 const { nextDueDate } = require('./lib/recurrence');
+const { normalizeTags } = require('./lib/tags');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -181,6 +182,7 @@ const CREATE_FIELDS = [
   'priority',
   'parentId',
   'recurrence',
+  'tags',
 ];
 const UPDATE_FIELDS = [...CREATE_FIELDS, 'completed'];
 
@@ -441,6 +443,11 @@ const buildFilter = (query) => {
     filter.category = category === 'none' ? '' : category;
   }
 
+  // asString neutralise ?tag[$ne]=null, et la mise en minuscules fait que
+  // « MAISON » retrouve « maison » : les étiquettes sont rangées normalisées
+  const tag = asString(query.tag, 24).toLowerCase();
+  if (tag) filter.tags = tag;
+
   // asString neutralise ?due[$ne]=null : un objet devient chaîne vide, donc aucun filtre
   const due = dueClause(asString(query.due, 16));
   if (due) Object.assign(filter, due);
@@ -524,6 +531,8 @@ app.post('/tasks', async (req, res) => {
 
     const refusRecurrence = recurrenceInvalide(champs);
     if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
+
+    if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
 
     const task = new Task(champs);
     await task.save();
@@ -642,6 +651,8 @@ app.put('/tasks/:id', async (req, res) => {
 
     const refusRecurrence = recurrenceInvalide({ ...avant, ...champs });
     if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
+
+    if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
 
     const task = await Task.findOneAndUpdate({ _id: req.params.id, deletedAt: null }, champs, {
       new: true,
