@@ -172,7 +172,15 @@ const Category = mongoose.model('Category', categorySchema);
    -------------------------------------------------------------------------- */
 
 // liste blanche : le client ne pose jamais createdAt, deletedAt ni _id lui-même
-const CREATE_FIELDS = ['title', 'description', 'dueDate', 'category', 'priority', 'parentId'];
+const CREATE_FIELDS = [
+  'title',
+  'description',
+  'dueDate',
+  'category',
+  'priority',
+  'parentId',
+  'recurrence',
+];
 const UPDATE_FIELDS = [...CREATE_FIELDS, 'completed'];
 
 const pick = (source, fields) =>
@@ -343,6 +351,22 @@ const parentageInvalide = async (parentId, enfantId = null) => {
   return null;
 };
 
+/**
+ * Une récurrence a besoin d'une échéance : c'est elle qu'on fait avancer.
+ * Le contrôle porte sur l'état APRÈS modification — retirer l'échéance d'une
+ * tâche déjà récurrente la laisserait sans ancrage, et la série s'arrêterait
+ * sans que rien ne le dise.
+ * @returns {string|null} le message d'erreur, ou null
+ */
+const recurrenceInvalide = (apres) => {
+  const freq = apres?.recurrence?.freq;
+  if (!freq) return null;
+  if (!apres.dueDate) {
+    return 'Une récurrence a besoin d’une échéance : c’est elle qui avance.';
+  }
+  return null;
+};
+
 /** Filtre de liste — statut, échéance, catégorie et recherche portent sur TOUTES les tâches. */
 const buildFilter = (query) => {
   // seules les racines sont listées : compter les étapes rendrait la
@@ -438,6 +462,9 @@ app.post('/tasks', async (req, res) => {
     const champs = pick(req.body, CREATE_FIELDS);
     const refus = await parentageInvalide(champs.parentId);
     if (refus) return res.status(400).json({ error: refus });
+
+    const refusRecurrence = recurrenceInvalide(champs);
+    if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
 
     const task = new Task(champs);
     await task.save();
@@ -549,6 +576,13 @@ app.put('/tasks/:id', async (req, res) => {
       const refus = await parentageInvalide(champs.parentId, req.params.id);
       if (refus) return res.status(400).json({ error: refus });
     }
+
+    // le contrôle porte sur l'état résultant, pas sur la seule modification
+    const avant = await Task.findOne({ _id: req.params.id, deletedAt: null }).lean();
+    if (!avant) return res.status(404).json({ error: 'Tâche non trouvée' });
+
+    const refusRecurrence = recurrenceInvalide({ ...avant, ...champs });
+    if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
 
     const task = await Task.findOneAndUpdate({ _id: req.params.id, deletedAt: null }, champs, {
       new: true,

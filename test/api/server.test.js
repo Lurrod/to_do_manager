@@ -1168,3 +1168,61 @@ describe('Sous-tâches', () => {
     expect(res.body.error).toMatch(/un seul niveau/i);
   });
 });
+
+describe('Récurrence', () => {
+  const dans = (jours, heure = 9) => {
+    const d = new Date();
+    d.setHours(heure, 0, 0, 0);
+    d.setDate(d.getDate() + jours);
+    return d.toISOString();
+  };
+
+  test('POST /tasks accepte une récurrence avec une échéance', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .send({
+        title: 'Sortir les poubelles',
+        dueDate: dans(1),
+        recurrence: { freq: 'weekly', interval: 1, until: null },
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.recurrence.freq).toBe('weekly');
+  });
+
+  test('une récurrence sans échéance est refusée', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .send({ title: 'Sans ancrage', recurrence: { freq: 'daily', interval: 1, until: null } });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/échéance/i);
+  });
+
+  test('retirer l’échéance d’une tâche récurrente est refusé', async () => {
+    const creee = await request(app)
+      .post('/tasks')
+      .send({
+        title: 'Récurrente',
+        dueDate: dans(1),
+        recurrence: { freq: 'daily', interval: 1, until: null },
+      });
+
+    const res = await request(app).put(`/tasks/${creee.body._id}`).send({ dueDate: null });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/échéance/i);
+  });
+
+  test('une fréquence inconnue est refusée', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .send({
+        title: 'Bizarre',
+        dueDate: dans(1),
+        recurrence: { freq: 'yearly', interval: 1, until: null },
+      });
+
+    expect(res.status).toBe(400);
+  });
+});
