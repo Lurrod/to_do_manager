@@ -97,7 +97,15 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     const start = match.index + match[1].length;
     const end = match.index + match[0].length;
     if (overlaps(start, end)) return false;
-    cuts.push([start, end]);
+
+    /* « Truc #Santé. » : retirer l'étiquette laisserait « Truc . ». L'espace
+       qui la précédait part donc avec elle — mais seulement devant un point ou
+       une virgule, et seulement ici. Un passage global sur le titre fini
+       toucherait aussi la ponctuation que l'utilisateur a écrite lui-même, sans
+       qu'aucune pastille ne le signale. */
+    const glued = /[.,]/.test(text[end] || '') && start > 0 && /\s/.test(text[start - 1]);
+
+    cuts.push([glued ? start - 1 : start, end]);
     tokens.push({ type, text: text.slice(start, end).trim(), start });
     return true;
   };
@@ -174,10 +182,6 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     .sort((a, b) => a[0] - b[0])
     .reduceRight((acc, [start, end]) => acc.slice(0, start) + acc.slice(end), text)
     .replace(/\s+/g, ' ')
-    // une étiquette retirée devant un point laisse « Truc . » : on recolle.
-    // Uniquement le point et la virgule : « Bravo ! » prend une espace avant
-    // le point d'exclamation en français, et il ne faut pas y toucher
-    .replace(/\s+([.,])/g, '$1')
     .trim()
     .slice(0, MAX_TITLE);
 

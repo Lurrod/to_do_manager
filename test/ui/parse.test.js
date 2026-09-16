@@ -212,6 +212,16 @@ describe('parseQuickEntry — ne pas mutiler le titre', () => {
     expect(parse('Bravo !').title).toBe('Bravo !');
     expect(parse('Vaccin #Santé!').title).toBe('Vaccin !');
   });
+
+  test('la ponctuation écrite par l’utilisateur n’est jamais retouchée', () => {
+    // aucune étiquette retirée ici : rien ne justifie de toucher au texte,
+    // et aucune pastille ne signalerait la retouche
+    expect(parse('Truc , suite').title).toBe('Truc , suite');
+    expect(parse('Truc ...').title).toBe('Truc ...');
+    expect(parse('Payer 3 , 50').title).toBe('Payer 3 , 50');
+    // même quand une date est reconnue ailleurs dans la phrase
+    expect(parse('Attendre ... demain').title).toBe('Attendre ...');
+  });
 });
 
 describe('parseQuickEntry — divers', () => {
