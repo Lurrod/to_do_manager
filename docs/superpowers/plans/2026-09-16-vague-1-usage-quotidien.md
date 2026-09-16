@@ -91,13 +91,14 @@ existant (avant sa dernière accolade fermante) :
     });
 
     test('due se combine avec le statut et la recherche', async () => {
-      await request(app).post('/tasks').send({ title: 'hier fini', dueDate: at(-1) });
-      const all = await request(app).get('/tasks?limit=100&due=overdue&status=active');
-      const ids = all.body.tasks.map((t) => t._id);
-      await request(app).put(`/tasks/${ids[0]}`).send({ completed: true });
+      // chaque leurre n'est écarté que par un seul des trois filtres : si l'un
+      // d'eux cesse d'agir, un intrus apparaît et le test tombe
+      await request(app).post('/tasks').send({ title: 'hier futur', dueDate: at(30) });
+      await request(app).post('/tasks').send({ title: 'course', dueDate: at(-1) });
+      const fini = await request(app).post('/tasks').send({ title: 'hier fini', dueDate: at(-1) });
+      await request(app).put(`/tasks/${fini.body._id}`).send({ completed: true });
 
-      const res = await request(app).get('/tasks?limit=100&due=overdue&status=active&q=hier');
-      expect(res.body.tasks.map((t) => t.title).sort()).toEqual(['hier']);
+      expect(await titlesFor('due=overdue&status=active&q=hier')).toEqual(['hier']);
     });
   });
 ```
@@ -175,8 +176,22 @@ git commit -m "feat: filtre temporel due sur GET /tasks"
 ## Task 2 : compteur `overdue` dans `/tasks/stats`
 
 **Files:**
-- Modify: `server.js:246-266` (route `GET /tasks/stats`)
+- Modify: `server.js` (route `GET /tasks/stats`, et le commentaire de `buildFilter`)
 - Test: `test/api/server.test.js`
+
+Cette tâche emporte aussi une correction de commentaire laissée par la task 1 : la
+docstring de `buildFilter` énumère les critères qui portent sur toute la base et ne
+mentionne pas `due`, qu'elle applique pourtant désormais. Remplacer
+
+```js
+/** Filtre de liste — statut, catégorie et recherche s'appliquent à TOUTES les tâches. */
+```
+
+par
+
+```js
+/** Filtre de liste — statut, échéance, catégorie et recherche portent sur TOUTES les tâches. */
+```
 
 - [ ] **Step 1 : écrire le test qui échoue**
 
@@ -291,6 +306,86 @@ describe('onglets temporels', () => {
     expect(params.get('page')).toBe('1');
   });
 
+  test('l’onglet « en retard » aligne le statut sur ce que compte le badge', async () => {
+    await boot();
+    server.calls = [];
+
+    document.querySelector('.due-pill[data-due="overdue"]').click();
+    await settle();
+
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('due')).toBe('overdue');
+    expect(params.get('status')).toBe('active');
+    // l'interface ne doit pas afficher « Toutes » en filtrant sur « À faire »
+    const statusPill = document.querySelector('.pill[data-filter="active"]');
+    expect(statusPill.classList.contains('is-active')).toBe(true);
+  });
+
+  test('élargir le statut quitte l’horizon « en retard » au lieu de le faire mentir', async () => {
+    await boot();
+    document.querySelector('.due-pill[data-due="overdue"]').click();
+    await settle();
+    server.calls = [];
+
+    document.querySelector('.pill[data-filter="done"]').click();
+    await settle();
+
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('status')).toBe('done');
+    expect(params.get('due')).toBe('all');
+    expect(document.querySelector('.due-pill[data-due="all"]').classList.contains('is-active')).toBe(
+      true
+    );
+  });
+
+  test('revenir sur « à faire » ne quitte pas l’horizon : rien ne se contredit', async () => {
+    await boot();
+    document.querySelector('.due-pill[data-due="overdue"]').click();
+    await settle();
+    server.calls = [];
+
+    document.querySelector('.pill[data-filter="active"]').click();
+    await settle();
+
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('status')).toBe('active');
+    expect(params.get('due')).toBe('overdue');
+  });
+
+  test('l’état de sélection est exposé aux aides techniques', async () => {
+    await boot();
+    document.querySelector('.due-pill[data-due="today"]').click();
+    await settle();
+
+    expect(
+      document.querySelector('.due-pill[data-due="today"]').getAttribute('aria-pressed')
+    ).toBe('true');
+    expect(
+      document.querySelector('.due-pill[data-due="all"]').getAttribute('aria-pressed')
+    ).toBe('false');
+  });
+
+  test('le badge nomme ce qu’il compte', async () => {
+    server.stats = { ...server.stats, overdue: 2 };
+    await boot();
+
+    const pill = document.querySelector('.due-pill[data-due="overdue"]');
+    expect(pill.getAttribute('aria-label')).toBe('En retard, 2 tâches');
+  });
+
+  test('les autres horizons laissent le statut tranquille', async () => {
+    await boot();
+    server.calls = [];
+
+    document.querySelector('.due-pill[data-due="week"]').click();
+    await settle();
+
+    expect(new URL(lastListUrl(), 'http://test').searchParams.get('status')).toBe('all');
+    expect(document.querySelector('.pill[data-filter="all"]').classList.contains('is-active')).toBe(
+      true
+    );
+  });
+
   test('l’onglet actif est le seul marqué', async () => {
     await boot();
     document.querySelector('.due-pill[data-due="overdue"]').click();
@@ -350,15 +445,15 @@ Dans `public/index.html`, juste après la `<section>` du panneau « Statut » (c
         <section class="panel" data-sketch="card">
           <h2 class="panel-title">Échéance</h2>
           <div class="filters" role="group" aria-label="Filtrer par échéance">
-            <button class="btn pill due-pill is-active" data-due="all" data-sketch="button" data-variant="solid">
+            <button class="btn pill due-pill is-active" data-due="all" data-sketch="button" data-variant="solid" aria-pressed="true">
               Tout
             </button>
-            <button class="btn pill due-pill" data-due="overdue" data-sketch="button">
+            <button class="btn pill due-pill" data-due="overdue" data-sketch="button" aria-pressed="false">
               En retard <b class="due-badge" id="due-overdue-count" hidden>0</b>
             </button>
-            <button class="btn pill due-pill" data-due="today" data-sketch="button">Aujourd'hui</button>
-            <button class="btn pill due-pill" data-due="week" data-sketch="button">Semaine</button>
-            <button class="btn pill due-pill" data-due="none" data-sketch="button">Sans date</button>
+            <button class="btn pill due-pill" data-due="today" data-sketch="button" aria-pressed="false">Aujourd'hui</button>
+            <button class="btn pill due-pill" data-due="week" data-sketch="button" aria-pressed="false">Semaine</button>
+            <button class="btn pill due-pill" data-due="none" data-sketch="button" aria-pressed="false">Sans date</button>
           </div>
         </section>
 ```
@@ -439,20 +534,80 @@ const dueOverdueCount = $('due-overdue-count');
   const overdue = state.stats.overdue || 0;
   dueOverdueCount.textContent = overdue;
   dueOverdueCount.hidden = overdue === 0;
+
+  // sans cela le nom accessible du bouton devient « En retard 3 », un nombre
+  // posé là sans dire de quoi il parle
+  const overduePill = duePills.find((p) => p.dataset.due === 'overdue');
+  overduePill.setAttribute(
+    'aria-label',
+    overdue === 0 ? 'En retard' : `En retard, ${overdue} tâche${overdue > 1 ? 's' : ''}`
+  );
 ```
 
-7. Après le bloc `filterPills.forEach(…)`, ajouter :
+7. Remplacer le bloc `filterPills.forEach(…)` existant par le code ci-dessous, qui factorise le
+   marquage de la pastille active et branche les onglets temporels.
+
+**Décision — l'onglet « En retard » force le statut « À faire ».** Le badge compte les tâches
+en retard **non terminées** (task 2), alors que `due=overdue` et `status` sont orthogonaux côté
+serveur : sans rien faire, le badge annoncerait 3 et l'onglet listerait 5. Un compteur qui ment
+est pire que pas de compteur. L'onglet aligne donc le statut — **et met à jour la rangée
+« Statut » en conséquence**, sinon l'interface afficherait « Toutes » tout en filtrant sur
+« À faire ». Les autres horizons ne touchent pas au statut : sur « Aujourd'hui », voir ce qu'on
+a déjà rayé dans la journée est utile.
+
+**Le couplage doit être symétrique.** Forcer le statut à l'entrée de l'onglet ne suffit pas : si
+l'utilisateur clique ensuite « Rayées », il reste sur « En retard », badge allumé à N, en train
+de lister des tâches terminées — le bug revient par l'autre rangée. L'invariant à tenir est
+précis : **tant que l'onglet « En retard » est actif, la liste qu'il montre doit valoir le
+badge.** Élargir le statut quitte donc l'horizon au lieu de le faire mentir. Choisir « À faire »
+ne le quitte pas : il n'y a pas de contradiction.
+
+Le badge, lui, reste affiché en permanence : il dit « il reste N tâches en retard », ce qui est
+vrai quelle que soit la vue courante. Il n'étiquette pas la liste, il signale.
 
 ```js
+/** Marque une pastille comme seule active de sa rangée. */
+const activatePill = (pills, target) => {
+  pills.forEach((p) => {
+    const isTarget = p === target;
+    p.classList.toggle('is-active', isTarget);
+    // sans cet état, une aide technique ne sait pas quel filtre est appliqué :
+    // la classe CSS et le trait drawably ne disent rien à personne d'autre
+    p.setAttribute('aria-pressed', String(isTarget));
+    setVariant(p, isTarget ? 'solid' : null);
+  });
+};
+
+filterPills.forEach((pill) => {
+  pill.addEventListener('click', () => {
+    const status = pill.dataset.filter;
+    activatePill(filterPills, pill);
+
+    // élargir le statut ferait diverger l'onglet « en retard » et son badge :
+    // on quitte l'horizon plutôt que de le laisser mentir
+    const due = state.due === 'overdue' && status !== 'active' ? 'all' : state.due;
+    if (due !== state.due) {
+      activatePill(duePills, duePills.find((p) => p.dataset.due === due));
+    }
+
+    state = { ...state, status, due };
+    refresh({ page: 1 });
+  });
+});
+
 duePills.forEach((pill) => {
   pill.addEventListener('click', () => {
-    duePills.forEach((p) => {
-      p.classList.remove('is-active');
-      setVariant(p, null);
-    });
-    pill.classList.add('is-active');
-    setVariant(pill, 'solid');
-    state = { ...state, due: pill.dataset.due };
+    const due = pill.dataset.due;
+    activatePill(duePills, pill);
+
+    // le badge compte le travail qui reste : l'onglet doit montrer la même
+    // chose, et la rangée « Statut » doit dire la vérité sur ce qui est filtré
+    const status = due === 'overdue' ? 'active' : state.status;
+    if (status !== state.status) {
+      activatePill(filterPills, filterPills.find((p) => p.dataset.filter === status));
+    }
+
+    state = { ...state, due, status };
     refresh({ page: 1 });
   });
 });
@@ -648,14 +803,95 @@ describe('parseQuickEntry — catégorie et priorité', () => {
 });
 
 describe('parseQuickEntry — aperçu', () => {
-  test('chaque segment reconnu produit un token typé', () => {
+  test('les tokens se lisent dans l’ordre où l’utilisateur a tapé', () => {
     const r = parse('Dentiste demain 14h #Santé !haute');
     expect(r.tokens).toEqual([
-      { type: 'priority', text: '!haute' },
-      { type: 'category', text: '#Santé' },
       { type: 'date', text: 'demain' },
       { type: 'date', text: '14h' },
+      { type: 'category', text: '#Santé' },
+      { type: 'priority', text: '!haute' },
     ]);
+  });
+});
+
+describe('parseQuickEntry — ne pas mutiler le titre', () => {
+  /* Un motif à moitié consommé laisse un fragment orphelin dans le champ, sous
+     les yeux de l'utilisateur. Mieux vaut ne rien reconnaître du tout. */
+
+  test('#12/03 n’est pas une catégorie et ne laisse pas « /03 »', () => {
+    const r = parse('Truc #12/03');
+    expect(r.title).toBe('Truc #12/03');
+    expect(r.category).toBe('');
+    expect(r.dueDate).toBeNull();
+  });
+
+  test('!1/2 n’est pas une priorité et ne laisse pas « /2 »', () => {
+    const r = parse('Truc !1/2');
+    expect(r.title).toBe('Truc !1/2');
+    expect(r.priority).toBe('');
+  });
+
+  test('une catégorie trop longue n’est pas tronquée puis recollée', () => {
+    const long = 'a'.repeat(40);
+    const r = parse(`Truc #${long} fin`);
+    expect(r.title).toBe(`Truc #${long} fin`);
+    expect(r.category).toBe('');
+  });
+
+  test('« il y a 3h » garde son « a »', () => {
+    expect(parse('Reunion il y a 3h').title).toBe('Reunion il y a');
+  });
+
+  test('« Le » majuscule est reconnu comme amorce de date', () => {
+    const r = parse('Facture Le 12/11');
+    expect(r.title).toBe('Facture');
+  });
+
+  test('une étiquette en fin de phrase est reconnue, et le point recolle', () => {
+    const r = parse('Truc #Santé.');
+    expect(r.category).toBe('Santé');
+    expect(r.title).toBe('Truc.');
+  });
+
+  test('une étiquette suivie d’une virgule est reconnue', () => {
+    const r = parse('Truc !haute, autre chose');
+    expect(r.priority).toBe('high');
+    expect(r.title).toBe('Truc, autre chose');
+  });
+
+  test('l’espace avant un point d’exclamation français est préservée', () => {
+    // « Bravo ! » s'écrit avec une espace : le recollage ne vaut que . et ,
+    expect(parse('Bravo !').title).toBe('Bravo !');
+    expect(parse('Vaccin #Santé!').title).toBe('Vaccin !');
+  });
+
+  test('la ponctuation écrite par l’utilisateur n’est jamais retouchée', () => {
+    // aucune étiquette retirée ici : rien ne justifie de toucher au texte,
+    // et aucune pastille ne signalerait la retouche
+    expect(parse('Truc , suite').title).toBe('Truc , suite');
+    expect(parse('Truc ...').title).toBe('Truc ...');
+    expect(parse('Payer 3 , 50').title).toBe('Payer 3 , 50');
+    // même quand une date est reconnue ailleurs dans la phrase
+    expect(parse('Attendre ... demain').title).toBe('Attendre ...');
+  });
+});
+
+describe('parseQuickEntry — divers', () => {
+  test('« ce lundi » est accepté', () => {
+    expect(at(parse('Réunion ce lundi'))).toEqual([2026, 9, 21, 9, 0]);
+  });
+
+  test('une seule catégorie est retenue, la seconde reste dans le titre', () => {
+    const r = parse('Truc #Un #Deux');
+    expect(r.category).toBe('Un');
+    expect(r.title).toBe('Truc #Deux');
+  });
+
+  test('l’horloge fournie n’est jamais modifiée', () => {
+    const clock = new Date(2026, 8, 16, 10, 0, 0);
+    const before = clock.getTime();
+    parseQuickEntry('Courses demain 14h', { now: clock });
+    expect(clock.getTime()).toBe(before);
   });
 });
 ```
@@ -709,13 +945,25 @@ const WEEKDAYS = {
 /* Chaque motif commence par (^|\s) : un motif ne se déclenche qu'en début de
    mot, sinon « #Santé » livrerait un jour dans « ...di ». Le groupe 1 est cette
    frontière, et n'est jamais consommé. */
-const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])\b/iu;
-const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})/u;
+/* `#` et `!` exigent aussi une frontière APRÈS le motif, et ce doit être une
+   anticipation sur l'espace ou la fin : un simple \b ne suffirait pas, puisqu'il
+   y a justement une frontière de mot entre le « 2 » et le « / » de « !1/2 ».
+   Sans elle, « #12/03 » consommerait « #12 » et laisserait « /03 » dans le
+   titre — un titre mutilé sous les yeux de l'utilisateur, ce que l'aperçu ne
+   rattrape pas. Mieux vaut ne rien reconnaître et lui laisser le fragment.
+   La ponctuation de fin de phrase est admise comme frontière : « #Santé. »
+   doit être reconnu, et le « / » n'en fait pas partie, donc « #12/03 » reste
+   écarté. Et surtout pas \b ici : il est ASCII-only en JS, et une étiquette
+   accentuée comme « #Santé » n'y satisferait jamais. */
+const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])(?=[\s.,!?;:]|$)/iu;
+const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})(?=[\s.,!?;:]|$)/u;
 const RE_IN = /(^|\s)dans\s+(\d{1,3})\s*(jours?|j|semaines?|sem)\b/iu;
 const RE_RELATIVE = /(^|\s)(apr[èe]s-demain|demain|aujourd['’]?hui|auj)\b/iu;
 const RE_WEEKDAY = /(^|\s)(?:(?:ce|cette)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/iu;
-const RE_DATE = /(^|\s)(?:le\s+)?(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/u;
-const RE_TIME = /(^|\s)(?:[àa]\s*)?(\d{1,2})\s*h\s*([0-5]\d)?\b/iu;
+const RE_DATE = /(^|\s)(?:le\s+)?(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/iu;
+// seul « à » introduit une heure : accepter « a » nu ferait de « il y a 3h »
+// une échéance, alors que c'est la tournure la plus banale du français
+const RE_TIME = /(^|\s)(?:à\s*)?(\d{1,2})\s*h\s*([0-5]\d)?\b/iu;
 
 /** Minuscules sans accents : « Après-demain » et « apres-demain » se valent. */
 const plain = (value) =>
@@ -763,8 +1011,16 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     const start = match.index + match[1].length;
     const end = match.index + match[0].length;
     if (overlaps(start, end)) return false;
-    cuts.push([start, end]);
-    tokens.push({ type, text: text.slice(start, end).trim() });
+
+    /* « Truc #Santé. » : retirer l'étiquette laisserait « Truc . ». L'espace
+       qui la précédait part donc avec elle — mais seulement devant un point ou
+       une virgule, et seulement ici. Un passage global sur le titre fini
+       toucherait aussi la ponctuation que l'utilisateur a écrite lui-même, sans
+       qu'aucune pastille ne le signale. */
+    const glued = /[.,]/.test(text[end] || '') && start > 0 && /\s/.test(text[start - 1]);
+
+    cuts.push([glued ? start - 1 : start, end]);
+    tokens.push({ type, text: text.slice(start, end).trim(), start });
     return true;
   };
 
@@ -794,11 +1050,13 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     if (word.startsWith('apres-demain')) day = addDays(atMidnight(now), 2);
     else if (word === 'demain') day = addDays(atMidnight(now), 1);
     else day = atMidnight(now);
-  } else if (mWeekday) {
+    // même forme que ses trois branches sœurs : un `take` refusé doit laisser
+    // sa chance au motif suivant, pas abandonner la date en silence
+  } else if (mWeekday && take(mWeekday, 'date')) {
     const today = atMidnight(now);
     // « mercredi » un mercredi désigne le mercredi suivant, jamais aujourd'hui
     const delta = (WEEKDAYS[plain(mWeekday[2])] - today.getDay() + 7) % 7 || 7;
-    if (take(mWeekday, 'date')) day = addDays(today, delta);
+    day = addDays(today, delta);
   } else if (mDate) {
     const dayNum = parseInt(mDate[2], 10);
     const monthNum = parseInt(mDate[3], 10);
@@ -841,7 +1099,13 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     .trim()
     .slice(0, MAX_TITLE);
 
-  return { title, dueDate, category, priority, tokens };
+  // les pastilles se lisent dans l'ordre où l'utilisateur a tapé, pas dans
+  // celui où le parseur a reconnu : `start` sert au tri, puis disparaît
+  const ordered = tokens
+    .sort((a, b) => a.start - b.start)
+    .map(({ type, text: label }) => ({ type, text: label }));
+
+  return { title, dueDate, category, priority, tokens: ordered };
 }
 ```
 
@@ -851,7 +1115,7 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
 npm run test:ui -- parse
 ```
 
-Attendu : SUCCÈS, 25 tests.
+Attendu : SUCCÈS, 28 tests.
 
 - [ ] **Step 5 : committer**
 
@@ -859,6 +1123,26 @@ Attendu : SUCCÈS, 25 tests.
 git add public/js/parse.js test/ui/parse.test.js
 git commit -m "feat: parseur de saisie rapide en langage naturel"
 ```
+
+### Limite connue et assumée : `3h` est toujours une heure
+
+`Reunion il y a 3h` garde bien son « a » depuis que seul `à` introduit une heure, mais `3h` reste
+lu comme une échéance. C'est irréductible : distinguer « 3h » l'heure de « 3h » la durée demande
+de comprendre la phrase, pas de la faire correspondre à un motif. Et `Appel 18h`, sans aucune
+préposition, doit continuer de marcher — c'est le cas d'usage principal.
+
+Même parade que ci-dessous : l'aperçu affiche la date résolue, donc l'utilisateur voit
+l'échéance qu'il n'a pas demandée avant de valider.
+
+### Limite connue et assumée : `3/4`
+
+`Payer 3/4 du loyer` lit `3/4` comme le 3 avril et sort le fragment du titre. C'est inhérent à
+tout motif de date à barre oblique : la seule heuristique qui l'éviterait — refuser deux nombres
+inférieurs à 13 sans année ni « le » — tuerait `12/11`, une date parfaitement légitime.
+
+La parade n'est pas dans le parseur, elle est dans l'aperçu : la pastille `3/4` s'affiche sous le
+champ **avant** validation, et l'utilisateur voit qu'une date a été comprise là où il n'en
+voulait pas. C'est précisément la raison d'être de l'aperçu — ne jamais deviner en silence.
 
 ---
 
@@ -1775,6 +2059,15 @@ const paletteList = $('palette-list');
 ```js
 const taskAt = (index) => state.tasks[index] || null;
 
+/**
+ * Une frappe partie d'un champ appartient au champ, pas aux raccourcis.
+ * `matches` n'existe que sur les éléments : un événement clavier envoyé au
+ * document (ce que font les tests) a `document` pour cible, et appeler
+ * `document.matches` lèverait une TypeError.
+ */
+const isTyping = (target) =>
+  typeof target?.matches === 'function' && target.matches('input, textarea, select');
+
 const applyCursor = () => {
   const rows = [...taskList.querySelectorAll('.task')];
   rows.forEach((row, index) => row.classList.toggle('is-cursor', index === state.cursor));
@@ -1848,14 +2141,19 @@ paletteInput.addEventListener('input', renderPalette);
 document.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
-    if (isModalOpen()) closeModal(paletteModal);
+    // la palette se referme sur elle-même ; une autre modale garde la main
+    // (closeModal ne fait rien si ce n'est pas elle qui est ouverte)
+    if (isModalOpen()) {
+      closeModal(paletteModal);
+      return;
+    }
     openPalette();
     return;
   }
 
   if (isModalOpen()) return;
   // un raccourci d'une lettre ne doit jamais manger une frappe de saisie
-  if (e.target.matches('input, textarea, select')) return;
+  if (isTyping(e.target)) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
 
   const cursorTask = taskAt(state.cursor);
@@ -1928,6 +2226,73 @@ frappe dans un champ. `Ctrl+C` pour arrêter.
 ```bash
 git add public/index.html public/css/components.css public/js/app.js test/ui/app.test.js
 git commit -m "feat: raccourcis clavier et palette de commandes"
+```
+
+---
+
+## Task 8b : découper `app.js`
+
+> **Renuméroté en cours de route : cette tâche passe AVANT la task 8.** Elle était prévue après,
+> sur l'idée que les coutures se voient une fois le code écrit. Elles se voient maintenant :
+> `app.js` est à 762 lignes après la task 7, et la task 8 lui en ajouterait ~90, soit un
+> dépassement du plafond de 800. Découper d'abord évite de gonfler un fichier pour le dégonfler
+> juste après, et la task 8 crée alors son module directement.
+
+**Files:**
+- Create: `public/js/filters.js`, `public/js/trash.js`
+- Modify: `public/js/app.js`
+- Test: la suite existante, **sans modification**
+
+**Décision — découper par responsabilité, pas par couche.** Deux blocs sortent proprement, et ce
+sont les deux qui sont finis :
+
+| Module | Contenu | Pourquoi il sort seul |
+|--------|---------|------------------------|
+| `filters.js` | `activatePill`, câblage des deux rangées de pastilles, invariant échéance/statut | Un seul sujet, une seule invariante à tenir, aucune dépendance au rendu des tâches |
+| `trash.js` | `renderTrash`, `openTrash`, la confirmation en deux temps, le rattrapage du focus | Ne touche qu'à sa modale ; ne lit jamais `state` |
+
+`palette.js` ne figure plus ici : la task 8 le crée directement, plutôt que d'écrire son code
+dans `app.js` pour l'en extraire ensuite.
+
+`render`, `updateCounters` et `updateEmptyState` **restent** dans `app.js` : ils lisent tous
+`state` et le déplacement demanderait de faire circuler l'état, ce qui coûterait plus que ça ne
+rapporte à cette taille.
+
+**Le piège à éviter.** `app.js` est un module à effets de bord : l'importer amorce l'application.
+Les modules extraits ne doivent donc **jamais** l'importer en retour. Ils reçoivent ce dont ils
+ont besoin en arguments — une fonction de rafraîchissement, un accès en lecture à l'état — via
+une fonction d'initialisation explicite.
+
+- [ ] **Step 1 : mesurer avant**
+
+```bash
+wc -l public/js/*.js
+```
+
+Noter le chiffre d'`app.js`. Le seuil de déclenchement était 700 ; il est franchi (762 après la
+task 7). Si une mesure future le ramenait sous 700, cette tâche serait à reporter — découper un
+fichier qui tient encore est du travail pour rien.
+
+- [ ] **Step 2 : déplacer, sans rien réécrire**
+
+Déplacer le code tel quel, en passant les dépendances en arguments plutôt qu'en important `app.js`
+(qui est un module à effets de bord : l'importer relancerait l'application).
+
+- [ ] **Step 3 : la suite doit rester verte, sans être touchée**
+
+```bash
+npm test
+```
+
+Attendu : exactement les mêmes nombres qu'avant le découpage. **Si un test doit être modifié, le
+découpage a changé un comportement : revenir en arrière.** C'est le seul critère d'acceptation
+de cette tâche.
+
+- [ ] **Step 4 : committer**
+
+```bash
+git add public/js/
+git commit -m "refactor: sortir les filtres et la palette de app.js"
 ```
 
 ---
