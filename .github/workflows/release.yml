@@ -62,6 +62,44 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Le README promet une empreinte a chaque release ; la calculer a la main
+      # la rendrait fausse le jour ou on l'oublierait. L'installeur n'etant pas
+      # signe, c'est le seul moyen offert a quelqu'un de verifier ce qu'il a
+      # telecharge.
+      - name: Publier l'empreinte du binaire
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ETIQUETTE: ${{ github.ref_name }}
+        run: |
+          $exe = Get-ChildItem dist/*.exe | Select-Object -First 1
+          if (-not $exe) { throw "Aucun .exe dans dist/ - rien a empreindre." }
+          $empreinte = (Get-FileHash -Algorithm SHA256 $exe.FullName).Hash
+          $octets = '{0:N0}' -f $exe.Length
+          $cloture = [string]([char]96) * 3
+
+          $lignes = @(
+            ''
+            '## Verifier le fichier'
+            ''
+            $cloture
+            "SHA-256  $empreinte"
+            "octets   $octets"
+            $cloture
+            ''
+            ($cloture + 'powershell')
+            ('Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\' + $exe.Name + '"')
+            $cloture
+            ''
+            "Si l'empreinte correspond, le fichier n'a pas ete modifie depuis sa construction par GitHub Actions."
+          )
+
+          # on ajoute, on ne remplace pas : des notes redigees a la main restent
+          $notes = gh release view $env:ETIQUETTE --json body --jq .body
+          Set-Content -Path notes.md -Value ($notes + ($lignes -join [Environment]::NewLine)) -Encoding utf8
+          gh release edit $env:ETIQUETTE --notes-file notes.md
+          Write-Host "Empreinte publiee : $empreinte"
+
       - name: Conserver l'installeur
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
