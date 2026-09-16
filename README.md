@@ -18,6 +18,26 @@ C'est tout. MongoDB est embarqué dans l'app via [`mongodb-memory-server`](https
 
 ## Installation
 
+### En application Windows
+
+```bash
+npm install
+npm run dist          # → dist/Cahier Setup 2.0.0.exe
+```
+
+Un installeur classique : raccourci sur le bureau et dans le menu Démarrer, désinstallable
+depuis **Applications installées**. Les données vivent dans `%APPDATA%\Cahier\db`, hors de
+l'application — une mise à jour ne les touche pas.
+
+L'exécutable n'étant pas signé, Windows affichera **« Windows a protégé votre ordinateur »** au
+premier lancement : *Informations complémentaires* → *Exécuter quand même*. Détails et coûts
+dans [`docs/passage-en-app.md`](docs/passage-en-app.md).
+
+> L'application a **sa propre base**, distincte de `data/db`. Pour y amener tes tâches :
+> **Sauvegarder** d'un côté, **Restaurer…** de l'autre.
+
+### Depuis le dépôt
+
 ```bash
 git clone https://github.com/Lurrod/to_do_manager.git
 cd to_do_manager
@@ -33,9 +53,6 @@ le dit.
 [http://localhost:3000](http://localhost:3000) à la main.
 
 Tes tâches sont stockées dans `./data/db/` (ignoré par Git) et persistent entre les redémarrages.
-
-> **Pour aller plus loin** — ce qu'il resterait à faire pour en faire une vraie application
-> installable, et ce que ça coûterait : `docs/passage-en-app.md`.
 
 ---
 
@@ -327,6 +344,9 @@ to_do_manager/
 │   ├── notify.js           # Toast Windows (le seul module qui parle à l'OS)
 │   ├── listen.js           # Mise à l'écoute tolérante au port occupé
 │   └── launcher.js         # Ce que le lanceur doit décider
+├── electron/
+│   ├── main.js             # Processus principal : données, mongod, fenêtre
+│   └── icon.png            # Icône de l'application
 ├── scripts/
 │   ├── app.js              # Lance le serveur puis ouvre la fenêtre
 │   └── backup.js           # Sauvegarde horodatée via l'API
