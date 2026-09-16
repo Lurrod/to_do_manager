@@ -9,6 +9,7 @@ const { exportShape, validateImport, HEX_COLOR } = require('./lib/portable');
 const { toMarkdown, toCsv } = require('./lib/formats');
 const { nextDueDate } = require('./lib/recurrence');
 const { normalizeTags } = require('./lib/tags');
+const { NEEDS_RENUMBER, rankBetween, renumber } = require('./lib/ordering');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -133,7 +134,11 @@ const taskSchema = new mongoose.Schema({
     default: [],
     validate: [(v) => v.length <= 10, 'Maximum 10 étiquettes'],
   },
-  order: { type: Number, default: 0, index: true },
+  // l'horloge, pas une constante : sinon toutes les tâches naissent au même
+  // rang, l'ordre manuel ne distingue plus rien et le moindre déplacement
+  // déclenche une renumérotation complète. Même convention que la migration,
+  // qui cale les anciennes sur leur date d'écriture.
+  order: { type: Number, default: Date.now, index: true },
   recurrence: {
     freq: { type: String, enum: ['', 'daily', 'weekly', 'monthly'], default: '' },
     interval: { type: Number, default: 1, min: 1, max: 99 },
@@ -279,6 +284,8 @@ const SORTS = {
   creation: { createdAt: -1, _id: -1 },
   dueDate: { noDue: 1, dueDate: 1, _id: 1 },
   priority: { priorityRank: 1, createdAt: -1, _id: -1 },
+  // `_id` départage : sans lui, deux rangs égaux rendraient la page instable
+  manual: { order: 1, _id: 1 },
 };
 
 const SORT_FIELDS = {
@@ -610,6 +617,62 @@ app.get('/tasks', async (req, res) => {
     ]);
 
     res.status(200).json({ tasks, total, totalPages, currentPage });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+/**
+ * Déplace une tâche dans l'ordre manuel.
+ *
+ * Le client envoie les **voisines** du point de dépôt, pas un rang : c'est le
+ * serveur qui calcule, ce qui évite qu'un client en retard d'un
+ * rafraîchissement pose un rang déjà pris.
+ */
+app.patch('/tasks/:id/order', async (req, res) => {
+  try {
+    const task = await Task.findOne({ _id: req.params.id, deletedAt: null });
+    if (!task) return res.status(404).json({ error: 'Tâche non trouvée' });
+
+    const idAvant = asString(req.body?.before, 32) || null;
+    const idApres = asString(req.body?.after, 32) || null;
+
+    /** @returns {number|null|undefined} undefined si la voisine n'existe plus */
+    const lireRang = async (id) => {
+      if (!id) return null;
+      const voisine = await Task.findOne({ _id: id, deletedAt: null }).select('order').lean();
+      return voisine ? voisine.order : undefined;
+    };
+
+    const avant = await lireRang(idAvant);
+    const apres = await lireRang(idApres);
+    if (avant === undefined || apres === undefined) {
+      return res.status(400).json({ error: 'Voisine introuvable : la liste a dû changer.' });
+    }
+
+    let rang = rankBetween(avant, apres);
+
+    if (rang === NEEDS_RENUMBER) {
+      // l'intervalle est épuisé : on réécrit toute la liste une bonne fois,
+      // puis on recalcule le point de dépôt sur les rangs frais
+      const racines = await Task.find({ parentId: null, deletedAt: null })
+        .sort({ order: 1, _id: 1 })
+        .select('_id')
+        .lean();
+
+      await Task.bulkWrite(
+        renumber(racines.map((t) => String(t._id))).map(({ _id, order }) => ({
+          updateOne: { filter: { _id }, update: { $set: { order } } },
+        }))
+      );
+
+      rang = rankBetween(await lireRang(idAvant), await lireRang(idApres));
+    }
+
+    task.order = rang;
+    await task.save();
+
+    res.status(200).json(task);
   } catch (error) {
     fail(res, error);
   }

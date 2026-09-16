@@ -1397,3 +1397,104 @@ describe('Étiquettes', () => {
     expect(res.body.tags).toHaveLength(10);
   });
 });
+
+describe('Ordre manuel', () => {
+  /** Crée trois tâches et renvoie leurs identifiants dans l'ordre de création. */
+  const trois = async () => {
+    const ids = [];
+    for (const titre of ['A', 'B', 'C']) {
+      const res = await request(app).post('/tasks').send({ title: titre });
+      ids.push(res.body._id);
+    }
+    return ids;
+  };
+
+  const ordreManuel = async () => {
+    const res = await request(app).get('/tasks?limit=50&sort=manual');
+    return res.body.tasks.map((t) => t.title);
+  };
+
+  test('sort=manual trie par rang croissant', async () => {
+    await trois();
+
+    expect(await ordreManuel()).toEqual(['A', 'B', 'C']);
+  });
+
+  test('PATCH /tasks/:id/order déplace une tâche entre deux voisines', async () => {
+    const [a, b, c] = await trois();
+
+    const res = await request(app).patch(`/tasks/${c}/order`).send({ before: a, after: b });
+
+    expect(res.status).toBe(200);
+    expect(await ordreManuel()).toEqual(['A', 'C', 'B']);
+  });
+
+  test('déplacer en tête de liste', async () => {
+    const [a, , c] = await trois();
+
+    await request(app).patch(`/tasks/${c}/order`).send({ before: null, after: a });
+
+    expect(await ordreManuel()).toEqual(['C', 'A', 'B']);
+  });
+
+  test('déplacer en fin de liste', async () => {
+    const [a, , c] = await trois();
+
+    await request(app).patch(`/tasks/${a}/order`).send({ before: c, after: null });
+
+    expect(await ordreManuel()).toEqual(['B', 'C', 'A']);
+  });
+
+  test('un déplacement ne produit qu’une écriture', async () => {
+    const [a, b, c] = await trois();
+    const avant = await request(app).get('/tasks?limit=50&sort=manual');
+    const rangsAvant = Object.fromEntries(avant.body.tasks.map((t) => [t.title, t.order]));
+
+    await request(app).patch(`/tasks/${c}/order`).send({ before: a, after: b });
+
+    const apres = await request(app).get('/tasks?limit=50&sort=manual');
+    const rangsApres = Object.fromEntries(apres.body.tasks.map((t) => [t.title, t.order]));
+    // A et B n'ont pas bougé : seule la tâche déplacée est réécrite
+    expect(rangsApres.A).toBe(rangsAvant.A);
+    expect(rangsApres.B).toBe(rangsAvant.B);
+    expect(rangsApres.C).not.toBe(rangsAvant.C);
+  });
+
+  test('un identifiant de voisine inconnu est refusé', async () => {
+    const [, , c] = await trois();
+    const fantome = new mongoose.Types.ObjectId().toString();
+
+    const res = await request(app)
+      .patch(`/tasks/${c}/order`)
+      .send({ before: fantome, after: null });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('l’intervalle épuisé déclenche une renumérotation, et l’ordre est conservé', async () => {
+    const [a, b, c] = await trois();
+    await mongoose.connection.collection('tasks').updateOne({ title: 'A' }, { $set: { order: 1 } });
+    await mongoose.connection
+      .collection('tasks')
+      .updateOne({ title: 'B' }, { $set: { order: 1 + 1e-9 } });
+
+    const res = await request(app).patch(`/tasks/${c}/order`).send({ before: a, after: b });
+
+    expect(res.status).toBe(200);
+    expect(await ordreManuel()).toEqual(['A', 'C', 'B']);
+    // et les rangs sont de nouveau espacés : le prochain dépôt tiendra
+    const apres = await request(app).get('/tasks?limit=50&sort=manual');
+    const rangs = apres.body.tasks.map((t) => t.order);
+    expect(rangs[1] - rangs[0]).toBeGreaterThan(1);
+  });
+
+  test('déplacer une tâche qui n’existe pas répond 404', async () => {
+    const fantome = new mongoose.Types.ObjectId().toString();
+
+    const res = await request(app)
+      .patch(`/tasks/${fantome}/order`)
+      .send({ before: null, after: null });
+
+    expect(res.status).toBe(404);
+  });
+});
