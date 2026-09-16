@@ -17,7 +17,8 @@
     "test:ui": "vitest run --coverage",
     "fetch:mongod": "node scripts/fetch-mongod.js",
     "predist": "node scripts/fetch-mongod.js",
-    "prerelease": "node scripts/fetch-mongod.js"
+    "prerelease": "node scripts/fetch-mongod.js",
+    "icons": "electron scripts/make-icons.js"
   },
   "keywords": [],
   "author": "Titouan Borde",
