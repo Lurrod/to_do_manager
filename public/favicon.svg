@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Cahier">
+  <title>Cahier</title>
+  <!-- la page : papier crème, cerné d'un trait d'encre -->
+  <rect x="4.5" y="3.5" width="55" height="57" rx="7" fill="#fbf8ef" stroke="#1f2f5c" stroke-width="2.6"/>
+  <!-- la marge, au stylo rouge -->
+  <path d="M15 5 C14.4 22, 14.8 42, 15.4 59" stroke="#c8402f" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <!-- la coche : le geste du produit, tracé d'un seul trait -->
+  <path d="M22 40 C26.5 46.5, 29.5 50.5, 31.8 51 C34.5 51.5, 38.5 41, 51 19"
+        fill="none" stroke="#1f2f5c" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
