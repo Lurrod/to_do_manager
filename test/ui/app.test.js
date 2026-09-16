@@ -114,7 +114,7 @@ beforeEach(() => {
     'fetch',
     vi.fn((url, options = {}) => {
       const method = options.method || 'GET';
-      server.calls.push({ url, method });
+      server.calls.push({ url, method, body: options.body ? JSON.parse(options.body) : null });
 
       // les listes peuvent être retenues pour rejouer un désordre de réponses
       if (server.hold && url.startsWith('/tasks?')) {
@@ -448,5 +448,75 @@ describe('onglets temporels', () => {
 
     expect(document.getElementById('empty-state').classList.contains('hidden')).toBe(false);
     expect(document.querySelector('.empty-title').textContent).toBe('Rien sur cet horizon.');
+  });
+});
+
+describe('saisie rapide', () => {
+  const type = (value) => {
+    const input = document.getElementById('task-title');
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  const posted = () =>
+    server.calls.filter((c) => c.method === 'POST' && c.url === '/tasks').length;
+
+  test('l’aperçu montre ce qui a été compris', async () => {
+    await boot();
+    type('Dentiste demain 14h #Perso !haute');
+    await settle();
+
+    const chips = [...document.querySelectorAll('#quick-preview .chip')].map((el) =>
+      el.textContent.trim()
+    );
+    expect(chips).toContain('demain');
+    expect(chips).toContain('#Perso');
+    expect(chips).toContain('!haute');
+  });
+
+  test('l’aperçu se vide quand le texte ne contient plus de motif', async () => {
+    await boot();
+    type('Dentiste demain');
+    await settle();
+    expect(document.getElementById('quick-preview').hidden).toBe(false);
+
+    type('Dentiste');
+    await settle();
+    expect(document.getElementById('quick-preview').hidden).toBe(true);
+  });
+
+  test('envoyer poste le titre nettoyé et les champs déduits', async () => {
+    await boot();
+    type('Dentiste demain 14h #Perso !haute');
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true }));
+    await settle();
+
+    const call = server.calls.find((c) => c.method === 'POST' && c.url === '/tasks');
+    expect(call).toBeTruthy();
+    expect(call.body.title).toBe('Dentiste');
+    expect(call.body.category).toBe('Perso');
+    expect(call.body.priority).toBe('high');
+    expect(call.body.dueDate).not.toBeNull();
+  });
+
+  test('un choix fait à la souris l’emporte sur le texte', async () => {
+    await boot();
+    document.getElementById('task-priority').value = 'low';
+    type('Dentiste !haute');
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true }));
+    await settle();
+
+    const call = server.calls.find((c) => c.method === 'POST' && c.url === '/tasks');
+    expect(call.body.priority).toBe('low');
+  });
+
+  test('un texte qui ne laisse aucun titre n’est pas envoyé', async () => {
+    await boot();
+    const before = posted();
+    type('#Perso !haute');
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true }));
+    await settle();
+
+    expect(posted()).toBe(before);
   });
 });

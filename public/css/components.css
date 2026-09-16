@@ -547,3 +547,33 @@
     animation: none;
   }
 }
+
+/* ------------------------------- saisie rapide ---------------------------- */
+
+.quick-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-1);
+  margin: calc(-1 * var(--gap-1)) 0 0;
+  font-size: var(--step-xs);
+}
+
+.quick-preview[hidden] {
+  display: none;
+}
+
+.quick-preview .chip {
+  padding: 1px 7px;
+  color: var(--ink-soft);
+  font-family: var(--font-hand);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.quick-preview .chip[data-type='priority'] {
+  color: var(--red-pen);
+}
+
+.quick-preview .chip[data-type='category'] {
+  color: var(--green-pen);
+}

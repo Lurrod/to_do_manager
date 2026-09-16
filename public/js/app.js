@@ -6,6 +6,7 @@
 
 import * as api from './api.js';
 import { bindBackdrop, closeModal, isModalOpen, openModal } from './modal.js';
+import { parseQuickEntry } from './parse.js';
 
 import {
   progress,
@@ -38,6 +39,7 @@ const PRIORITY_LABELS = { high: 'haute', medium: 'moyenne', low: 'basse' };
 const taskForm = $('task-form');
 const taskList = $('task-list');
 const taskTitleInput = $('task-title');
+const quickPreview = $('quick-preview');
 const taskDescInput = $('task-desc');
 const taskDueInput = $('task-due-date');
 const taskCategorySelect = $('task-category');
@@ -474,20 +476,42 @@ const updateGreeting = () => {
    Événements
    ---------------------------------------------------------------------- */
 
+/** Lecture du champ titre : ce que le texte contient en plus du titre lui-même. */
+const readComposer = () =>
+  parseQuickEntry(taskTitleInput.value, {
+    categories: state.categories.map((c) => c.name),
+  });
+
+/** L'aperçu rend l'interprétation réfutable avant l'envoi. */
+const renderQuickPreview = () => {
+  const { tokens } = readComposer();
+  quickPreview.innerHTML = tokens
+    .map(
+      ({ type, text }) =>
+        `<span class="chip" data-type="${escapeHtml(type)}">${escapeHtml(text)}</span>`
+    )
+    .join('');
+  quickPreview.hidden = tokens.length === 0;
+};
+
+taskTitleInput.addEventListener('input', renderQuickPreview);
+
 taskForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const title = taskTitleInput.value.trim();
-  if (!title) return;
+  const parsed = readComposer();
+  if (!parsed.title) return;
 
   try {
     await api.createTask({
-      title,
+      title: parsed.title,
       description: taskDescInput.value.trim(),
-      dueDate: toIso(taskDueInput.value),
-      category: taskCategorySelect.value,
-      priority: taskPrioritySelect.value,
+      // un choix fait à la souris l'emporte sur ce que le texte laisse deviner
+      dueDate: toIso(taskDueInput.value) || parsed.dueDate,
+      category: taskCategorySelect.value || parsed.category,
+      priority: taskPrioritySelect.value || parsed.priority,
     });
     taskForm.reset();
+    renderQuickPreview();
     await refresh({ page: 1 });
     toast('Tâche ajoutée.', 'success');
   } catch (error) {

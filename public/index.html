@@ -138,8 +138,15 @@
 
         <form id="task-form" class="composer" data-sketch="card" autocomplete="off">
           <span class="field" data-sketch="input">
-            <input type="text" id="task-title" placeholder="Que dois-tu faire ?" required maxlength="120" />
+            <input
+              type="text"
+              id="task-title"
+              placeholder="Que dois-tu faire ? (ex. Dentiste demain 14h #Santé !haute)"
+              required
+              maxlength="200"
+            />
           </span>
+          <p class="quick-preview" id="quick-preview" aria-live="polite" hidden></p>
 
           <span class="field" data-sketch="textarea">
             <textarea id="task-desc" placeholder="Notes en marge (optionnel)" rows="2" maxlength="500"></textarea>
