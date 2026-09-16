@@ -574,12 +574,24 @@ app.put('/tasks/:id', async (req, res) => {
 
 app.delete('/tasks/:id', async (req, res) => {
   try {
+    // un seul horodatage pour toute la famille : c'est lui qui distingue
+    // « emportée par son parent » de « jetée pour elle-même », et qui permet
+    // de ne ressortir que la première au moment de restaurer
+    const quand = new Date();
     const task = await Task.findOneAndUpdate(
       { _id: req.params.id, deletedAt: null },
-      { deletedAt: new Date() },
+      { deletedAt: quand },
       { new: true }
     );
     if (!task) return res.status(404).json({ error: 'Tâche non trouvée' });
+
+    if (!task.parentId) {
+      await Task.updateMany(
+        { parentId: task._id, deletedAt: null },
+        { $set: { deletedAt: quand } }
+      );
+    }
+
     res.status(200).json({ message: 'Tâche supprimée', task });
   } catch (error) {
     fail(res, error);
@@ -588,12 +600,29 @@ app.delete('/tasks/:id', async (req, res) => {
 
 app.post('/tasks/:id/restore', async (req, res) => {
   try {
+    // l'horodatage de la jetée est relu AVANT de l'effacer : c'est lui qui
+    // désigne les étapes parties en même temps
+    const jetee = await Task.findOne({ _id: req.params.id, deletedAt: { $ne: null } })
+      .select('parentId deletedAt')
+      .lean();
+    if (!jetee) return res.status(404).json({ error: 'Tâche non trouvée dans la corbeille' });
+
     const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, deletedAt: { $ne: null } },
+      { _id: req.params.id },
       { deletedAt: null },
       { new: true }
     );
-    if (!task) return res.status(404).json({ error: 'Tâche non trouvée dans la corbeille' });
+
+    if (!jetee.parentId) {
+      // seules les étapes parties AVEC ce parent reviennent : l'égalité de
+      // l'horodatage est ce qui les distingue de celles jetées auparavant,
+      // qu'on ressusciterait sinon à l'insu de l'utilisateur
+      await Task.updateMany(
+        { parentId: task._id, deletedAt: jetee.deletedAt },
+        { $set: { deletedAt: null } }
+      );
+    }
+
     res.status(200).json(task);
   } catch (error) {
     fail(res, error);
@@ -608,6 +637,11 @@ app.delete('/tasks/:id/purge', async (req, res) => {
   try {
     const task = await Task.findOneAndDelete({ _id: req.params.id, deletedAt: { $ne: null } });
     if (!task) return res.status(404).json({ error: 'Tâche non trouvée dans la corbeille' });
+
+    // une étape n'est atteignable qu'à travers son parent : la laisser en base
+    // créerait un document que plus aucune vue ne montre
+    await Task.deleteMany({ parentId: task._id });
+
     res.status(200).json({ message: 'Tâche supprimée définitivement', task });
   } catch (error) {
     fail(res, error);

@@ -1082,6 +1082,65 @@ describe('Sous-tâches', () => {
     expect(apres.body.completed).toBe(false);
   });
 
+  test('supprimer un parent envoie ses étapes à la corbeille avec lui', async () => {
+    const parentId = await parent();
+    await request(app).post('/tasks').send({ title: 'Une', parentId });
+
+    await request(app).delete(`/tasks/${parentId}`);
+
+    const corbeille = await request(app).get('/tasks/trash?limit=50');
+    expect(corbeille.body.tasks.map((t) => t.title).sort()).toEqual(['Devis', 'Une']);
+  });
+
+  test('restaurer un parent ressort les étapes parties avec lui', async () => {
+    const parentId = await parent();
+    await request(app).post('/tasks').send({ title: 'Une', parentId });
+    await request(app).delete(`/tasks/${parentId}`);
+
+    await request(app).post(`/tasks/${parentId}/restore`);
+
+    const etapes = await request(app).get(`/tasks/${parentId}/children`);
+    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Une']);
+  });
+
+  test('restaurer un parent ne ressuscite pas une étape jetée avant lui', async () => {
+    const parentId = await parent();
+    const jeteeAvant = await request(app).post('/tasks').send({ title: 'Jetée avant', parentId });
+    await request(app).post('/tasks').send({ title: 'Partie avec', parentId });
+
+    await request(app).delete(`/tasks/${jeteeAvant.body._id}`);
+    await request(app).delete(`/tasks/${parentId}`);
+    await request(app).post(`/tasks/${parentId}/restore`);
+
+    const etapes = await request(app).get(`/tasks/${parentId}/children`);
+    // « Jetée avant » avait été supprimée pour de bon par l'utilisateur :
+    // la ressortir serait annuler une décision qu'il a prise
+    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Partie avec']);
+  });
+
+  test('purger un parent purge ses étapes', async () => {
+    const parentId = await parent();
+    const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
+    await request(app).delete(`/tasks/${parentId}`);
+
+    await request(app).delete(`/tasks/${parentId}/purge`);
+
+    const restante = await mongoose.connection
+      .collection('tasks')
+      .findOne({ _id: new mongoose.Types.ObjectId(etape.body._id) });
+    expect(restante).toBeNull();
+  });
+
+  test('supprimer une étape seule ne touche pas au parent', async () => {
+    const parentId = await parent();
+    const etape = await request(app).post('/tasks').send({ title: 'Une', parentId });
+
+    await request(app).delete(`/tasks/${etape.body._id}`);
+
+    const apres = await request(app).get(`/tasks/${parentId}`);
+    expect(apres.status).toBe(200);
+  });
+
   test('rattacher une tâche qui a déjà des étapes est refusé', async () => {
     const grandParent = await parent('Grand-parent');
     const pere = await parent('Père');
