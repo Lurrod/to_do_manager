@@ -1214,6 +1214,113 @@ describe('Récurrence', () => {
     expect(res.body.error).toMatch(/échéance/i);
   });
 
+  /** Crée une tâche récurrente et renvoie le corps de la réponse. */
+  const recurrente = async (extra = {}) => {
+    const res = await request(app)
+      .post('/tasks')
+      .send({
+        title: 'Sortir les poubelles',
+        dueDate: dans(1),
+        recurrence: { freq: 'weekly', interval: 1, until: null },
+        ...extra,
+      });
+    return res.body;
+  };
+
+  test('cocher une récurrente crée la suivante', async () => {
+    const tache = await recurrente();
+
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const liste = await request(app).get('/tasks?limit=50&status=active');
+    const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
+    expect(suivante).toBeDefined();
+    expect(suivante._id).not.toBe(tache._id);
+    expect(suivante.completed).toBe(false);
+  });
+
+  test('la suivante est calée sur l’échéance précédente, pas sur aujourd’hui', async () => {
+    const tache = await recurrente({ dueDate: dans(-3) });
+
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const liste = await request(app).get('/tasks?limit=50&status=active');
+    const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
+    const attendue = new Date(tache.dueDate);
+    attendue.setDate(attendue.getDate() + 7);
+    expect(new Date(suivante.dueDate).toISOString()).toBe(attendue.toISOString());
+  });
+
+  test('l’occurrence cochée reste en place, cochée', async () => {
+    const tache = await recurrente();
+
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const ancienne = await request(app).get(`/tasks/${tache._id}`);
+    expect(ancienne.body.completed).toBe(true);
+    expect(ancienne.body.recurrence.freq).toBe('weekly');
+  });
+
+  test('la suivante reprend la récurrence à l’identique', async () => {
+    const tache = await recurrente({ recurrence: { freq: 'daily', interval: 3, until: null } });
+
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const liste = await request(app).get('/tasks?limit=50&status=active');
+    const suivante = liste.body.tasks.find((t) => t.title === 'Sortir les poubelles');
+    expect(suivante.recurrence.freq).toBe('daily');
+    expect(suivante.recurrence.interval).toBe(3);
+  });
+
+  test('une récurrence arrivée au bout de `until` ne régénère rien', async () => {
+    const fin = new Date();
+    fin.setDate(fin.getDate() + 2);
+    const tache = await recurrente({
+      recurrence: { freq: 'weekly', interval: 1, until: fin.toISOString() },
+    });
+
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const liste = await request(app).get('/tasks?limit=50&status=active');
+    expect(liste.body.tasks.find((t) => t.title === 'Sortir les poubelles')).toBeUndefined();
+  });
+
+  test('décocher une récurrente ne crée rien', async () => {
+    const tache = await recurrente();
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const avant = (await request(app).get('/tasks?limit=50')).body.total;
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: false });
+    const apres = (await request(app).get('/tasks?limit=50')).body.total;
+
+    expect(apres).toBe(avant);
+  });
+
+  test('cocher deux fois la même occurrence ne crée qu’une suivante', async () => {
+    const tache = await recurrente();
+
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const liste = await request(app).get('/tasks?limit=50');
+    const toutes = liste.body.tasks.filter((t) => t.title === 'Sortir les poubelles');
+    expect(toutes).toHaveLength(2);
+  });
+
+  test('la suivante reprend les étapes, décochées', async () => {
+    const tache = await recurrente({ title: 'Courses' });
+    const etape = await request(app).post('/tasks').send({ title: 'Pain', parentId: tache._id });
+    await request(app).put(`/tasks/${etape.body._id}`).send({ completed: true });
+
+    await request(app).put(`/tasks/${tache._id}`).send({ completed: true });
+
+    const liste = await request(app).get('/tasks?limit=50&status=active');
+    const suivante = liste.body.tasks.find((t) => t.title === 'Courses');
+    const etapes = await request(app).get(`/tasks/${suivante._id}/children`);
+    expect(etapes.body.tasks.map((t) => t.title)).toEqual(['Pain']);
+    expect(etapes.body.tasks[0].completed).toBe(false);
+  });
+
   test('une fréquence inconnue est refusée', async () => {
     const res = await request(app)
       .post('/tasks')

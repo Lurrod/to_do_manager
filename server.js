@@ -7,6 +7,7 @@ const fs = require('fs');
 require('dotenv').config();
 const { exportShape, validateImport, HEX_COLOR } = require('./lib/portable');
 const { toMarkdown, toCsv } = require('./lib/formats');
+const { nextDueDate } = require('./lib/recurrence');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -352,6 +353,64 @@ const parentageInvalide = async (parentId, enfantId = null) => {
 };
 
 /**
+ * Crée l'occurrence suivante d'une tâche récurrente qu'on vient de cocher.
+ *
+ * Ne fait rien si la tâche n'est pas récurrente, si la série est arrivée au
+ * bout de `until`, ou si la suivante existe déjà : cocher deux fois la même
+ * occurrence ne doit pas dédoubler la série.
+ *
+ * @returns {object|null} la tâche créée, ou null
+ */
+const regenererRecurrence = async (task) => {
+  if (!task.recurrence?.freq) return null;
+
+  const suivanteLe = nextDueDate(task.dueDate, task.recurrence);
+  if (!suivanteLe) return null;
+
+  // garde d'idempotence : la série ne porte qu'une instance vivante à la fois
+  const dejaLa = await Task.exists({
+    title: task.title,
+    dueDate: suivanteLe,
+    completed: false,
+    deletedAt: null,
+  });
+  if (dejaLa) return null;
+
+  const suivante = await Task.create({
+    title: task.title,
+    description: task.description,
+    category: task.category,
+    priority: task.priority,
+    tags: task.tags,
+    dueDate: suivanteLe,
+    recurrence: task.recurrence,
+    reminder: { offset: task.reminder?.offset || '', at: null, sentAt: null },
+    order: task.order,
+  });
+
+  // les étapes font partie de la tâche : une liste de courses qui revient
+  // sans sa liste n'est pas la même tâche
+  const etapes = await Task.find({ parentId: task._id, deletedAt: null })
+    .sort({ order: 1, createdAt: 1 })
+    .lean();
+
+  if (etapes.length > 0) {
+    await Task.insertMany(
+      etapes.map((e) => ({
+        title: e.title,
+        description: e.description,
+        category: e.category,
+        priority: e.priority,
+        order: e.order,
+        parentId: suivante._id,
+      }))
+    );
+  }
+
+  return suivante;
+};
+
+/**
  * Une récurrence a besoin d'une échéance : c'est elle qu'on fait avancer.
  * Le contrôle porte sur l'état APRÈS modification — retirer l'échéance d'une
  * tâche déjà récurrente la laisserait sans ancrage, et la série s'arrêterait
@@ -598,6 +657,13 @@ app.put('/tasks/:id', async (req, res) => {
         { parentId: task._id, deletedAt: null },
         { $set: { completed: champs.completed } }
       );
+    }
+
+    // une tâche récurrente cochée fait naître la suivante tout de suite : un
+    // planificateur supposerait que le processus tourne le jour J, ce qui
+    // n'est pas le cas d'un outil de bureau
+    if (champs.completed === true) {
+      await regenererRecurrence(task);
     }
 
     res.status(200).json(task);
