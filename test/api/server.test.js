@@ -806,3 +806,33 @@ describe('Export / import', () => {
     }
   });
 });
+
+describe('Erreurs de lecture du corps (body-parser)', () => {
+  test('un JSON malforme envoye a /import repond en JSON assaini, sans trace interne', async () => {
+    const res = await request(app)
+      .post('/import')
+      .set('Content-Type', 'application/json')
+      .send('{ ceci n\'est pas du JSON');
+
+    expect(res.status).toBe(400);
+    expect(res.headers['content-type']).toMatch(/json/);
+    expect(res.body).toHaveProperty('error');
+    expect(res.body.error).not.toContain('node_modules');
+    expect(res.body.error).not.toContain('C:\\');
+    expect(res.body.error).not.toContain('at ');
+  });
+
+  test('un corps trop volumineux envoye a POST /tasks repond en JSON assaini, sans trace interne', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Content-Type', 'application/json')
+      .send({ title: 'x'.repeat(40000) });
+
+    expect(res.status).toBe(413);
+    expect(res.headers['content-type']).toMatch(/json/);
+    expect(res.body).toHaveProperty('error');
+    expect(res.body.error).not.toContain('node_modules');
+    expect(res.body.error).not.toContain('C:\\');
+    expect(res.body.error).not.toContain('at ');
+  });
+});

@@ -28,6 +28,22 @@ if (process.env.CORS_ORIGIN) {
 // Monté avant le parseur global, qui laissera passer une requête déjà lue.
 app.use('/import', bodyParser.json({ limit: '8mb' }));
 app.use(bodyParser.json({ limit: '32kb' }));
+/**
+ * Un corps trop gros ou un JSON malformé fait échouer bodyParser.json avant
+ * même d'atteindre une route : sans ce middleware, Express répond avec sa
+ * page HTML par défaut, qui contient la trace complète (chemins locaux
+ * compris). Monté juste après les deux bodyParser, pour intercepter leurs
+ * erreurs avant qu'elles ne tombent sur le gestionnaire par défaut.
+ */
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Corps de requête trop volumineux.' });
+  }
+  if (err instanceof SyntaxError && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'JSON invalide dans le corps de la requête.' });
+  }
+  return next(err);
+});
 app.use(express.static(path.join(__dirname, 'public')));
 // la lib drawably est servie telle quelle depuis node_modules (ESM, zero build)
 app.use(
