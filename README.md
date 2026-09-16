@@ -56,6 +56,14 @@ tant que `CORS_ORIGIN` n'est pas défini.
 - **Priorité** : basse / moyenne / haute, marquée d'un astérisque au stylo en marge
 - **Catégories** : créer / supprimer, couleur personnalisée, filtrage
 - **Filtres de statut** : toutes / à faire / terminées
+- **Vues temporelles** : tout / en retard / aujourd'hui / cette semaine / sans date, avec
+  compteur de retard — les horizons sont emboîtés, une tâche en retard reste visible dans
+  « aujourd'hui » et « cette semaine »
+- **Saisie rapide** : `Dentiste demain 14h #Santé !haute` est lu à la volée, avec aperçu de ce
+  qui a été compris avant validation
+- **Corbeille** consultable : restaurer ou supprimer définitivement (en deux clics)
+- **Clavier** : `n` saisir · `/` chercher · `j`/`k` naviguer · `x` cocher · `e` modifier ·
+  `Suppr` supprimer · `Ctrl+K` palette de commandes (`↑`/`↓` pour choisir, `Entrée` pour lancer)
 - **Recherche** (titre + description) — raccourci `/`
 - **Tri** : par création, par échéance ou par priorité
 - **Tri, filtres et recherche côté serveur** : ils portent sur toute la base, pas sur la page affichée
@@ -95,12 +103,14 @@ démarrage suivant passé 7 jours.
 | Méthode  | Route                     | Description                                    |
 | -------- | ------------------------- | ---------------------------------------------- |
 | `GET`    | `/tasks`                  | Liste paginée, triée et filtrée (voir ci-après) |
-| `GET`    | `/tasks/stats`            | Totaux et compte par catégorie                 |
+| `GET`    | `/tasks/stats`            | Totaux, compte par catégorie et retard         |
+| `GET`    | `/tasks/trash`            | Liste paginée de la corbeille                  |
 | `GET`    | `/tasks/:id`              | Détail d'une tâche                             |
 | `POST`   | `/tasks`                  | Crée une tâche                                 |
 | `PUT`    | `/tasks/:id`              | Met à jour une tâche                           |
 | `DELETE` | `/tasks/:id`              | Met la tâche à la corbeille                    |
 | `POST`   | `/tasks/:id/restore`      | Ressort une tâche de la corbeille              |
+| `DELETE` | `/tasks/:id/purge`        | Supprime définitivement (corbeille seulement)  |
 | `GET`    | `/categories`             | Liste des catégories                           |
 | `POST`   | `/categories`             | Crée une catégorie (`name`, `color`)           |
 | `DELETE` | `/categories/:name`       | Supprime et nettoie les tâches liées           |
@@ -113,11 +123,16 @@ démarrage suivant passé 7 jours.
 | `limit`    | 1 à 100                              | `5`        |
 | `sort`     | `creation`, `dueDate`, `priority`    | `creation` |
 | `status`   | `all`, `active`, `done`              | `all`      |
+| `due`      | `all`, `overdue`, `today`, `week`, `none` — horizons emboîtés | `all` |
 | `category` | `all`, `none`, ou un nom             | `all`      |
 | `q`        | recherche titre + description (100 caractères max) | — |
 
 Réponse : `{ tasks, total, totalPages, currentPage }`. Le tri est toujours
 départagé par `_id`, sans quoi paginer pourrait répéter ou sauter des tâches.
+
+`GET /tasks/stats` renvoie `{ total, done, active, overdue, byCategory }` : `overdue`
+compte les tâches non terminées dont l'échéance est passée — c'est le nombre affiché
+sur l'onglet « en retard ».
 
 ### Exemple — créer une tâche
 
@@ -142,12 +157,14 @@ npm run test:api  # Jest + Supertest contre l'app Express
 npm run test:ui   # Vitest + happy-dom sur les modules du navigateur
 ```
 
-- `test/api/` : routes, validation, tri/filtres/recherche, pagination, corbeille,
-  paramètres hostiles (opérateurs Mongo passés en query).
-- `test/ui/` : utilitaires purs, client HTTP, cycle de vie des croquis drawably,
-  piège de focus des modales, et le pilotage complet de l'application (chargement,
-  recherche débouncée, réponses qui reviennent dans le désordre, bascule
-  optimiste, suppression annulable) monté sur le vrai `index.html`.
+- `test/api/` : routes, validation, tri/filtres/recherche, horizons d'échéance,
+  pagination, corbeille, paramètres hostiles (opérateurs Mongo passés en query).
+- `test/ui/` : utilitaires purs, client HTTP, parseur de saisie rapide à horloge
+  figée, cycle de vie des croquis drawably, piège de focus des modales, et le
+  pilotage complet de l'application (chargement, recherche débouncée, réponses qui
+  reviennent dans le désordre, bascule optimiste, suppression annulable, onglets
+  temporels, corbeille, raccourcis clavier et palette) monté sur le vrai
+  `index.html`.
 
 Le navigateur charge drawably depuis `/vendor/drawably` ; en test, `vitest.config.js`
 redirige cet alias vers `node_modules/drawably`.
@@ -165,13 +182,18 @@ to_do_manager/
 │   │   ├── layout.css      # Structure : en-tête, colonnes, marge du cahier
 │   │   └── components.css  # Panneaux, champs, tâches, modales, toasts
 │   └── js/
-│       ├── app.js          # État, rendu, événements
+│       ├── app.js          # État, rendu, événements, raccourcis clavier
 │       ├── api.js          # Client HTTP (tri, filtres et recherche en paramètres)
+│       ├── parse.js        # Saisie rapide (module pur, horloge injectable)
+│       ├── filters.js      # Pastilles de statut et d'échéance, invariant croisé
+│       ├── trash.js        # Corbeille : liste, restauration, purge confirmée
+│       ├── palette.js      # Palette de commandes (Ctrl+K), navigable au clavier
 │       ├── modal.js        # Ouverture, fermeture et piège de focus
 │       ├── sketch.js       # Couche drawably (attache, biffage, jauge)
 │       └── util.js         # Dates, échappement, toasts
 ├── test/
 │   ├── api/server.test.js  # Jest + Supertest
+│   ├── ui/parse.test.js    # Parseur de saisie rapide, horloge figée
 │   └── ui/*.test.js        # Vitest + happy-dom
 ├── server.js               # API Express + fichiers statiques + /vendor/drawably
 ├── .env.example
@@ -198,7 +220,7 @@ de déclarer ce qu'il veut :
 
 - **Backend** : Node.js, Express, Mongoose
 - **Frontend** : HTML, CSS, JavaScript vanilla (modules ES) — [drawably](https://www.npmjs.com/package/drawably) pour le tracé, Caveat & Karla via Google Fonts
-- **Tests** : Jest, Supertest
+- **Tests** : Jest et Supertest (API), Vitest et happy-dom (interface)
 
 ---
 
