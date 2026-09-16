@@ -70,4 +70,29 @@ describe('validateImport', () => {
 
     expect(errors[0]).toMatch(/catégorie 1/i);
   });
+
+  test('refuse deux tâches qui portent le même identifiant', () => {
+    const { errors } = validateImport({ tasks: [task(), task()] });
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/identifiant/i);
+    expect(errors[0]).toContain('6aaa396cb6aaf45240b8b423');
+  });
+
+  test('deux tâches sans identifiant ne sont pas des doublons', () => {
+    const sansId = { title: 'Une tâche' };
+
+    expect(validateImport({ tasks: [sansId, sansId] }).errors).toEqual([]);
+  });
+
+  test('refuse deux catégories du même nom', () => {
+    const { errors } = validateImport({
+      categories: [
+        { name: 'Perso', color: '#2f7d51' },
+        { name: 'Perso', color: '#1f2f5c' },
+      ],
+    });
+
+    expect(errors.some((e) => /nom.*déjà|déjà.*nom/i.test(e))).toBe(true);
+  });
 });

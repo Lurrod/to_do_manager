@@ -684,4 +684,21 @@ describe('Export / import', () => {
     );
     expect(depose.tasks).toHaveLength(2);
   });
+
+  test('un fichier aux identifiants dupliqués est refusé avant d’effacer quoi que ce soit', async () => {
+    await seed();
+    const avant = (await request(app).get('/export')).body;
+    const doublon = avant.tasks[0];
+
+    const res = await request(app)
+      .post('/import?mode=replace')
+      .set('X-Confirm', 'replace')
+      .send({ tasks: [doublon, doublon], categories: [] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/identifiant/i);
+    // la base est intacte, et aucune sauvegarde n'a eu à servir
+    const apres = (await request(app).get('/export')).body;
+    expect(apres.tasks).toEqual(avant.tasks);
+  });
 });

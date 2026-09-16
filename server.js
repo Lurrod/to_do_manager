@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
-const { exportShape, validateImport } = require('./lib/portable');
+const { exportShape, validateImport, HEX_COLOR } = require('./lib/portable');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -112,9 +112,8 @@ taskSchema.index({ deletedAt: 1, dueDate: 1 });
 taskSchema.index({ deletedAt: 1, category: 1 });
 
 // la couleur est injectée telle quelle dans une déclaration CSS côté client :
-// on n'accepte qu'une notation hexadécimale
-const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-
+// on n'accepte qu'une notation hexadécimale — même règle que côté import,
+// définie une seule fois dans lib/portable.js pour ne pas diverger
 const categorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true, trim: true, maxlength: 32 },
   color: {
