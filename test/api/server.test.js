@@ -759,4 +759,50 @@ describe('Export / import', () => {
       'id,title,description,completed,priority,category,dueDate,createdAt,deletedAt'
     );
   });
+
+  test('un import replace avec deux categories de meme identifiant est refuse sans rien ecrire', async () => {
+    await seed();
+    const avant = (await request(app).get('/export')).body;
+    const categorie = avant.categories[0];
+    const doublon = { ...categorie, name: 'Autre nom' };
+
+    const res = await request(app)
+      .post('/import?mode=replace')
+      .set('X-Confirm', 'replace')
+      .send({ tasks: [], categories: [categorie, doublon] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/identifiant/i);
+    const apres = (await request(app).get('/export')).body;
+    expect(apres.tasks).toEqual(avant.tasks);
+    expect(apres.categories).toEqual(avant.categories);
+  });
+
+  test('un replace qui echoue en cours d’ecriture remet la base dans son etat d’origine', async () => {
+    await seed();
+    const avant = (await request(app).get('/export')).body;
+
+    const echecSimule = jest
+      .spyOn(mongoose.model('Task'), 'insertMany')
+      .mockRejectedValueOnce(new Error('echec simule'));
+
+    try {
+      const res = await request(app)
+        .post('/import?mode=replace')
+        .set('X-Confirm', 'replace')
+        .send({ tasks: [{ title: 'Ne devrait pas rester' }], categories: [] });
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toMatch(/sauvegarde/i);
+      // le chemin du fichier de sauvegarde doit figurer dans le message : c'est
+      // le seul recours si la remise en place elle-meme echoue
+      expect(res.body.error).toMatch(/avant-remplacement-.*\.json/);
+
+      const apres = (await request(app).get('/export')).body;
+      expect(apres.tasks).toEqual(avant.tasks);
+      expect(apres.categories).toEqual(avant.categories);
+    } finally {
+      echecSimule.mockRestore();
+    }
+  });
 });

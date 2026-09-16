@@ -95,4 +95,32 @@ describe('validateImport', () => {
 
     expect(errors.some((e) => /nom.*déjà|déjà.*nom/i.test(e))).toBe(true);
   });
+
+  test('refuse deux catégories qui partagent le même identifiant', () => {
+    const { errors } = validateImport({
+      categories: [
+        { _id: '6aaa396cb6aaf45240b8b423', name: 'Perso', color: '#2f7d51' },
+        { _id: '6aaa396cb6aaf45240b8b423', name: 'Travail', color: '#1f2f5c' },
+      ],
+    });
+
+    expect(errors.some((e) => /identifiant/i.test(e))).toBe(true);
+  });
+
+  test('refuse deux tâches dont l’identifiant ne diffère que par la casse', () => {
+    const { errors } = validateImport({
+      tasks: [task(), task({ _id: '6AAA396CB6AAF45240B8B423' })],
+    });
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/identifiant/i);
+  });
+
+  test('deux tâches aux identifiants réellement différents ne sont pas des doublons', () => {
+    const { errors } = validateImport({
+      tasks: [task(), task({ _id: '6aaa396cb6aaf45240b8b424' })],
+    });
+
+    expect(errors).toEqual([]);
+  });
 });

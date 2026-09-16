@@ -524,10 +524,37 @@ app.post('/import', async (req, res) => {
 
     let backup = null;
     if (mode === 'replace') {
-      backup = writeBackup('avant-remplacement', await collectExport());
-      await Promise.all([Task.deleteMany({}), Category.deleteMany({})]);
-      await Task.insertMany(taskDocs);
-      await Category.insertMany(categoryDocs);
+      const instantane = await collectExport();
+      backup = writeBackup('avant-remplacement', instantane);
+      try {
+        await Promise.all([Task.deleteMany({}), Category.deleteMany({})]);
+        await Task.insertMany(taskDocs);
+        await Category.insertMany(categoryDocs);
+      } catch (ecriture) {
+        // l'insertion a heurté un obstacle que la validation n'a pas vu (une
+        // collision d'identifiant échappée aux deux barrières précédentes, par
+        // exemple) : la base est à moitié écrite, on la remet dans l'état
+        // qu'a saisi l'instantané, juste avant l'effacement
+        try {
+          await Promise.all([Task.deleteMany({}), Category.deleteMany({})]);
+          await Task.insertMany(instantane.tasks.map((raw) => new Task(raw)));
+          await Category.insertMany(instantane.categories.map((raw) => new Category(raw)));
+        } catch (remiseEnPlace) {
+          console.error(ecriture);
+          console.error(remiseEnPlace);
+          return res.status(500).json({
+            error:
+              `Échec de l'import ET de la remise en place automatique de la base. ` +
+              `Restaurez manuellement depuis la sauvegarde : ${backup}`,
+          });
+        }
+        console.error(ecriture);
+        return res.status(500).json({
+          error:
+            `Échec de l'import en cours d'écriture : la base a été remise dans son état ` +
+            `d'origine. Sauvegarde disponible en cas de doute : ${backup}`,
+        });
+      }
     } else {
       // merge : on n'écrase jamais, on complète. Un identifiant ou un nom déjà
       // pris est laissé tel qu'il est en base.
