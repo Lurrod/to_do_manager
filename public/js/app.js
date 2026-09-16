@@ -9,6 +9,7 @@ import { initFilters, showOverdueCount } from './filters.js';
 import { bindBackdrop, closeModal, isModalOpen, openModal } from './modal.js';
 import { initPalette } from './palette.js';
 import { parseQuickEntry } from './parse.js';
+import { resetSteps, toggleSteps } from './steps.js';
 import { initTrash } from './trash.js';
 
 import {
@@ -443,7 +444,7 @@ const moveCursor = (delta) => {
 
 const render = () => {
   // une liste fraîchement rendue ne doit pas rouvrir sur des étapes périmées
-  stepsCache = {};
+  resetSteps();
 
   // les croquis tiennent un ResizeObserver sur leur hôte : on les détache
   // avant de jeter le DOM qui les porte
@@ -470,42 +471,6 @@ const render = () => {
   renderCategories();
   updateGreeting();
   updateCounters();
-};
-
-/** Étapes déjà chargées, par identifiant de parent. Le dépliage ne demande
-    donc le serveur qu'une fois par tâche et par rendu. */
-let stepsCache = {};
-
-const renderSteps = (row, steps) => {
-  const liste = document.createElement('ul');
-  liste.className = 'step-list';
-  steps.forEach((step) => {
-    const li = document.createElement('li');
-    li.className = `step${step.completed ? ' is-done' : ''}`;
-    li.innerHTML = `<span class="step-title">${escapeHtml(step.title)}</span>`;
-    liste.appendChild(li);
-  });
-  row.appendChild(liste);
-  sketchAll(liste);
-};
-
-const toggleSteps = async (row, id) => {
-  const ouverte = row.querySelector('.step-list');
-  if (ouverte) {
-    unsketchAll(ouverte);
-    ouverte.remove();
-    return;
-  }
-
-  try {
-    if (!stepsCache[id]) {
-      const { tasks } = await api.listChildren(id);
-      stepsCache[id] = tasks || [];
-    }
-    renderSteps(row, stepsCache[id]);
-  } catch (error) {
-    toast(error.message, 'error');
-  }
 };
 
 const updateCounters = () => {
