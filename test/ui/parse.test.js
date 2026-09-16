@@ -194,6 +194,24 @@ describe('parseQuickEntry — ne pas mutiler le titre', () => {
     const r = parse('Facture Le 12/11');
     expect(r.title).toBe('Facture');
   });
+
+  test('une étiquette en fin de phrase est reconnue, et le point recolle', () => {
+    const r = parse('Truc #Santé.');
+    expect(r.category).toBe('Santé');
+    expect(r.title).toBe('Truc.');
+  });
+
+  test('une étiquette suivie d’une virgule est reconnue', () => {
+    const r = parse('Truc !haute, autre chose');
+    expect(r.priority).toBe('high');
+    expect(r.title).toBe('Truc, autre chose');
+  });
+
+  test('l’espace avant un point d’exclamation français est préservée', () => {
+    // « Bravo ! » s'écrit avec une espace : le recollage ne vaut que . et ,
+    expect(parse('Bravo !').title).toBe('Bravo !');
+    expect(parse('Vaccin #Santé!').title).toBe('Vaccin !');
+  });
 });
 
 describe('parseQuickEntry — divers', () => {

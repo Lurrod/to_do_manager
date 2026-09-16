@@ -36,9 +36,13 @@ const WEEKDAYS = {
    y a justement une frontière de mot entre le « 2 » et le « / » de « !1/2 ».
    Sans elle, « #12/03 » consommerait « #12 » et laisserait « /03 » dans le
    titre — un titre mutilé sous les yeux de l'utilisateur, ce que l'aperçu ne
-   rattrape pas. Mieux vaut ne rien reconnaître et lui laisser le fragment. */
-const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])(?=\s|$)/iu;
-const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})(?=\s|$)/u;
+   rattrape pas. Mieux vaut ne rien reconnaître et lui laisser le fragment.
+   La ponctuation de fin de phrase est admise comme frontière : « #Santé. »
+   doit être reconnu, et le « / » n'en fait pas partie, donc « #12/03 » reste
+   écarté. Et surtout pas \b ici : il est ASCII-only en JS, et une étiquette
+   accentuée comme « #Santé » n'y satisferait jamais. */
+const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])(?=[\s.,!?;:]|$)/iu;
+const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})(?=[\s.,!?;:]|$)/u;
 const RE_IN = /(^|\s)dans\s+(\d{1,3})\s*(jours?|j|semaines?|sem)\b/iu;
 const RE_RELATIVE = /(^|\s)(apr[èe]s-demain|demain|aujourd['’]?hui|auj)\b/iu;
 const RE_WEEKDAY = /(^|\s)(?:(?:ce|cette)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/iu;
@@ -170,6 +174,10 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     .sort((a, b) => a[0] - b[0])
     .reduceRight((acc, [start, end]) => acc.slice(0, start) + acc.slice(end), text)
     .replace(/\s+/g, ' ')
+    // une étiquette retirée devant un point laisse « Truc . » : on recolle.
+    // Uniquement le point et la virgule : « Bravo ! » prend une espace avant
+    // le point d'exclamation en français, et il ne faut pas y toucher
+    .replace(/\s+([.,])/g, '$1')
     .trim()
     .slice(0, MAX_TITLE);
 
