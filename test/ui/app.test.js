@@ -45,11 +45,17 @@ const listFor = (url) => {
   return { tasks, total: tasks.length, totalPages: 1, currentPage: 1 };
 };
 
-const idFrom = (url) => url.replace('/tasks/', '').replace('/restore', '');
+const idFrom = (url) => url.replace('/tasks/', '').replace('/restore', '').replace('/purge', '');
 
 /** Applique la mutation au faux serveur, comme le ferait l'API. */
 const mutate = (url, method, body) => {
   const id = idFrom(url);
+
+  if (method === 'DELETE' && url.endsWith('/purge')) {
+    const purged = url.replace('/tasks/', '').replace('/purge', '');
+    server.trash = server.trash.filter((entry) => entry.task._id !== purged);
+    return { message: 'Tâche supprimée définitivement' };
+  }
 
   if (method === 'DELETE') {
     const index = server.tasks.findIndex((t) => t._id === id);
@@ -79,6 +85,10 @@ const mutate = (url, method, body) => {
 const bodyFor = (url, method, body) => {
   if (method !== 'GET') return mutate(url, method, body);
   if (url.startsWith('/tasks/stats')) return server.stats;
+  if (url.startsWith('/tasks/trash')) {
+    const tasks = server.trash.map((entry) => entry.task);
+    return { tasks, total: tasks.length, totalPages: 1, currentPage: 1 };
+  }
   if (url.startsWith('/tasks?')) return listFor(url);
   if (url.startsWith('/categories')) return server.categories;
   return {};
@@ -108,6 +118,7 @@ beforeEach(() => {
     held: [],
     trash: [],
     hold: false,
+    failNextPost: false,
   };
 
   vi.stubGlobal(
@@ -115,6 +126,15 @@ beforeEach(() => {
     vi.fn((url, options = {}) => {
       const method = options.method || 'GET';
       server.calls.push({ url, method, body: options.body ? JSON.parse(options.body) : null });
+
+      if (server.failNextPost && method === 'POST' && url === '/tasks') {
+        server.failNextPost = false;
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: 'Erreur interne du serveur' }),
+        });
+      }
 
       // les listes peuvent être retenues pour rejouer un désordre de réponses
       if (server.hold && url.startsWith('/tasks?')) {
@@ -567,4 +587,81 @@ describe('saisie rapide', () => {
     const url = server.calls.filter((c) => c.url.startsWith('/tasks?')).pop().url;
     expect(new URL(url, 'http://test').searchParams.get('sort')).toBe('dueDate');
   });
+
+  test('un envoi qui échoue laisse l’aperçu intact', async () => {
+    await boot();
+    type('Dentiste demain');
+    await settle();
+    const before = document.getElementById('quick-preview').innerHTML;
+
+    server.failNextPost = true;
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true }));
+    await settle();
+
+    expect(document.getElementById('quick-preview').innerHTML).toBe(before);
+    expect(document.getElementById('quick-preview').hidden).toBe(false);
+    expect(document.getElementById('task-title').value).toBe('Dentiste demain');
+  });
 });
+
+describe('corbeille', () => {
+  const trashFirstTask = async () => {
+    document.querySelector('.task .delete').click();
+    await settle();
+  };
+
+  test('ouvrir la corbeille liste les tâches supprimées', async () => {
+    await boot();
+    await trashFirstTask();
+
+    document.getElementById('open-trash').click();
+    await settle();
+
+    expect(document.getElementById('trash-modal').classList.contains('active')).toBe(true);
+    const rows = [...document.querySelectorAll('#trash-list .trash-title')].map((el) =>
+      el.textContent.trim()
+    );
+    expect(rows).toEqual(['Relire le brief']);
+  });
+
+  test('restaurer remet la tâche dans la liste', async () => {
+    await boot();
+    await trashFirstTask();
+    expect(titles()).not.toContain('Relire le brief');
+
+    document.getElementById('open-trash').click();
+    await settle();
+    document.querySelector('#trash-list .trash-restore').click();
+    await settle();
+
+    expect(titles()).toContain('Relire le brief');
+  });
+
+  test('purger demande confirmation puis supprime définitivement', async () => {
+    await boot();
+    await trashFirstTask();
+
+    document.getElementById('open-trash').click();
+    await settle();
+    document.querySelector('#trash-list .trash-purge').click();
+    await settle();
+
+    // premier clic : la ligne passe en mode confirmation, rien n'est envoyé
+    expect(server.calls.some((c) => c.url.endsWith('/purge'))).toBe(false);
+
+    document.querySelector('#trash-list .trash-purge').click();
+    await settle();
+
+    expect(server.calls.some((c) => c.url.endsWith('/purge'))).toBe(true);
+    expect(document.querySelectorAll('#trash-list .trash-row')).toHaveLength(0);
+  });
+
+  test('une corbeille vide le dit', async () => {
+    await boot();
+    document.getElementById('open-trash').click();
+    await settle();
+
+    expect(document.getElementById('trash-empty').hidden).toBe(false);
+  });
+});
+

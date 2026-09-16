@@ -582,3 +582,50 @@
   color: var(--ink);
   font-weight: 700;
 }
+
+/* --------------------------------- corbeille ------------------------------ */
+
+.trash-open {
+  margin-top: var(--gap-3);
+  width: 100%;
+}
+
+.modal-content--wide {
+  width: min(560px, 100%);
+}
+
+.trash-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-1);
+  max-height: 46vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.trash-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  padding: var(--gap-1) 0;
+  border-bottom: 1px solid var(--rule-line);
+}
+
+.trash-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trash-date {
+  color: var(--ink-faint);
+  font-size: var(--step-xs);
+}
+
+.trash-purge[data-confirm='true'] {
+  color: var(--red-pen);
+}

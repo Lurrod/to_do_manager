@@ -61,6 +61,12 @@ const confirmDeleteCategoryBtn = $('confirm-delete-category');
 const cancelDeleteCategoryBtn = $('cancel-delete-category');
 const deleteCategoryMessage = $('delete-category-message');
 
+const trashModal = $('trash-modal');
+const trashList = $('trash-list');
+const trashEmpty = $('trash-empty');
+const openTrashBtn = $('open-trash');
+const closeTrashBtn = $('close-trash');
+
 const prevPageBtn = $('prev-page');
 const nextPageBtn = $('next-page');
 const pageInfo = $('page-info');
@@ -239,6 +245,62 @@ const restoreTask = async (id) => {
     await api.restoreTask(id);
     await refresh({ silent: true });
     toast('Tâche restaurée.', 'success');
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+};
+
+/**
+ * Contenu de la corbeille. Le deuxième clic sur « Supprimer » confirme :
+ * une suppression définitive ne doit jamais tenir en un seul geste.
+ */
+const renderTrash = (tasks) => {
+  unsketchAll(trashList);
+  trashList.innerHTML = '';
+  trashEmpty.hidden = tasks.length > 0;
+
+  tasks.forEach((task) => {
+    const li = document.createElement('li');
+    li.className = 'trash-row';
+    li.innerHTML = `
+      <span class="trash-title">${escapeHtml(task.title)}</span>
+      <span class="trash-date">${escapeHtml(formatDate(task.deletedAt) || '')}</span>
+      <button class="btn trash-restore" type="button" data-sketch="button" data-tone="neutral">Restaurer</button>
+      <button class="btn trash-purge" type="button" data-sketch="button" data-tone="danger">Supprimer</button>
+    `;
+
+    li.querySelector('.trash-restore').addEventListener('click', async () => {
+      await restoreTask(task._id);
+      await openTrash();
+    });
+
+    const purgeBtn = li.querySelector('.trash-purge');
+    purgeBtn.addEventListener('click', async () => {
+      if (purgeBtn.dataset.confirm !== 'true') {
+        purgeBtn.dataset.confirm = 'true';
+        setText(purgeBtn, 'Confirmer ?');
+        return;
+      }
+      try {
+        await api.purgeTask(task._id);
+        await openTrash();
+        toast('Tâche supprimée définitivement.', 'info');
+      } catch (error) {
+        toast(error.message, 'error');
+      }
+    });
+
+    trashList.appendChild(li);
+  });
+
+  sketchAll(trashList);
+};
+
+const openTrash = async () => {
+  try {
+    const { tasks } = await api.listTrash({ page: 1, limit: 50 });
+    renderTrash(tasks || []);
+    openModal(trashModal);
   } catch (error) {
     toast(error.message, 'error');
   }
@@ -664,6 +726,9 @@ cancelDeleteCategoryBtn.addEventListener('click', () => {
   closeModal(deleteCategoryModal);
   state = { ...state, categoryToDelete: null };
 });
+
+openTrashBtn.addEventListener('click', () => openTrash());
+closeTrashBtn.addEventListener('click', () => closeModal(trashModal));
 
 prevPageBtn.addEventListener('click', () => {
   if (state.currentPage > 1) refresh({ page: state.currentPage - 1 });

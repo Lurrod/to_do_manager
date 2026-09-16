@@ -87,6 +87,15 @@
             <button class="btn pill" data-filter="active" data-sketch="button" aria-pressed="false">À faire</button>
             <button class="btn pill" data-filter="done" data-sketch="button" aria-pressed="false">Rayées</button>
           </div>
+          <button
+            id="open-trash"
+            class="btn trash-open"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
+            Corbeille
+          </button>
         </section>
 
         <section class="panel" data-sketch="card">
@@ -249,6 +258,24 @@
           </button>
           <button id="confirm-delete-category" class="btn" type="button" data-sketch="button" data-tone="danger">
             Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="trash-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="trash-modal-title">
+      <div class="modal-content modal-content--wide" data-sketch="card">
+        <h2 id="trash-modal-title" class="modal-title">Corbeille</h2>
+        <p class="modal-text">
+          Les tâches supprimées restent ici sept jours, puis disparaissent au démarrage suivant.
+        </p>
+
+        <ul id="trash-list" class="trash-list"></ul>
+        <p id="trash-empty" class="modal-text" hidden>La corbeille est vide.</p>
+
+        <div class="modal-actions">
+          <button id="close-trash" class="btn" type="button" data-sketch="button" data-tone="neutral">
+            Fermer
           </button>
         </div>
       </div>
