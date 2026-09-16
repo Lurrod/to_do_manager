@@ -577,3 +577,8 @@
 .quick-preview .chip[data-type='category'] {
   color: var(--green-pen);
 }
+
+.quick-preview .chip[data-type='resolved'] {
+  color: var(--ink);
+  font-weight: 700;
+}

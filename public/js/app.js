@@ -476,30 +476,61 @@ const updateGreeting = () => {
    Événements
    ---------------------------------------------------------------------- */
 
-/** Lecture du champ titre : ce que le texte contient en plus du titre lui-même. */
-const readComposer = () =>
+/** Ce que le texte du champ titre contient en plus du titre lui-même. */
+const parseTitleInput = () =>
   parseQuickEntry(taskTitleInput.value, {
     categories: state.categories.map((c) => c.name),
   });
 
+// dernier aperçu rendu : réécrire une zone aria-live à chaque frappe la ferait
+// crier pour rien
+let lastPreview = '';
+
 /** L'aperçu rend l'interprétation réfutable avant l'envoi. */
 const renderQuickPreview = () => {
-  const { tokens } = readComposer();
-  quickPreview.innerHTML = tokens
-    .map(
-      ({ type, text }) =>
-        `<span class="chip" data-type="${escapeHtml(type)}">${escapeHtml(text)}</span>`
-    )
-    .join('');
-  quickPreview.hidden = tokens.length === 0;
+  const { tokens, dueDate } = parseTitleInput();
+  const chips = tokens.map(
+    ({ type, text }) =>
+      `<span class="chip" data-type="${escapeHtml(type)}">${escapeHtml(text)}</span>`
+  );
+
+  // « 8h » ne dit pas si l'échéance tombe aujourd'hui ou demain : la date
+  // résolue, elle, le dit — et c'est elle qui sera envoyée
+  const resolved = formatDate(dueDate);
+  if (resolved) {
+    chips.push(`<span class="chip" data-type="resolved">→ ${escapeHtml(resolved)}</span>`);
+  }
+
+  const html = chips.join('');
+  if (html === lastPreview) return;
+  lastPreview = html;
+  quickPreview.innerHTML = html;
+  quickPreview.hidden = chips.length === 0;
 };
 
 taskTitleInput.addEventListener('input', renderQuickPreview);
 
+/** Vide le composeur sans toucher au tri, qui vit dans le même <form>. */
+const clearComposer = () => {
+  taskTitleInput.value = '';
+  taskDescInput.value = '';
+  taskDueInput.value = '';
+  taskCategorySelect.value = '';
+  taskPrioritySelect.value = '';
+};
+
 taskForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const parsed = readComposer();
-  if (!parsed.title) return;
+  const parsed = parseTitleInput();
+  if (!parsed.title) {
+    // le champ n'est pas vide à l'écran : ne rien faire du tout serait un bug
+    // du point de vue de l'utilisateur
+    if (taskTitleInput.value.trim()) {
+      toast('Il faut un titre en plus des étiquettes.', 'error');
+    }
+    taskTitleInput.focus();
+    return;
+  }
 
   try {
     await api.createTask({
@@ -510,7 +541,7 @@ taskForm.addEventListener('submit', async (e) => {
       category: taskCategorySelect.value || parsed.category,
       priority: taskPrioritySelect.value || parsed.priority,
     });
-    taskForm.reset();
+    clearComposer();
     renderQuickPreview();
     await refresh({ page: 1 });
     toast('Tâche ajoutée.', 'success');

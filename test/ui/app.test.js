@@ -519,4 +519,52 @@ describe('saisie rapide', () => {
 
     expect(posted()).toBe(before);
   });
+
+  test('l’aperçu annonce la date à laquelle l’échéance retombe', async () => {
+    await boot();
+    type('Appel demain 14h');
+    await settle();
+
+    const resolved = document.querySelector('#quick-preview .chip[data-type="resolved"]');
+    expect(resolved).toBeTruthy();
+    expect(resolved.textContent).toContain('Demain');
+  });
+
+  test('un titre réduit aux étiquettes est refusé à voix haute', async () => {
+    await boot();
+    type('#Perso !haute');
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true }));
+    await settle();
+
+    expect(document.querySelectorAll('#toast-container .toast').length).toBeGreaterThan(0);
+    expect(document.activeElement.id).toBe('task-title');
+  });
+
+  test('une catégorie choisie à la souris l’emporte aussi', async () => {
+    await boot();
+    document.getElementById('task-category').value = 'Perso';
+    type('Courses #Divers');
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true }));
+    await settle();
+
+    const call = server.calls.find((c) => c.method === 'POST' && c.url === '/tasks');
+    expect(call.body.category).toBe('Perso');
+  });
+
+  test('créer une tâche ne réinitialise pas le tri', async () => {
+    await boot();
+    const sort = document.getElementById('sort-select');
+    sort.value = 'dueDate';
+    sort.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+    server.calls = [];
+
+    type('Courses');
+    document.getElementById('task-form').dispatchEvent(new Event('submit', { bubbles: true }));
+    await settle();
+
+    expect(sort.value).toBe('dueDate');
+    const url = server.calls.filter((c) => c.url.startsWith('/tasks?')).pop().url;
+    expect(new URL(url, 'http://test').searchParams.get('sort')).toBe('dueDate');
+  });
 });
