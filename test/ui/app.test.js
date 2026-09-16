@@ -663,5 +663,37 @@ describe('corbeille', () => {
 
     expect(document.getElementById('trash-empty').hidden).toBe(false);
   });
+
+  test('purger la dernière ligne ne fait pas perdre le focus', async () => {
+    await boot();
+    await trashFirstTask();
+
+    document.getElementById('open-trash').click();
+    await settle();
+
+    const purge = document.querySelector('#trash-list .trash-purge');
+    purge.focus();
+    purge.click();
+    await settle();
+    document.querySelector('#trash-list .trash-purge').click();
+    await settle();
+
+    // la ligne focalisée vient d'être détruite : le focus doit rester dans la
+    // modale, pas retomber sur <body>
+    expect(document.getElementById('trash-modal').contains(document.activeElement)).toBe(true);
+    expect(document.activeElement.id).toBe('close-trash');
+  });
+
+  test('ouvrir la corbeille laisse openModal placer le focus', async () => {
+    await boot();
+    await trashFirstTask();
+
+    document.getElementById('open-trash').click();
+    await settle();
+
+    // le garde hadFocus ne doit pas détourner le focus initial de openModal
+    expect(document.getElementById('trash-modal').contains(document.activeElement)).toBe(true);
+  });
 });
+
 
