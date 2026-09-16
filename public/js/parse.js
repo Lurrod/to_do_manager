@@ -31,16 +31,21 @@ const WEEKDAYS = {
   samedi: 6,
 };
 
-/* Chaque motif commence par (^|\s) : un motif ne se déclenche qu'en début de
-   mot, sinon « #Santé » livrerait un jour dans « ...di ». Le groupe 1 est cette
-   frontière, et n'est jamais consommé. */
-const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])\b/iu;
-const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})/u;
+/* `#` et `!` exigent aussi une frontière APRÈS le motif, et ce doit être une
+   anticipation sur l'espace ou la fin : un simple \b ne suffirait pas, puisqu'il
+   y a justement une frontière de mot entre le « 2 » et le « / » de « !1/2 ».
+   Sans elle, « #12/03 » consommerait « #12 » et laisserait « /03 » dans le
+   titre — un titre mutilé sous les yeux de l'utilisateur, ce que l'aperçu ne
+   rattrape pas. Mieux vaut ne rien reconnaître et lui laisser le fragment. */
+const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])(?=\s|$)/iu;
+const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})(?=\s|$)/u;
 const RE_IN = /(^|\s)dans\s+(\d{1,3})\s*(jours?|j|semaines?|sem)\b/iu;
 const RE_RELATIVE = /(^|\s)(apr[èe]s-demain|demain|aujourd['’]?hui|auj)\b/iu;
 const RE_WEEKDAY = /(^|\s)(?:(?:ce|cette)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/iu;
-const RE_DATE = /(^|\s)(?:le\s+)?(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/u;
-const RE_TIME = /(^|\s)(?:[àa]\s*)?(\d{1,2})\s*h\s*([0-5]\d)?\b/iu;
+const RE_DATE = /(^|\s)(?:le\s+)?(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/iu;
+// seul « à » introduit une heure : accepter « a » nu ferait de « il y a 3h »
+// une échéance, alors que c'est la tournure la plus banale du français
+const RE_TIME = /(^|\s)(?:à\s*)?(\d{1,2})\s*h\s*([0-5]\d)?\b/iu;
 
 /** Minuscules sans accents : « Après-demain » et « apres-demain » se valent. */
 const plain = (value) =>
@@ -89,7 +94,7 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     const end = match.index + match[0].length;
     if (overlaps(start, end)) return false;
     cuts.push([start, end]);
-    tokens.push({ type, text: text.slice(start, end).trim() });
+    tokens.push({ type, text: text.slice(start, end).trim(), start });
     return true;
   };
 
@@ -119,11 +124,13 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     if (word.startsWith('apres-demain')) day = addDays(atMidnight(now), 2);
     else if (word === 'demain') day = addDays(atMidnight(now), 1);
     else day = atMidnight(now);
-  } else if (mWeekday) {
+    // même forme que ses trois branches sœurs : un `take` refusé doit laisser
+    // sa chance au motif suivant, pas abandonner la date en silence
+  } else if (mWeekday && take(mWeekday, 'date')) {
     const today = atMidnight(now);
     // « mercredi » un mercredi désigne le mercredi suivant, jamais aujourd'hui
     const delta = (WEEKDAYS[plain(mWeekday[2])] - today.getDay() + 7) % 7 || 7;
-    if (take(mWeekday, 'date')) day = addDays(today, delta);
+    day = addDays(today, delta);
   } else if (mDate) {
     const dayNum = parseInt(mDate[2], 10);
     const monthNum = parseInt(mDate[3], 10);
@@ -166,5 +173,11 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     .trim()
     .slice(0, MAX_TITLE);
 
-  return { title, dueDate, category, priority, tokens };
+  // les pastilles se lisent dans l'ordre où l'utilisateur a tapé, pas dans
+  // celui où le parseur a reconnu : `start` sert au tri, puis disparaît
+  const ordered = tokens
+    .sort((a, b) => a.start - b.start)
+    .map(({ type, text: label }) => ({ type, text: label }));
+
+  return { title, dueDate, category, priority, tokens: ordered };
 }

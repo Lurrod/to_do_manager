@@ -151,13 +151,66 @@ describe('parseQuickEntry — catégorie et priorité', () => {
 });
 
 describe('parseQuickEntry — aperçu', () => {
-  test('chaque segment reconnu produit un token typé', () => {
+  test('les tokens se lisent dans l’ordre où l’utilisateur a tapé', () => {
     const r = parse('Dentiste demain 14h #Santé !haute');
     expect(r.tokens).toEqual([
-      { type: 'priority', text: '!haute' },
-      { type: 'category', text: '#Santé' },
       { type: 'date', text: 'demain' },
       { type: 'date', text: '14h' },
+      { type: 'category', text: '#Santé' },
+      { type: 'priority', text: '!haute' },
     ]);
+  });
+});
+
+describe('parseQuickEntry — ne pas mutiler le titre', () => {
+  /* Un motif à moitié consommé laisse un fragment orphelin dans le champ, sous
+     les yeux de l'utilisateur. Mieux vaut ne rien reconnaître du tout. */
+
+  test('#12/03 n’est pas une catégorie et ne laisse pas « /03 »', () => {
+    const r = parse('Truc #12/03');
+    expect(r.title).toBe('Truc #12/03');
+    expect(r.category).toBe('');
+    expect(r.dueDate).toBeNull();
+  });
+
+  test('!1/2 n’est pas une priorité et ne laisse pas « /2 »', () => {
+    const r = parse('Truc !1/2');
+    expect(r.title).toBe('Truc !1/2');
+    expect(r.priority).toBe('');
+  });
+
+  test('une catégorie trop longue n’est pas tronquée puis recollée', () => {
+    const long = 'a'.repeat(40);
+    const r = parse(`Truc #${long} fin`);
+    expect(r.title).toBe(`Truc #${long} fin`);
+    expect(r.category).toBe('');
+  });
+
+  test('« il y a 3h » garde son « a »', () => {
+    expect(parse('Reunion il y a 3h').title).toBe('Reunion il y a');
+  });
+
+  test('« Le » majuscule est reconnu comme amorce de date', () => {
+    const r = parse('Facture Le 12/11');
+    expect(r.title).toBe('Facture');
+  });
+});
+
+describe('parseQuickEntry — divers', () => {
+  test('« ce lundi » est accepté', () => {
+    expect(at(parse('Réunion ce lundi'))).toEqual([2026, 9, 21, 9, 0]);
+  });
+
+  test('une seule catégorie est retenue, la seconde reste dans le titre', () => {
+    const r = parse('Truc #Un #Deux');
+    expect(r.category).toBe('Un');
+    expect(r.title).toBe('Truc #Deux');
+  });
+
+  test('l’horloge fournie n’est jamais modifiée', () => {
+    const clock = new Date(2026, 8, 16, 10, 0, 0);
+    const before = clock.getTime();
+    parseQuickEntry('Courses demain 14h', { now: clock });
+    expect(clock.getTime()).toBe(before);
   });
 });
