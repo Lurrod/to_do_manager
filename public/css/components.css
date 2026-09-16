@@ -670,3 +670,10 @@
   outline: 2px dashed var(--ink-faint);
   outline-offset: 3px;
 }
+
+.side-action {
+  display: block;
+  margin-top: var(--gap-1);
+  text-align: center;
+  text-decoration: none;
+}

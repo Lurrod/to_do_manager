@@ -37,6 +37,7 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
     { label: 'Voir : cette semaine', run: () => selectDue('week') },
     { label: 'Voir : sans date', run: () => selectDue('none') },
     { label: 'Ouvrir la corbeille', run: openTrash },
+    { label: 'Sauvegarder le cahier', run: () => document.getElementById('export-link').click() },
   ];
 
   // Liste courante (après filtre) et ligne mise en avant : le focus réel
