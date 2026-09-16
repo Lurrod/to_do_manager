@@ -287,6 +287,39 @@ const SORT_FIELDS = {
 };
 
 /**
+ * Compte les étapes de chaque racine en une seule requête. Les compter côté
+ * client demanderait un appel par ligne affichée ; les compter ici coûte un
+ * `$lookup` sur un champ indexé.
+ */
+const CHILD_COUNTS = [
+  {
+    $lookup: {
+      from: 'tasks',
+      let: { racine: '$_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$parentId', '$$racine'] }, deletedAt: null } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            faites: { $sum: { $cond: ['$completed', 1, 0] } },
+          },
+        },
+      ],
+      as: 'etapes',
+    },
+  },
+  {
+    $addFields: {
+      // `$ifNull` parce qu'une racine sans étape ne produit aucun groupe :
+      // le tableau est alors vide, pas rempli de zéros
+      childCount: { $ifNull: [{ $first: '$etapes.total' }, 0] },
+      childDone: { $ifNull: [{ $first: '$etapes.faites' }, 0] },
+    },
+  },
+];
+
+/**
  * Vérifie qu'un rattachement est légal : le parent doit exister, ne pas être
  * lui-même une étape, et la tâche rattachée ne doit pas déjà en porter.
  * @returns {string|null} le message d'erreur, ou null si le rattachement est bon
@@ -475,7 +508,10 @@ app.get('/tasks', async (req, res) => {
       { $sort: SORTS[sort] },
       { $skip: skip },
       { $limit: limit },
-      { $project: { noDue: 0, priorityRank: 0 } },
+      // le comptage vient après la pagination : compter les étapes de toute la
+      // base pour n'en afficher cinq serait du travail jeté
+      ...CHILD_COUNTS,
+      { $project: { noDue: 0, priorityRank: 0, etapes: 0 } },
     ]);
 
     res.status(200).json({ tasks, total, totalPages, currentPage });

@@ -1004,6 +1004,40 @@ describe('Sous-tâches', () => {
     expect(res.body.error).toMatch(/elle-même/i);
   });
 
+  test('chaque racine porte le compte de ses étapes', async () => {
+    const parentId = await parent();
+    const faite = await request(app).post('/tasks').send({ title: 'Faite', parentId });
+    await request(app).put(`/tasks/${faite.body._id}`).send({ completed: true });
+    await request(app).post('/tasks').send({ title: 'À faire', parentId });
+
+    const res = await request(app).get('/tasks?limit=50');
+    const devis = res.body.tasks.find((t) => t.title === 'Devis');
+
+    expect(devis.childCount).toBe(2);
+    expect(devis.childDone).toBe(1);
+  });
+
+  test('une racine sans étape porte des compteurs à zéro, pas des champs absents', async () => {
+    await parent('Seule');
+
+    const res = await request(app).get('/tasks?limit=50');
+    const seule = res.body.tasks.find((t) => t.title === 'Seule');
+
+    expect(seule.childCount).toBe(0);
+    expect(seule.childDone).toBe(0);
+  });
+
+  test('une étape à la corbeille ne compte plus', async () => {
+    const parentId = await parent();
+    const etape = await request(app).post('/tasks').send({ title: 'Jetée', parentId });
+    await request(app).delete(`/tasks/${etape.body._id}`);
+
+    const res = await request(app).get('/tasks?limit=50');
+    const devis = res.body.tasks.find((t) => t.title === 'Devis');
+
+    expect(devis.childCount).toBe(0);
+  });
+
   test('rattacher une tâche qui a déjà des étapes est refusé', async () => {
     const grandParent = await parent('Grand-parent');
     const pere = await parent('Père');
