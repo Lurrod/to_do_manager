@@ -5,6 +5,7 @@
    --------------------------------------------------------------------------- */
 
 import * as api from './api.js';
+import { initBackup } from './backup.js';
 import { initDragDrop } from './dragdrop.js';
 import { initFilters, showOverdueCount } from './filters.js';
 import { initKeyboard } from './keyboard.js';
@@ -711,6 +712,8 @@ initDragDrop({
 });
 
 const { openTrash } = initTrash({ restoreTask });
+
+initBackup({ refresh });
 
 const { openPalette, closePalette } = initPalette({
   focusTitle: () => taskTitleInput.focus(),

@@ -5,6 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "app": "node scripts/app.js",
+    "desktop": "electron electron/main.js",
+    "dist": "electron-builder --win --publish never",
     "backup": "node scripts/backup.js",
     "test": "npm run test:api && npm run test:ui",
     "test:api": "jest",
@@ -24,6 +26,8 @@
     "mongoose": "^8.9.7"
   },
   "devDependencies": {
+    "electron": "^32.3.3",
+    "electron-builder": "^26.15.3",
     "happy-dom": "^20.14.0",
     "jest": "^29.7.0",
     "supertest": "^7.0.0",
@@ -34,5 +38,50 @@
       "<rootDir>/test/api/**/*.test.js",
       "<rootDir>/test/server/**/*.test.js"
     ]
+  },
+  "build": {
+    "appId": "fr.cahier.todo",
+    "productName": "Cahier",
+    "copyright": "Titouan Borde",
+    "directories": {
+      "output": "dist",
+      "buildResources": "electron"
+    },
+    "files": [
+      "server.js",
+      "lib/**/*",
+      "public/**/*",
+      "electron/**/*",
+      "node_modules/**/*",
+      "!node_modules/.cache/**",
+      "!**/*.map",
+      "!**/test/**",
+      "!**/__tests__/**"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/.cache/mongodb-memory-server/mongod-x64-win32-8.2.6.exe",
+        "to": "mongod.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cahier"
+    }
   }
 }

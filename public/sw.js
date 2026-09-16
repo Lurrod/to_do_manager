@@ -32,6 +32,7 @@ const COQUILLE = [
   '/js/steps.js',
   '/js/keyboard.js',
   '/js/dragdrop.js',
+  '/js/backup.js',
   '/js/modal.js',
   '/js/sketch.js',
   '/js/util.js',

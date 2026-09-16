@@ -71,7 +71,9 @@ async function resolveMongoUri() {
   }
 
   const { MongoMemoryServer } = require('mongodb-memory-server');
-  const dbPath = path.join(__dirname, 'data', 'db');
+  // En application empaquetée, __dirname pointe dans une archive en lecture
+  // seule : le dossier de données doit venir du dehors.
+  const dbPath = process.env.CAHIER_DATA_DIR || path.join(__dirname, 'data', 'db');
   fs.mkdirSync(dbPath, { recursive: true });
 
   console.log('Démarrage de MongoDB embarqué… (premier lancement : téléchargement ~100 Mo)');
@@ -85,13 +87,25 @@ async function resolveMongoUri() {
   return embeddedMongo.getUri();
 }
 
-async function shutdown(code = 0) {
+/**
+ * Ferme la base et arrête Mongo, sans tuer le processus.
+ *
+ * Séparé de `shutdown` parce qu'Electron doit pouvoir libérer le verrou
+ * WiredTiger au moment où la fenêtre se ferme, puis rendre la main à son
+ * propre cycle d'arrêt — `process.exit` le priverait de cette étape.
+ */
+async function stopServices() {
   try {
     await mongoose.disconnect();
   } catch (_) {}
   if (embeddedMongo) {
     await embeddedMongo.stop({ doCleanup: false, force: false });
+    embeddedMongo = null;
   }
+}
+
+async function shutdown(code = 0) {
+  await stopServices();
   process.exit(code);
 }
 
@@ -1191,11 +1205,20 @@ app.delete('/categories/:name', async (req, res) => {
   }
 });
 
+/**
+ * Adresse réellement obtenue, quand le serveur est mis à l'écoute.
+ *
+ * Le lanceur en ligne de commande la lit sur la sortie standard ; le processus
+ * principal d'Electron, lui, charge ce module directement et n'a pas de sortie
+ * à lire — d'où cette promesse.
+ */
+let ready = null;
+
 if (process.env.NODE_ENV !== 'test') {
   const http = require('http');
   const serveur = http.createServer(app);
 
-  listenWithFallback(serveur, { port, host })
+  ready = listenWithFallback(serveur, { port, host })
     .then((obtenu) => {
       if (obtenu !== port) {
         console.log(`Port ${port} occupé — le Cahier prend le ${obtenu}.`);
@@ -1203,14 +1226,21 @@ if (process.env.NODE_ENV !== 'test') {
       // ligne lue par le lanceur (« npm run app ») pour savoir où ouvrir :
       // ne pas en changer la forme sans changer scripts/app.js
       console.log(`Serveur démarré sur http://${host}:${obtenu}`);
+      return `http://${host}:${obtenu}`;
     })
     .catch((error) => {
       console.error(`Démarrage impossible : ${error.message}`);
-      process.exit(1);
+      // sous Electron, c'est la fenêtre qui doit annoncer l'échec : sortir ici
+      // la ferait disparaître sans rien dire
+      if (!process.versions.electron) process.exit(1);
+      throw error;
     });
 }
 
 module.exports = app;
+module.exports.ready = ready;
+// utilisé par Electron pour libérer le verrou de la base avant de quitter
+module.exports.stopServices = stopServices;
 // exposée pour les tests : la migration doit pouvoir être rejouée à volonté
 module.exports.migrateSchema = migrateSchema;
 // exposé pour les tests : le balayage prend son horloge et son émetteur en

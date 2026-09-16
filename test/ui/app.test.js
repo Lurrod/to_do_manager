@@ -1119,3 +1119,52 @@ describe('glisser-déposer', () => {
     expect(server.calls.find((c) => c.method === 'PATCH')).toBeUndefined();
   });
 });
+
+describe('restauration d’une sauvegarde', () => {
+  /** Faux fichier : happy-dom n'a pas de sélecteur de fichiers. */
+  const choisirFichier = (contenu) => {
+    const champ = document.getElementById('import-file');
+    Object.defineProperty(champ, 'files', {
+      configurable: true,
+      value: [{ text: async () => contenu }],
+    });
+    champ.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  test('le bouton Restaurer ouvre le sélecteur de fichiers', async () => {
+    await boot();
+    let ouvert = false;
+    document.getElementById('import-file').click = () => {
+      ouvert = true;
+    };
+
+    document.getElementById('open-restore').click();
+
+    expect(ouvert).toBe(true);
+  });
+
+  test('choisir une sauvegarde l’envoie en fusion, jamais en remplacement', async () => {
+    await boot();
+    server.calls = [];
+
+    choisirFichier(JSON.stringify({ tasks: [{ title: 'Venue de la sauvegarde' }], categories: [] }));
+    await settle();
+
+    const envoi = server.calls.find((c) => c.url === '/import');
+    expect(envoi).toBeDefined();
+    // un bouton qui efface la base à un clic de distance serait un piège
+    expect(envoi.body.mode).toBe('merge');
+    expect(envoi.body.tasks).toHaveLength(1);
+  });
+
+  test('un fichier qui n’est pas une sauvegarde le dit sans planter', async () => {
+    await boot();
+    server.calls = [];
+
+    choisirFichier('ceci n’est pas du JSON');
+    await settle();
+
+    expect(server.calls.find((c) => c.url === '/import')).toBeUndefined();
+    expect(document.querySelector('.toast').textContent).toMatch(/sauvegarde du Cahier/i);
+  });
+});
