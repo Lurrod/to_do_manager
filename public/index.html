@@ -81,26 +81,26 @@
         <section class="panel" data-sketch="card">
           <h2 class="panel-title">Statut</h2>
           <div class="filters" role="group" aria-label="Filtrer par statut">
-            <button class="btn pill is-active" data-filter="all" data-sketch="button" data-variant="solid">
+            <button class="btn pill is-active" data-filter="all" data-sketch="button" data-variant="solid" aria-pressed="true">
               Toutes
             </button>
-            <button class="btn pill" data-filter="active" data-sketch="button">À faire</button>
-            <button class="btn pill" data-filter="done" data-sketch="button">Rayées</button>
+            <button class="btn pill" data-filter="active" data-sketch="button" aria-pressed="false">À faire</button>
+            <button class="btn pill" data-filter="done" data-sketch="button" aria-pressed="false">Rayées</button>
           </div>
         </section>
 
         <section class="panel" data-sketch="card">
           <h2 class="panel-title">Échéance</h2>
           <div class="filters" role="group" aria-label="Filtrer par échéance">
-            <button class="btn pill due-pill is-active" data-due="all" data-sketch="button" data-variant="solid">
+            <button class="btn pill due-pill is-active" data-due="all" data-sketch="button" data-variant="solid" aria-pressed="true">
               Tout
             </button>
-            <button class="btn pill due-pill" data-due="overdue" data-sketch="button">
+            <button class="btn pill due-pill" data-due="overdue" data-sketch="button" aria-pressed="false">
               En retard <b class="due-badge" id="due-overdue-count" hidden>0</b>
             </button>
-            <button class="btn pill due-pill" data-due="today" data-sketch="button">Aujourd'hui</button>
-            <button class="btn pill due-pill" data-due="week" data-sketch="button">Semaine</button>
-            <button class="btn pill due-pill" data-due="none" data-sketch="button">Sans date</button>
+            <button class="btn pill due-pill" data-due="today" data-sketch="button" aria-pressed="false">Aujourd'hui</button>
+            <button class="btn pill due-pill" data-due="week" data-sketch="button" aria-pressed="false">Semaine</button>
+            <button class="btn pill due-pill" data-due="none" data-sketch="button" aria-pressed="false">Sans date</button>
           </div>
         </section>
 

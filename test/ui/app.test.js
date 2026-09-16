@@ -346,6 +346,58 @@ describe('onglets temporels', () => {
     expect(statusPill.classList.contains('is-active')).toBe(true);
   });
 
+  test('élargir le statut quitte l’horizon « en retard » au lieu de le faire mentir', async () => {
+    await boot();
+    document.querySelector('.due-pill[data-due="overdue"]').click();
+    await settle();
+    server.calls = [];
+
+    document.querySelector('.pill[data-filter="done"]').click();
+    await settle();
+
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('status')).toBe('done');
+    expect(params.get('due')).toBe('all');
+    expect(document.querySelector('.due-pill[data-due="all"]').classList.contains('is-active')).toBe(
+      true
+    );
+  });
+
+  test('revenir sur « à faire » ne quitte pas l’horizon : rien ne se contredit', async () => {
+    await boot();
+    document.querySelector('.due-pill[data-due="overdue"]').click();
+    await settle();
+    server.calls = [];
+
+    document.querySelector('.pill[data-filter="active"]').click();
+    await settle();
+
+    const params = new URL(lastListUrl(), 'http://test').searchParams;
+    expect(params.get('status')).toBe('active');
+    expect(params.get('due')).toBe('overdue');
+  });
+
+  test('l’état de sélection est exposé aux aides techniques', async () => {
+    await boot();
+    document.querySelector('.due-pill[data-due="today"]').click();
+    await settle();
+
+    expect(
+      document.querySelector('.due-pill[data-due="today"]').getAttribute('aria-pressed')
+    ).toBe('true');
+    expect(
+      document.querySelector('.due-pill[data-due="all"]').getAttribute('aria-pressed')
+    ).toBe('false');
+  });
+
+  test('le badge nomme ce qu’il compte', async () => {
+    server.stats = { ...server.stats, overdue: 2 };
+    await boot();
+
+    const pill = document.querySelector('.due-pill[data-due="overdue"]');
+    expect(pill.getAttribute('aria-label')).toBe('En retard, 2 tâches');
+  });
+
   test('les autres horizons laissent le statut tranquille', async () => {
     await boot();
     server.calls = [];

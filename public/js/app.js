@@ -456,6 +456,14 @@ const updateCounters = () => {
   const overdue = state.stats.overdue || 0;
   dueOverdueCount.textContent = overdue;
   dueOverdueCount.hidden = overdue === 0;
+
+  // sans cela le nom accessible du bouton devient « En retard 3 », un nombre
+  // posé là sans dire de quoi il parle
+  const overduePill = duePills.find((p) => p.dataset.due === 'overdue');
+  overduePill.setAttribute(
+    'aria-label',
+    overdue === 0 ? 'En retard' : `En retard, ${overdue} tâche${overdue > 1 ? 's' : ''}`
+  );
 };
 
 const updateGreeting = () => {
@@ -529,14 +537,26 @@ const activatePill = (pills, target) => {
   pills.forEach((p) => {
     const isTarget = p === target;
     p.classList.toggle('is-active', isTarget);
+    // sans cet état, une aide technique ne sait pas quel filtre est appliqué :
+    // la classe CSS et le trait drawably ne disent rien à personne d'autre
+    p.setAttribute('aria-pressed', String(isTarget));
     setVariant(p, isTarget ? 'solid' : null);
   });
 };
 
 filterPills.forEach((pill) => {
   pill.addEventListener('click', () => {
+    const status = pill.dataset.filter;
     activatePill(filterPills, pill);
-    state = { ...state, status: pill.dataset.filter };
+
+    // élargir le statut ferait diverger l'onglet « en retard » et son badge :
+    // on quitte l'horizon plutôt que de le laisser mentir
+    const due = state.due === 'overdue' && status !== 'active' ? 'all' : state.due;
+    if (due !== state.due) {
+      activatePill(duePills, duePills.find((p) => p.dataset.due === due));
+    }
+
+    state = { ...state, status, due };
     refresh({ page: 1 });
   });
 });
