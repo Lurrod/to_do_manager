@@ -5,14 +5,15 @@
    --------------------------------------------------------------------------- */
 
 import * as api from './api.js';
+import { duePills, initFilters } from './filters.js';
 import { bindBackdrop, closeModal, isModalOpen, openModal } from './modal.js';
 import { parseQuickEntry } from './parse.js';
+import { initTrash } from './trash.js';
 
 import {
   progress,
   resketch,
   setText,
-  setVariant,
   sketchAll,
   strike,
   unsketchAll,
@@ -61,12 +62,6 @@ const confirmDeleteCategoryBtn = $('confirm-delete-category');
 const cancelDeleteCategoryBtn = $('cancel-delete-category');
 const deleteCategoryMessage = $('delete-category-message');
 
-const trashModal = $('trash-modal');
-const trashList = $('trash-list');
-const trashEmpty = $('trash-empty');
-const openTrashBtn = $('open-trash');
-const closeTrashBtn = $('close-trash');
-
 const prevPageBtn = $('prev-page');
 const nextPageBtn = $('next-page');
 const pageInfo = $('page-info');
@@ -87,9 +82,6 @@ const statTotal = $('stat-total');
 const statDone = $('stat-done');
 const statActive = $('stat-active');
 
-// `.pill` est porté par les deux rangées : on les sépare sur leur attribut
-const filterPills = [...document.querySelectorAll('.pill[data-filter]')];
-const duePills = [...document.querySelectorAll('.due-pill')];
 const dueOverdueCount = $('due-overdue-count');
 
 let state = {
@@ -245,70 +237,6 @@ const restoreTask = async (id) => {
     await api.restoreTask(id);
     await refresh({ silent: true });
     toast('Tâche restaurée.', 'success');
-  } catch (error) {
-    toast(error.message, 'error');
-  }
-};
-
-/**
- * Contenu de la corbeille. Le deuxième clic sur « Supprimer » confirme :
- * une suppression définitive ne doit jamais tenir en un seul geste.
- */
-const renderTrash = (tasks) => {
-  unsketchAll(trashList);
-  trashList.innerHTML = '';
-  trashEmpty.hidden = tasks.length > 0;
-
-  tasks.forEach((task) => {
-    const li = document.createElement('li');
-    li.className = 'trash-row';
-    li.innerHTML = `
-      <span class="trash-title">${escapeHtml(task.title)}</span>
-      <span class="trash-date">${escapeHtml(formatDate(task.deletedAt) || '')}</span>
-      <button class="btn trash-restore" type="button" data-sketch="button" data-tone="neutral">Restaurer</button>
-      <button class="btn trash-purge" type="button" data-sketch="button" data-tone="danger">Supprimer</button>
-    `;
-
-    li.querySelector('.trash-restore').addEventListener('click', async () => {
-      await restoreTask(task._id);
-      await openTrash();
-    });
-
-    const purgeBtn = li.querySelector('.trash-purge');
-    purgeBtn.addEventListener('click', async () => {
-      if (purgeBtn.dataset.confirm !== 'true') {
-        purgeBtn.dataset.confirm = 'true';
-        setText(purgeBtn, 'Confirmer ?');
-        return;
-      }
-      try {
-        await api.purgeTask(task._id);
-        await openTrash();
-        toast('Tâche supprimée définitivement.', 'info');
-      } catch (error) {
-        toast(error.message, 'error');
-      }
-    });
-
-    trashList.appendChild(li);
-  });
-
-  sketchAll(trashList);
-};
-
-const openTrash = async () => {
-  try {
-    const { tasks } = await api.listTrash({ page: 1, limit: 50 });
-    renderTrash(tasks || []);
-    openModal(trashModal);
-
-    // openModal place lui-même le focus à la première ouverture. Ce rattrapage
-    // ne sert qu'au cas où la modale était déjà ouverte et où renderTrash vient
-    // de détruire la ligne qui portait le focus : il retomberait sur <body>,
-    // hors du piège.
-    if (!trashModal.contains(document.activeElement)) {
-      (trashList.querySelector('.trash-restore') || closeTrashBtn).focus();
-    }
   } catch (error) {
     toast(error.message, 'error');
   }
@@ -657,50 +585,12 @@ searchInput.addEventListener('input', (e) => {
   }, SEARCH_DEBOUNCE_MS);
 });
 
-/** Marque une pastille comme seule active de sa rangée. */
-const activatePill = (pills, target) => {
-  pills.forEach((p) => {
-    const isTarget = p === target;
-    p.classList.toggle('is-active', isTarget);
-    // sans cet état, une aide technique ne sait pas quel filtre est appliqué :
-    // la classe CSS et le trait drawably ne disent rien à personne d'autre
-    p.setAttribute('aria-pressed', String(isTarget));
-    setVariant(p, isTarget ? 'solid' : null);
-  });
-};
-
-filterPills.forEach((pill) => {
-  pill.addEventListener('click', () => {
-    const status = pill.dataset.filter;
-    activatePill(filterPills, pill);
-
-    // élargir le statut ferait diverger l'onglet « en retard » et son badge :
-    // on quitte l'horizon plutôt que de le laisser mentir
-    const due = state.due === 'overdue' && status !== 'active' ? 'all' : state.due;
-    if (due !== state.due) {
-      activatePill(duePills, duePills.find((p) => p.dataset.due === due));
-    }
-
-    state = { ...state, status, due };
-    refresh({ page: 1 });
-  });
-});
-
-duePills.forEach((pill) => {
-  pill.addEventListener('click', () => {
-    const due = pill.dataset.due;
-    activatePill(duePills, pill);
-
-    // le badge compte le travail qui reste : l'onglet doit montrer la même
-    // chose, et la rangée « Statut » doit dire la vérité sur ce qui est filtré
-    const status = due === 'overdue' ? 'active' : state.status;
-    if (status !== state.status) {
-      activatePill(filterPills, filterPills.find((p) => p.dataset.filter === status));
-    }
-
-    state = { ...state, due, status };
-    refresh({ page: 1 });
-  });
+initFilters({
+  getState: () => state,
+  setState: (patch) => {
+    state = { ...state, ...patch };
+  },
+  refresh,
 });
 
 saveEditBtn.addEventListener('click', async () => {
@@ -735,8 +625,7 @@ cancelDeleteCategoryBtn.addEventListener('click', () => {
   state = { ...state, categoryToDelete: null };
 });
 
-openTrashBtn.addEventListener('click', () => openTrash());
-closeTrashBtn.addEventListener('click', () => closeModal(trashModal));
+initTrash({ restoreTask });
 
 prevPageBtn.addEventListener('click', () => {
   if (state.currentPage > 1) refresh({ page: state.currentPage - 1 });
