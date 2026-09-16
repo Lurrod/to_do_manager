@@ -629,3 +629,36 @@
 .trash-purge[data-confirm='true'] {
   color: var(--red-pen);
 }
+
+/* --------------------------------- palette -------------------------------- */
+
+.palette-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 44vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.palette-item {
+  padding: var(--gap-1) var(--gap-2);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--step-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette-item:hover,
+.palette-item:focus-visible {
+  background: color-mix(in srgb, var(--highlighter) 40%, transparent);
+}
+
+.task.is-cursor {
+  outline: 2px dashed var(--ink-faint);
+  outline-offset: 3px;
+}

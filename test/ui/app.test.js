@@ -696,4 +696,82 @@ describe('corbeille', () => {
   });
 });
 
+describe('clavier', () => {
+  const press = (key, options = {}) =>
+    document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...options }));
+
+  test('n met le focus sur le champ de saisie', async () => {
+    await boot();
+    press('n');
+    expect(document.activeElement.id).toBe('task-title');
+  });
+
+  test('les raccourcis ne se déclenchent pas depuis un champ', async () => {
+    await boot();
+    const search = document.getElementById('search-input');
+    search.focus();
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', bubbles: true }));
+
+    expect(document.activeElement.id).toBe('search-input');
+  });
+
+  test('j et k déplacent la sélection dans la liste', async () => {
+    await boot();
+    press('j');
+    expect(document.querySelectorAll('.task')[0].classList.contains('is-cursor')).toBe(true);
+
+    press('j');
+    expect(document.querySelectorAll('.task')[1].classList.contains('is-cursor')).toBe(true);
+
+    press('k');
+    expect(document.querySelectorAll('.task')[0].classList.contains('is-cursor')).toBe(true);
+  });
+
+  test('x coche la tâche sous le curseur', async () => {
+    await boot();
+    press('j');
+    press('x');
+    await settle();
+
+    const call = server.calls.find((c) => c.method === 'PUT');
+    expect(call.body.completed).toBe(true);
+  });
+
+  test('Ctrl+K ouvre la palette', async () => {
+    await boot();
+    press('k', { ctrlKey: true });
+
+    expect(document.getElementById('palette-modal').classList.contains('active')).toBe(true);
+  });
+
+  test('la palette filtre ses commandes', async () => {
+    await boot();
+    press('k', { ctrlKey: true });
+
+    const input = document.getElementById('palette-input');
+    input.value = 'retard';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const labels = [...document.querySelectorAll('#palette-list .palette-item')].map((el) =>
+      el.textContent.trim()
+    );
+    expect(labels).toEqual(['Voir : en retard']);
+  });
+
+  test('choisir une commande de la palette l’exécute et ferme', async () => {
+    await boot();
+    press('k', { ctrlKey: true });
+
+    const input = document.getElementById('palette-input');
+    input.value = 'retard';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelector('#palette-list .palette-item').click();
+    await settle();
+
+    expect(document.getElementById('palette-modal').classList.contains('active')).toBe(false);
+    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    expect(new URL(url, 'http://test').searchParams.get('due')).toBe('overdue');
+  });
+});
+
 

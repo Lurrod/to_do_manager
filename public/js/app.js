@@ -7,6 +7,7 @@
 import * as api from './api.js';
 import { initFilters, showOverdueCount } from './filters.js';
 import { bindBackdrop, closeModal, isModalOpen, openModal } from './modal.js';
+import { initPalette } from './palette.js';
 import { parseQuickEntry } from './parse.js';
 import { initTrash } from './trash.js';
 
@@ -95,6 +96,7 @@ let state = {
   stats: { total: 0, done: 0, active: 0, overdue: 0, byCategory: [] },
   currentTaskId: null,
   categoryToDelete: null,
+  cursor: -1,
 };
 
 /* ----------------------------------------------------------------------
@@ -405,6 +407,30 @@ const updateEmptyState = () => {
   sketchAll(emptyState);
 };
 
+const taskAt = (index) => state.tasks[index] || null;
+
+/**
+ * Une frappe partie d'un champ appartient au champ, pas aux raccourcis.
+ * `matches` n'existe que sur les éléments : un événement clavier envoyé au
+ * document (ce que font les tests) a `document` pour cible, et appeler
+ * `document.matches` lèverait une TypeError.
+ */
+const isTyping = (target) =>
+  typeof target?.matches === 'function' && target.matches('input, textarea, select');
+
+const applyCursor = () => {
+  const rows = [...taskList.querySelectorAll('.task')];
+  rows.forEach((row, index) => row.classList.toggle('is-cursor', index === state.cursor));
+};
+
+/** Déplace le curseur clavier, en restant dans les bornes de la page affichée. */
+const moveCursor = (delta) => {
+  if (state.tasks.length === 0) return;
+  const next = Math.min(state.tasks.length - 1, Math.max(0, state.cursor + delta));
+  state = { ...state, cursor: state.cursor === -1 && delta > 0 ? 0 : next };
+  applyCursor();
+};
+
 const render = () => {
   // les croquis tiennent un ResizeObserver sur leur hôte : on les détache
   // avant de jeter le DOM qui les porte
@@ -414,6 +440,8 @@ const render = () => {
   const rendered = state.tasks.map((task) => ({ task, li: renderTaskItem(task) }));
   rendered.forEach(({ li }) => taskList.appendChild(li));
   sketchAll(taskList);
+  // le curseur clavier survit au rendu tant qu'il reste dans la page
+  applyCursor();
 
   // le trait de biffage se mesure sur le titre une fois mis en page
   rendered.forEach(({ task, li }) => {
@@ -613,7 +641,13 @@ cancelDeleteCategoryBtn.addEventListener('click', () => {
   state = { ...state, categoryToDelete: null };
 });
 
-initTrash({ restoreTask });
+const { openTrash } = initTrash({ restoreTask });
+
+const { openPalette, closePalette } = initPalette({
+  focusTitle: () => taskTitleInput.focus(),
+  focusSearch: () => searchInput.focus(),
+  openTrash,
+});
 
 prevPageBtn.addEventListener('click', () => {
   if (state.currentPage > 1) refresh({ page: state.currentPage - 1 });
@@ -626,10 +660,67 @@ nextPageBtn.addEventListener('click', () => {
 document.querySelectorAll('.modal').forEach(bindBackdrop);
 
 document.addEventListener('keydown', (e) => {
-  if (isModalOpen()) return;
-  if (e.key === '/' && document.activeElement !== searchInput && !e.target.matches('input, textarea')) {
+  // ce module reste écouté tant que la page vit ; si son DOM a été remplacé
+  // sans qu'il soit rechargé (rechargement de test), il n'a plus rien à faire
+  if (!taskList.isConnected) return;
+
+  if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
-    searchInput.focus();
+    // la palette se referme sur elle-même ; une autre modale garde la main
+    // (closePalette ne fait rien si ce n'est pas elle qui est ouverte)
+    if (isModalOpen()) {
+      closePalette();
+      return;
+    }
+    openPalette();
+    return;
+  }
+
+  if (isModalOpen()) return;
+  // un raccourci d'une lettre ne doit jamais manger une frappe de saisie
+  if (isTyping(e.target)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  const cursorTask = taskAt(state.cursor);
+
+  switch (e.key) {
+    case '/':
+      e.preventDefault();
+      searchInput.focus();
+      break;
+    case 'n':
+      e.preventDefault();
+      taskTitleInput.focus();
+      break;
+    case 'j':
+      e.preventDefault();
+      moveCursor(1);
+      break;
+    case 'k':
+      e.preventDefault();
+      moveCursor(-1);
+      break;
+    case 'x':
+      if (cursorTask) {
+        e.preventDefault();
+        toggleTask(cursorTask, !cursorTask.completed);
+      }
+      break;
+    case 'e':
+      if (cursorTask) {
+        e.preventDefault();
+        taskList.querySelectorAll('.task .edit')[state.cursor]?.click();
+      }
+      break;
+    case 'Delete':
+    case 'Backspace':
+      if (cursorTask) {
+        e.preventDefault();
+        removeTask(cursorTask);
+      }
+      break;
+    default:
+      break;
   }
 });
 

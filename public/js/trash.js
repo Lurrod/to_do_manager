@@ -19,6 +19,8 @@ const closeTrashBtn = $('close-trash');
  * @param {{restoreTask: (id: string) => Promise<void>}} deps `restoreTask` est
  * partagée avec la liste des tâches (le lien « Annuler » du toast de
  * suppression) : elle reste définie dans app.js et arrive ici en argument.
+ * @returns {{openTrash: () => Promise<void>}} `openTrash` est repris par la
+ * palette de commandes, qui n'a pas d'autre moyen d'atteindre la corbeille.
  */
 export const initTrash = ({ restoreTask }) => {
   /**
@@ -87,4 +89,6 @@ export const initTrash = ({ restoreTask }) => {
 
   openTrashBtn.addEventListener('click', () => openTrash());
   closeTrashBtn.addEventListener('click', () => closeModal(trashModal));
+
+  return { openTrash };
 };
