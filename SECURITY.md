@@ -54,6 +54,10 @@ presque tout le reste :
   neutralisée à l'export CSV — un tableur l'exécuterait comme une formule.
 - **Pas d'opérateur Mongo fourni par le client** : les filtres de `GET /tasks`
   et les listes d'identifiants sont construits côté serveur.
+- **Les réglages sont validés contre un schéma fermé** : `PUT /preferences`
+  n'écrit que des clés connues et des valeurs énumérées à l'avance. Une clé
+  inventée est jetée, une valeur non reconnue retombe sur le défaut. Rien de ce
+  qui entre par là n'atteint la base tel quel.
 - **Aucun texte interpolé dans un script** : les notifications passent leur
   contenu à PowerShell par l'environnement, jamais par la ligne de commande.
 

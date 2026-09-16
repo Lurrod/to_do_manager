@@ -13,6 +13,8 @@ const { NEEDS_RENUMBER, rankBetween, renumber } = require('./lib/ordering');
 const { remindAtFor, messageGroupe, RETARD_MAX_MS } = require('./lib/reminders');
 const { sendNotification } = require('./lib/notify');
 const { listenWithFallback } = require('./lib/listen');
+const { creerDepotPreferences } = require('./lib/preferences-depot');
+const { creerRoutesPreferences } = require('./lib/preferences-routes');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -1215,6 +1217,14 @@ app.delete('/categories/:name', async (req, res) => {
     fail(res, error);
   }
 });
+
+/* --------------------------------------------------------------------------
+   Réglages
+   -------------------------------------------------------------------------- */
+
+// tout ce qui touche aux préférences vit dans lib/ : ce fichier ne fait que
+// poser le dépôt sur la connexion Mongo et monter le routeur
+app.use('/preferences', creerRoutesPreferences({ depot: creerDepotPreferences(mongoose) }));
 
 /**
  * Adresse réellement obtenue, quand le serveur est mis à l'écoute.

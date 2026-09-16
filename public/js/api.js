@@ -63,3 +63,13 @@ export const createCategory = (name, color) =>
 
 export const deleteCategory = (name) =>
   request(`categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
+
+/* --------------------------------------------------------------------------
+   Réglages
+   -------------------------------------------------------------------------- */
+
+export const fetchPreferences = () => request('preferences');
+
+/** Patch partiel : ce qui n'est pas dit garde sa valeur enregistrée. */
+export const savePreferences = (patch) =>
+  request('preferences', { method: 'PUT', body: JSON.stringify(patch) });
