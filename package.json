@@ -4,6 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "app": "node scripts/app.js",
     "backup": "node scripts/backup.js",
     "test": "npm run test:api && npm run test:ui",
     "test:api": "jest",
