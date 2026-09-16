@@ -22,12 +22,20 @@ C'est tout. MongoDB est embarqué dans l'app via [`mongodb-memory-server`](https
 git clone https://github.com/Lurrod/to_do_manager.git
 cd to_do_manager
 npm install
-npm start
+npm run app
 ```
 
-Puis ouvre [http://localhost:3000](http://localhost:3000).
+`npm run app` démarre le serveur, attend qu'il réponde, puis ouvre **une fenêtre sans barre
+d'adresse**. `Ctrl+C` ferme les deux. Si le port 3000 est occupé, le Cahier prend le suivant et
+le dit.
+
+`npm start` reste disponible pour lancer le serveur seul et ouvrir
+[http://localhost:3000](http://localhost:3000) à la main.
 
 Tes tâches sont stockées dans `./data/db/` (ignoré par Git) et persistent entre les redémarrages.
+
+> **Pour aller plus loin** — ce qu'il resterait à faire pour en faire une vraie application
+> installable, et ce que ça coûterait : `docs/passage-en-app.md`.
 
 ---
 
@@ -58,8 +66,12 @@ tant que `CORS_ORIGIN` n'est pas défini.
 - **Récurrence** : quotidienne, hebdomadaire ou mensuelle — cocher une occurrence crée
   immédiatement la suivante, calée sur l'échéance précédente (donc sans dérive en cas de
   retard) ; les étapes sont reprises, décochées
-- **Étiquettes** : plusieurs mots-clés transversaux par tâche, cliquables pour filtrer — la
-  catégorie reste le classement principal, unique et coloré
+- **Étiquettes** : plusieurs mots-clés transversaux par tâche (`+maison` en saisie rapide),
+  cliquables pour filtrer — la catégorie reste le classement principal, unique et coloré
+- **Ordre manuel** : tri « manuel » et glisser-déposer — un déplacement ne produit qu'une
+  écriture serveur, grâce à une indexation fractionnaire
+- **Rappels** : à l'heure dite, une heure avant ou la veille — une notification Windows part du
+  serveur, donc **même navigateur fermé**
 - **Priorité** : basse / moyenne / haute, marquée d'un astérisque au stylo en marge
 - **Catégories** : créer / supprimer, couleur personnalisée, filtrage
 - **Filtres de statut** : toutes / à faire / terminées
@@ -123,6 +135,8 @@ existence les reçoit au premier lancement, et relancer le serveur ne réécrit 
 | `GET`    | `/tasks/trash`            | Liste paginée de la corbeille                  |
 | `GET`    | `/tasks/:id`              | Détail d'une tâche                             |
 | `GET`    | `/tasks/:id/children`     | Étapes d'une tâche                             |
+| `PATCH`  | `/tasks/:id/order`        | Déplace une tâche entre deux voisines          |
+| `GET`    | `/healthz`                | Le serveur répond, et la base est là           |
 | `POST`   | `/tasks`                  | Crée une tâche                                 |
 | `PUT`    | `/tasks/:id`              | Met à jour une tâche                           |
 | `DELETE` | `/tasks/:id`              | Met la tâche à la corbeille                    |
@@ -174,6 +188,34 @@ les mardis » dériverait d'un cran à chaque retard.
 
 Une récurrence exige une échéance — c'est elle qu'on fait avancer. Une mensuelle posée un 31
 retombe sur le dernier jour des mois plus courts (28, 29 ou 30), et ne saute pas de mois.
+
+### Rappels
+
+Le Cahier n'a ni compte, ni service distant : un rappel ne peut partir que **tant que le
+serveur tourne**. C'est la limite du modèle, et elle est assumée — aucun réglage ne laisse
+croire que vous serez prévenu l'application éteinte.
+
+Le serveur balaie la base toutes les soixante secondes. Les rappels dont l'heure est passée
+pendant un arrêt sortent **groupés en une seule notification** au démarrage suivant : douze
+toasts d'affilée seraient du bruit. Passé sept jours, un rappel est classé sans être affiché —
+il ne rappelle plus rien.
+
+Le toast passe par PowerShell et l'API WinRT de Windows, **sans aucune dépendance ajoutée**. Le
+texte transite par variables d'environnement et n'est jamais interpolé dans le script : un
+titre contenant une apostrophe le casserait, et une valeur choisie pourrait y injecter du code.
+
+**Non fait, assumé :** le bandeau « des rappels sont partis pendant votre absence ». Il
+demanderait de retenir ce que vous avez déjà vu, donc un état de plus en base ; le pictogramme
+sur la tâche et la notification couvrent l'essentiel.
+
+### Ordre manuel
+
+Déposer une tâche entre deux voisines lui donne leur rang moyen : **une seule écriture**, au
+lieu d'en faire autant que la liste compte de tâches. La liste n'est renumérotée que lorsque
+l'écart entre deux voisines devient trop petit pour les flottants.
+
+Le glisser-déposer n'est actif que sous le tri « manuel » : réordonner à la main une liste
+triée par priorité produirait un ordre que le tri réécraserait au chargement suivant.
 
 ### Exemple — créer une tâche
 
@@ -263,19 +305,30 @@ to_do_manager/
 │   │   ├── layout.css      # Structure : en-tête, colonnes, marge du cahier
 │   │   └── components.css  # Panneaux, champs, tâches, modales, toasts
 │   └── js/
-│       ├── app.js          # État, rendu, événements, raccourcis clavier
+│       ├── app.js          # État, rendu, événements, composeur
 │       ├── api.js          # Client HTTP (tri, filtres et recherche en paramètres)
 │       ├── parse.js        # Saisie rapide (module pur, horloge injectable)
 │       ├── filters.js      # Pastilles de statut et d'échéance, invariant croisé
 │       ├── trash.js        # Corbeille : liste, restauration, purge confirmée
 │       ├── palette.js      # Palette de commandes (Ctrl+K), navigable au clavier
+│       ├── steps.js        # Étapes d'une tâche, dépliage et cache
+│       ├── keyboard.js     # Curseur et raccourcis clavier
 │       ├── modal.js        # Ouverture, fermeture et piège de focus
 │       ├── sketch.js       # Couche drawably (attache, biffage, jauge)
 │       └── util.js         # Dates, échappement, toasts
-├── lib/
+├── lib/                    # Logique pure, testable sans base ni serveur
 │   ├── portable.js         # Forme de l'export, liste blanche d'import
-│   └── formats.js          # Rendus Markdown et CSV (fonctions pures)
-├── scripts/backup.js       # Sauvegarde horodatée via l'API
+│   ├── formats.js          # Rendus Markdown et CSV
+│   ├── recurrence.js       # Échéance suivante d'une récurrente
+│   ├── tags.js             # Normalisation des étiquettes
+│   ├── ordering.js         # Indexation fractionnaire de l'ordre manuel
+│   ├── reminders.js        # Heure d'un rappel et texte groupé
+│   ├── notify.js           # Toast Windows (le seul module qui parle à l'OS)
+│   ├── listen.js           # Mise à l'écoute tolérante au port occupé
+│   └── launcher.js         # Ce que le lanceur doit décider
+├── scripts/
+│   ├── app.js              # Lance le serveur puis ouvre la fenêtre
+│   └── backup.js           # Sauvegarde horodatée via l'API
 ├── backups/                # Sauvegardes (ignoré par git)
 ├── test/
 │   ├── api/server.test.js  # Jest + Supertest
