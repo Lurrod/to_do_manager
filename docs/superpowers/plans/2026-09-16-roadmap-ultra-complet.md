@@ -22,9 +22,10 @@ Trois vagues, du moins risqué au plus structurant :
 
 | Vague | Thème | Touche au schéma ? | Plan |
 |-------|-------|--------------------|------|
-| 1 | Usage quotidien : voir ce qui compte, saisir vite | Non | `2026-09-16-vague-1-usage-quotidien.md` |
+| 1 | Usage quotidien : voir ce qui compte, saisir vite | Non | `2026-09-16-vague-1-usage-quotidien.md` — **livrée** |
 | 2 | Structure : sous-tâches, récurrence, tags, ordre | Oui | à écrire |
 | 3 | Durabilité : export, PWA, perf, outillage | Marginalement | à écrire |
+| 4 | Rappels : notification système, délai par tâche | Oui, via la migration de la vague 2 | à écrire |
 
 ---
 
@@ -224,7 +225,9 @@ Maximum 100 identifiants par appel. Chaque action groupée est annulable par un 
 ### Critères d'acceptation — Vague 2
 
 - [ ] Migration idempotente au démarrage : les tâches existantes reçoivent `parentId: null`,
-      `tags: []`, `order` initialisé sur `createdAt`, `recurrence.freq: ''`.
+      `tags: []`, `order` initialisé sur `createdAt`, `recurrence.freq: ''` et
+      `reminder: { offset: '', at: null, sentAt: null }` (voir vague 4 — le champ part dans
+      cette migration-ci pour ne pas en écrire une seconde).
 - [ ] La pagination des racines reste exacte en présence d'enfants.
 - [ ] Une hebdomadaire cochée avec 3 jours de retard replanifie sur la semaine suivante de la
       **date d'échéance**, pas de la date de complétion.
@@ -282,14 +285,112 @@ le repli pour 1–2 caractères, où `$text` ne matche pas les préfixes.
 
 ---
 
+## Vague 4 — Rappels
+
+**Objectif :** que l'application dise quelque chose sans qu'on ait à l'ouvrir.
+**Ajoutée le 2026-09-16**, hors des trois vagues d'origine : c'était un angle mort, pas un report.
+
+### 4.0 Ce qu'une app locale peut honnêtement promettre
+
+Le Cahier n'a ni compte, ni serveur distant, ni service de push. Un rappel ne peut donc partir
+que **tant que le processus Node tourne**. C'est la limite du modèle, et elle est assumée
+plutôt que masquée : aucun réglage ne doit laisser croire à l'utilisateur qu'il sera prévenu
+avec l'application éteinte.
+
+**Décision — canal : notification système depuis le serveur.** Le processus Node lève une
+notification Windows. C'est le seul canal qui atteint l'utilisateur **navigateur fermé**.
+Les notifications du navigateur ont été écartées : elles exigent un onglet ouvert, ce qui
+revient à prévenir quelqu'un qui regarde déjà.
+
+**Décision — un seul module parle au système.** `server/notify.js` expose
+`sendNotification({ title, message })` et reçoit son émetteur en argument, pour que les tests
+n'affichent jamais de vraie notification et que le canal reste remplaçable.
+
+### 4.1 Modèle
+
+```js
+reminder: {
+  offset: { type: String, enum: ['', 'atDue', '1h', '1d'], default: '' },
+  at:     { type: Date, default: null, index: true },
+  sentAt: { type: Date, default: null },
+}
+```
+
+**Décision — `at` est stocké, pas calculé à la volée.** Le balayage périodique doit être une
+requête indexée triviale (`at <= maintenant`, `sentAt: null`). Recalculer l'écart en base
+demanderait un `$expr` avec de l'arithmétique de dates à chaque passage, pour rien.
+`at` est recalculé à chaque écriture qui touche `dueDate` ou `reminder.offset` ; il vaut
+`null` dès que l'un des deux manque.
+
+| `offset` | `at` vaut |
+|----------|-----------|
+| `''` (défaut) | `null` — aucun rappel |
+| `atDue` | `dueDate` |
+| `1h` | `dueDate` − 1 heure |
+| `1d` | `dueDate` − 24 heures |
+
+**Décision — ce champ part dans la migration de la vague 2.** Il n'a rien à voir avec les
+sous-tâches, mais migrer deux fois une base pour ajouter deux champs est du travail en
+double : la vague 2 initialise `reminder` en même temps que `parentId`, `tags` et `order`.
+
+### 4.2 Déclenchement
+
+Un balayage toutes les **60 secondes** tant que le serveur tourne. Sont éligibles les tâches
+telles que `reminder.at <= maintenant`, `reminder.sentAt: null`, `completed: false`,
+`deletedAt: null`. Chaque envoi pose `sentAt`, ce qui rend le balayage idempotent : une
+notification part **au plus une fois**.
+
+**Décision — rattrapage groupé au démarrage.** Les rappels dont l'heure est passée pendant
+que le serveur était éteint ne partent pas un par un : le premier balayage après le démarrage
+en fait **une seule** notification (« 3 rappels en attente — … »), puis les marque envoyés.
+Douze notifications d'affilée au lancement seraient du bruit, et on les fermerait sans les lire.
+
+**Décision — pas de rattrapage au-delà de 7 jours.** Un rappel vieux d'un mois est marqué
+envoyé sans rien afficher : il ne rappelle plus rien, il encombre.
+
+**Décision — cocher ou supprimer une tâche annule son rappel.** Le filtre sur `completed` et
+`deletedAt` suffit ; aucun nettoyage explicite n'est nécessaire.
+
+### 4.3 Interface
+
+Un champ « Rappel » (`aucun` / `à l'heure` / `1 h avant` / `la veille`) dans le composeur et
+dans la modale d'édition, **désactivé tant qu'aucune échéance n'est saisie** — un rappel sans
+date n'a pas d'ancrage. Une tâche qui porte un rappel le montre par un pictogramme discret
+dans sa marge.
+
+La page d'accueil affiche, le cas échéant, un bandeau « `n` rappels sont partis pendant votre
+absence » listant les tâches concernées : c'est le seul moyen de voir ce qu'on a manqué quand
+la notification système s'est affichée sur un poste qu'on avait quitté.
+
+### Critères d'acceptation — Vague 4
+
+- [ ] Une tâche sans échéance ne peut pas porter de rappel (`at` reste `null`).
+- [ ] Changer l'échéance d'une tâche recalcule `at`.
+- [ ] Un rappel part **une seule fois**, même si le balayage repasse dessus.
+- [ ] Cocher une tâche avant l'heure du rappel empêche l'envoi.
+- [ ] Les rappels manqués pendant l'arrêt du serveur produisent **une** notification groupée.
+- [ ] Un rappel dont l'heure est passée de plus de 7 jours est marqué envoyé sans notification.
+- [ ] Les tests ne déclenchent aucune notification réelle (émetteur injecté).
+
+---
 ## Ordre d'exécution recommandé
 
 ```
-Vague 1  →  1.1 + 1.2  →  1.3  →  1.4  →  1.5
+Vague 1  →  1.1 + 1.2  →  1.3  →  1.4  →  1.5          [livrée le 2026-09-16]
+Vague 3  →  3.1 seul   (export / import / sauvegarde)
 Vague 2  →  2.1  →  2.2  →  2.3  →  2.4  →  2.5
-Vague 3  →  3.5 (outillage d'abord : la CI garde les deux vagues précédentes)
-         →  3.1  →  3.3  →  3.2  →  3.4
+Vague 4  →  4.1  →  4.2  →  4.3
+puis     →  3.5  →  3.3  →  3.2  →  3.4
 ```
 
-L'outillage (3.5) est le seul élément de la vague 3 qu'il serait raisonnable d'avancer :
-mis en place avant la vague 2, il protège les migrations.
+**Ordre arrêté le 2026-09-16, sur décision explicite.** Il s'écarte de la recommandation
+d'origine, qui plaçait l'outillage (3.5) avant tout le reste pour que la CI garde les
+migrations. L'outillage est reporté ; c'est un choix assumé, et il augmente le risque de la
+vague 2 puisque rien d'automatique ne gardera la migration.
+
+**Ce qui compense en partie : 3.1 passe en tête.** L'export/import est le seul élément qui
+protège des données irréversibles, et il livre de quoi sauvegarder la base *avant* que la
+vague 2 en change la forme. Un export pris juste avant la migration est le filet minimal.
+
+La vague 4 suit immédiatement la vague 2 parce qu'elle dépend de sa migration : le champ
+`reminder` y est initialisé.
