@@ -242,3 +242,40 @@ describe('parseQuickEntry — divers', () => {
     expect(clock.getTime()).toBe(before);
   });
 });
+
+describe('étiquettes', () => {
+  test('« +maison » pose une étiquette et quitte le titre', () => {
+    const lu = parseQuickEntry('Ranger le garage +maison', { now: NOW, categories: [] });
+
+    expect(lu.title).toBe('Ranger le garage');
+    expect(lu.tags).toEqual(['maison']);
+  });
+
+  test('plusieurs étiquettes se cumulent', () => {
+    const lu = parseQuickEntry('Courses +maison +urgent', { now: NOW, categories: [] });
+
+    expect(lu.tags).toEqual(['maison', 'urgent']);
+  });
+
+  test('une étiquette se distingue d’une catégorie', () => {
+    const lu = parseQuickEntry('Courses #Perso +maison', {
+      now: NOW,
+      categories: ['Perso'],
+    });
+
+    expect(lu.category).toBe('Perso');
+    expect(lu.tags).toEqual(['maison']);
+    expect(lu.title).toBe('Courses');
+  });
+
+  test('un « + » isolé n’est pas une étiquette', () => {
+    const lu = parseQuickEntry('1 + 1 = 2', { now: NOW, categories: [] });
+
+    expect(lu.tags).toEqual([]);
+    expect(lu.title).toBe('1 + 1 = 2');
+  });
+
+  test('sans étiquette, la liste est vide et non absente', () => {
+    expect(parseQuickEntry('Simple', { now: NOW, categories: [] }).tags).toEqual([]);
+  });
+});

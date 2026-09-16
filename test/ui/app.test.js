@@ -1028,3 +1028,32 @@ describe('rappels', () => {
     expect(creation.body.reminder).toEqual({ offset: '1h' });
   });
 });
+
+describe('étiquettes à l’écran', () => {
+  test('une tâche marquée affiche ses étiquettes', async () => {
+    server.tasks = [task('Courses', { tags: ['maison', 'urgent'] })];
+    await boot();
+
+    const vues = [...document.querySelectorAll('.task-tag')].map((e) => e.textContent.trim());
+    expect(vues).toEqual(['+maison', '+urgent']);
+  });
+
+  test('cliquer une étiquette filtre la liste dessus', async () => {
+    server.tasks = [task('Courses', { tags: ['maison'] })];
+    await boot();
+    server.calls = [];
+
+    document.querySelector('.task-tag').click();
+    await settle();
+
+    const url = calls().filter((u) => u.startsWith('/tasks?')).pop();
+    expect(new URL(url, 'http://test').searchParams.get('tag')).toBe('maison');
+  });
+
+  test('une tâche sans étiquette n’affiche rien', async () => {
+    server.tasks = [task('Simple')];
+    await boot();
+
+    expect(document.querySelector('.task-tag')).toBeNull();
+  });
+});

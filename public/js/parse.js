@@ -43,6 +43,10 @@ const WEEKDAYS = {
    accentuée comme « #Santé » n'y satisferait jamais. */
 const RE_PRIORITY = /(^|\s)!(haute|urgente?|moyenne|normale|basse|[123])(?=[\s.,!?;:]|$)/iu;
 const RE_CATEGORY = /(^|\s)#([\p{L}\p{N}_-]{1,32})(?=[\s.,!?;:]|$)/u;
+/* `+` pose une étiquette — `#` est déjà pris par la catégorie. Le motif exige
+   au moins un caractère de mot après le signe : un `+` isolé, comme dans
+   « 1 + 1 », ne doit rien déclencher. `g` permet d'en cumuler plusieurs. */
+const RE_TAG = /(^|\s)\+([\p{L}\p{N}_-]+)/gu;
 const RE_IN = /(^|\s)dans\s+(\d{1,3})\s*(jours?|j|semaines?|sem)\b/iu;
 const RE_RELATIVE = /(^|\s)(apr[èe]s-demain|demain|aujourd['’]?hui|auj)\b/iu;
 const RE_WEEKDAY = /(^|\s)(?:(?:ce|cette)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/iu;
@@ -76,7 +80,7 @@ const addDays = (date, days) => {
  * @param {string} input texte saisi
  * @param {{now?: Date, categories?: string[]}} options horloge et catégories connues
  * @returns {{title: string, dueDate: string|null, category: string, priority: string,
- *            tokens: Array<{type: string, text: string}>}}
+ *            tags: string[], tokens: Array<{type: string, text: string}>}}
  */
 export function parseQuickEntry(input, { now = new Date(), categories = [] } = {}) {
   const text = String(input ?? '');
@@ -120,6 +124,15 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     const raw = mCategory[2];
     // la casse saisie est recalée sur la catégorie existante, si elle existe
     category = categories.find((name) => plain(name) === plain(raw)) || raw;
+  }
+
+  // les étiquettes se cumulent, contrairement à la catégorie : même mécanique
+  // de retrait que `take()` utilise déjà pour elle, rejouée pour chaque `+`
+  const tags = [];
+  RE_TAG.lastIndex = 0;
+  let mTag;
+  while ((mTag = RE_TAG.exec(text))) {
+    if (take(mTag, 'tag')) tags.push(mTag[2]);
   }
 
   // une seule source de jour : le premier motif qui matche l'emporte
@@ -191,5 +204,5 @@ export function parseQuickEntry(input, { now = new Date(), categories = [] } = {
     .sort((a, b) => a.start - b.start)
     .map(({ type, text: label }) => ({ type, text: label }));
 
-  return { title, dueDate, category, priority, tokens: ordered };
+  return { title, dueDate, category, priority, tags, tokens: ordered };
 }

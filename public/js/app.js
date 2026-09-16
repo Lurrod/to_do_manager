@@ -110,6 +110,7 @@ let state = {
   category: 'all',
   due: 'all',
   query: '',
+  tag: '',
   categories: [],
   stats: { total: 0, done: 0, active: 0, overdue: 0, byCategory: [] },
   currentTaskId: null,
@@ -129,6 +130,7 @@ const queryFor = (page) => ({
   category: state.category,
   due: state.due,
   q: state.query,
+  tag: state.tag,
 });
 
 // deux frappes rapprochées lancent deux requêtes : seule la dernière compte,
@@ -366,6 +368,13 @@ const renderTaskItem = (task) => {
       `<span class="tag" data-sketch="badge" data-stroke="${escapeHtml(categoryColor)}">${escapeHtml(task.category)}</span>`
     );
   }
+  // transversales et sans couleur : les colorier ferait deux classements
+  // concurrents dans la même vue, la catégorie reste seule à porter une teinte
+  (task.tags || []).forEach((tag) => {
+    metaParts.push(
+      `<button type="button" class="task-tag" data-tag="${escapeHtml(tag)}">+${escapeHtml(tag)}</button>`
+    );
+  });
   if (task.recurrence?.freq) {
     const label = escapeHtml(RECURRENCE_LABELS[task.recurrence.freq]);
     metaParts.push(`<span class="task-recurrence" title="${label}" aria-label="${label}">↻</span>`);
@@ -405,6 +414,13 @@ const renderTaskItem = (task) => {
   });
 
   li.querySelector('.delete').addEventListener('click', () => removeTask(task));
+
+  li.querySelectorAll('.task-tag').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state = { ...state, tag: btn.dataset.tag };
+      refresh({ page: 1 });
+    });
+  });
 
   const stepsToggle = li.querySelector('.task-steps-toggle');
   if (stepsToggle) {
@@ -589,6 +605,7 @@ taskForm.addEventListener('submit', async (e) => {
       dueDate: toIso(taskDueInput.value) || parsed.dueDate,
       category: taskCategorySelect.value || parsed.category,
       priority: taskPrioritySelect.value || parsed.priority,
+      tags: parsed.tags,
       recurrence: taskRecurrenceInput.value
         ? { freq: taskRecurrenceInput.value, interval: 1, until: null }
         : undefined,
