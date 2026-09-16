@@ -710,6 +710,77 @@ app.get('/tasks', async (req, res) => {
   }
 });
 
+/** Ce qu'une action groupée sait faire, et ce que chacune écrit. */
+const BULK_ACTIONS = ['complete', 'uncomplete', 'delete', 'category', 'priority'];
+
+/** Au-delà, ce n'est plus une sélection mais un traitement de masse. */
+const BULK_MAX = 100;
+
+/**
+ * Applique une même action à plusieurs tâches.
+ *
+ * Les identifiants sont ramenés à des chaînes avant tout usage : `{"$ne": null}`
+ * dans `ids` serait sinon un opérateur Mongo fourni par le client.
+ */
+app.post('/tasks/bulk', async (req, res) => {
+  try {
+    const action = asString(req.body?.action, 16);
+    if (!BULK_ACTIONS.includes(action)) {
+      return res.status(400).json({ error: `Action inconnue : ${BULK_ACTIONS.join(', ')}.` });
+    }
+
+    const bruts = req.body?.ids;
+    if (!Array.isArray(bruts)) {
+      return res.status(400).json({ error: 'Champ « ids » invalide : un tableau est attendu.' });
+    }
+    if (bruts.length > BULK_MAX) {
+      return res
+        .status(400)
+        .json({ error: `Trop d'identifiants : ${bruts.length} pour un maximum de 100.` });
+    }
+
+    const ids = bruts.filter((id) => typeof id === 'string');
+    if (ids.length === 0) return res.status(200).json({ modified: 0 });
+
+    const cible = { _id: { $in: ids }, deletedAt: null };
+
+    if (action === 'complete' || action === 'uncomplete') {
+      const completed = action === 'complete';
+      const { modifiedCount } = await Task.updateMany(cible, { $set: { completed } });
+      // même règle qu'à l'unité : cocher un dossier coche ce qu'il contient
+      await Task.updateMany({ parentId: { $in: ids }, deletedAt: null }, { $set: { completed } });
+      return res.status(200).json({ modified: modifiedCount });
+    }
+
+    if (action === 'delete') {
+      // un seul horodatage pour toute la sélection : c'est ce qui permet de
+      // l'annuler d'un seul geste, comme une suppression à l'unité
+      const quand = new Date();
+      const { modifiedCount } = await Task.updateMany(cible, { $set: { deletedAt: quand } });
+      await Task.updateMany(
+        { parentId: { $in: ids }, deletedAt: null },
+        { $set: { deletedAt: quand } }
+      );
+      return res.status(200).json({ modified: modifiedCount, deletedAt: quand });
+    }
+
+    if (action === 'category') {
+      const value = asString(req.body?.value, 32);
+      const { modifiedCount } = await Task.updateMany(cible, { $set: { category: value } });
+      return res.status(200).json({ modified: modifiedCount });
+    }
+
+    const value = asString(req.body?.value, 16);
+    if (!PRIORITIES.includes(value)) {
+      return res.status(400).json({ error: 'Priorité invalide.' });
+    }
+    const { modifiedCount } = await Task.updateMany(cible, { $set: { priority: value } });
+    return res.status(200).json({ modified: modifiedCount });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
 /**
  * Déplace une tâche dans l'ordre manuel.
  *

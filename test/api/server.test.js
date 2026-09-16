@@ -1662,3 +1662,137 @@ describe('Santé du serveur', () => {
     expect(JSON.stringify(res.body)).not.toMatch(/C:\|node_modules|mongodb:/);
   });
 });
+
+describe('Actions groupées', () => {
+  /** Crée n tâches et renvoie leurs identifiants. */
+  const creer = async (titres) => {
+    const ids = [];
+    for (const titre of titres) {
+      const res = await request(app).post('/tasks').send({ title: titre });
+      ids.push(res.body._id);
+    }
+    return ids;
+  };
+
+  test('cocher plusieurs tâches d’un coup', async () => {
+    const ids = await creer(['A', 'B', 'C']);
+
+    const res = await request(app).post('/tasks/bulk').send({ ids, action: 'complete' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.modified).toBe(3);
+    const liste = await request(app).get('/tasks?limit=50&status=done');
+    expect(liste.body.total).toBe(3);
+  });
+
+  test('décocher plusieurs tâches d’un coup', async () => {
+    const ids = await creer(['A', 'B']);
+    await request(app).post('/tasks/bulk').send({ ids, action: 'complete' });
+
+    await request(app).post('/tasks/bulk').send({ ids, action: 'uncomplete' });
+
+    const liste = await request(app).get('/tasks?limit=50&status=active');
+    expect(liste.body.total).toBe(2);
+  });
+
+  test('cocher un parent en groupe coche aussi ses étapes', async () => {
+    const [parentId] = await creer(['Devis']);
+    await request(app).post('/tasks').send({ title: 'Une étape', parentId });
+
+    await request(app).post('/tasks/bulk').send({ ids: [parentId], action: 'complete' });
+
+    const etapes = await request(app).get(`/tasks/${parentId}/children`);
+    expect(etapes.body.tasks.every((t) => t.completed)).toBe(true);
+  });
+
+  test('supprimer plusieurs tâches d’un coup', async () => {
+    const ids = await creer(['A', 'B']);
+
+    const res = await request(app).post('/tasks/bulk').send({ ids, action: 'delete' });
+
+    expect(res.body.modified).toBe(2);
+    const corbeille = await request(app).get('/tasks/trash?limit=50');
+    expect(corbeille.body.total).toBe(2);
+  });
+
+  test('une suppression groupée partage un horodatage, donc s’annule d’un geste', async () => {
+    const ids = await creer(['A', 'B']);
+    await request(app).post('/tasks/bulk').send({ ids, action: 'delete' });
+
+    const corbeille = await request(app).get('/tasks/trash?limit=50');
+    const horodatages = new Set(corbeille.body.tasks.map((t) => t.deletedAt));
+    expect(horodatages.size).toBe(1);
+  });
+
+  test('changer la catégorie de plusieurs tâches', async () => {
+    const ids = await creer(['A', 'B']);
+
+    await request(app)
+      .post('/tasks/bulk')
+      .send({ ids, action: 'category', value: 'Perso' });
+
+    const liste = await request(app).get('/tasks?limit=50&category=Perso');
+    expect(liste.body.total).toBe(2);
+  });
+
+  test('changer la priorité de plusieurs tâches', async () => {
+    const ids = await creer(['A', 'B']);
+
+    await request(app).post('/tasks/bulk').send({ ids, action: 'priority', value: 'high' });
+
+    const liste = await request(app).get('/tasks?limit=50');
+    expect(liste.body.tasks.every((t) => t.priority === 'high')).toBe(true);
+  });
+
+  test('une priorité hors de la liste est refusée', async () => {
+    const ids = await creer(['A']);
+
+    const res = await request(app)
+      .post('/tasks/bulk')
+      .send({ ids, action: 'priority', value: 'urgentissime' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('une action inconnue est refusée', async () => {
+    const ids = await creer(['A']);
+
+    const res = await request(app).post('/tasks/bulk').send({ ids, action: 'incendier' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/action/i);
+  });
+
+  test('au-delà de cent identifiants, c’est refusé', async () => {
+    const ids = Array.from({ length: 101 }, () => new mongoose.Types.ObjectId().toString());
+
+    const res = await request(app).post('/tasks/bulk').send({ ids, action: 'complete' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/100/);
+  });
+
+  test('une liste vide ne fait rien, sans erreur', async () => {
+    const res = await request(app).post('/tasks/bulk').send({ ids: [], action: 'complete' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.modified).toBe(0);
+  });
+
+  test('un opérateur Mongo injecté dans ids est refusé', async () => {
+    const res = await request(app)
+      .post('/tasks/bulk')
+      .send({ ids: { $ne: null }, action: 'complete' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('les tâches déjà à la corbeille sont ignorées', async () => {
+    const ids = await creer(['A', 'B']);
+    await request(app).delete(`/tasks/${ids[0]}`);
+
+    const res = await request(app).post('/tasks/bulk').send({ ids, action: 'complete' });
+
+    expect(res.body.modified).toBe(1);
+  });
+});
