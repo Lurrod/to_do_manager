@@ -49,6 +49,9 @@ export const listTrash = (query) => request(`tasks/trash?${buildQuery(query)}`);
 
 export const purgeTask = (id) => request(`tasks/${id}/purge`, { method: 'DELETE' });
 
+/** Étapes d'une tâche. Appelé au dépliage seulement : une liste n'en a pas besoin. */
+export const listChildren = (id) => request(`tasks/${id}/children`);
+
 export const listCategories = () => request('categories');
 
 export const createCategory = (name, color) =>

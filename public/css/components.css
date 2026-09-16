@@ -677,3 +677,44 @@
   text-align: center;
   text-decoration: none;
 }
+
+/* --------------------------------- étapes --------------------------------- */
+
+.task-steps-toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: var(--step-xs);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.task-steps-count {
+  font-family: var(--font-hand);
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+}
+
+.step-list {
+  list-style: none;
+  margin: var(--gap-2) 0 0;
+  padding: 0 0 0 var(--gap-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-1);
+  /* la marge gauche fait le lien visuel avec le dossier qui les porte */
+  border-left: 1px dashed var(--rule-strong);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  font-size: var(--step-sm);
+}
+
+.step.is-done .step-title {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}

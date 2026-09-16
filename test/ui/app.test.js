@@ -84,6 +84,10 @@ const mutate = (url, method, body) => {
 
 const bodyFor = (url, method, body) => {
   if (method !== 'GET') return mutate(url, method, body);
+  if (/^\/tasks\/[^/]+\/children$/.test(url)) {
+    const id = url.split('/')[2];
+    return { tasks: server.children[id] || [], total: (server.children[id] || []).length };
+  }
   if (url.startsWith('/tasks/stats')) return server.stats;
   if (url.startsWith('/tasks/trash')) {
     const tasks = server.trash.map((entry) => entry.task);
@@ -131,6 +135,7 @@ beforeEach(() => {
     calls: [],
     held: [],
     trash: [],
+    children: {},
     hold: false,
     failNextPost: false,
   };
@@ -888,4 +893,46 @@ describe('palette au clavier', () => {
   });
 });
 
+describe('étapes', () => {
+  test('une tâche qui porte des étapes affiche leur compte', async () => {
+    server.tasks = [task('Devis', { childCount: 3, childDone: 1 })];
+    await boot();
 
+    expect(document.querySelector('.task-steps-count').textContent).toMatch(/1\s*\/\s*3/);
+  });
+
+  test('une tâche sans étape n’affiche pas de compte', async () => {
+    server.tasks = [task('Simple', { childCount: 0, childDone: 0 })];
+    await boot();
+
+    expect(document.querySelector('.task-steps-count')).toBeNull();
+  });
+
+  test('déplier une tâche demande ses étapes et les affiche', async () => {
+    server.tasks = [task('Devis', { childCount: 1, childDone: 0 })];
+    server.children['id-Devis'] = [task('Verser l’acompte', { parentId: 'id-Devis' })];
+    await boot();
+
+    document.querySelector('.task-steps-toggle').click();
+    await settle();
+
+    const titres = [...document.querySelectorAll('.step-title')].map((e) => e.textContent.trim());
+    expect(titres).toEqual(['Verser l’acompte']);
+  });
+
+  test('replier masque les étapes sans les redemander', async () => {
+    server.tasks = [task('Devis', { childCount: 1, childDone: 0 })];
+    server.children['id-Devis'] = [task('Une', { parentId: 'id-Devis' })];
+    await boot();
+
+    document.querySelector('.task-steps-toggle').click();
+    await settle();
+    const appelsApresOuverture = calls().filter((u) => u.includes('/children')).length;
+
+    document.querySelector('.task-steps-toggle').click();
+    await settle();
+
+    expect(document.querySelectorAll('.step-title')).toHaveLength(0);
+    expect(calls().filter((u) => u.includes('/children'))).toHaveLength(appelsApresOuverture);
+  });
+});

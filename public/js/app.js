@@ -338,6 +338,11 @@ const renderTaskItem = (task) => {
       `<span class="task-due${cls}">${escapeHtml(label)} · ${escapeHtml(formattedDate)}</span>`
     );
   }
+  if (task.childCount > 0) {
+    metaParts.push(
+      `<button type="button" class="task-steps-toggle">Étapes <span class="task-steps-count">${task.childDone} / ${task.childCount}</span></button>`
+    );
+  }
   if (task.category) {
     metaParts.push(
       `<span class="tag" data-sketch="badge" data-stroke="${escapeHtml(categoryColor)}">${escapeHtml(task.category)}</span>`
@@ -374,6 +379,11 @@ const renderTaskItem = (task) => {
   });
 
   li.querySelector('.delete').addEventListener('click', () => removeTask(task));
+
+  const stepsToggle = li.querySelector('.task-steps-toggle');
+  if (stepsToggle) {
+    stepsToggle.addEventListener('click', () => toggleSteps(li, task._id));
+  }
 
   return li;
 };
@@ -432,6 +442,9 @@ const moveCursor = (delta) => {
 };
 
 const render = () => {
+  // une liste fraîchement rendue ne doit pas rouvrir sur des étapes périmées
+  stepsCache = {};
+
   // les croquis tiennent un ResizeObserver sur leur hôte : on les détache
   // avant de jeter le DOM qui les porte
   unsketchAll(taskList);
@@ -457,6 +470,42 @@ const render = () => {
   renderCategories();
   updateGreeting();
   updateCounters();
+};
+
+/** Étapes déjà chargées, par identifiant de parent. Le dépliage ne demande
+    donc le serveur qu'une fois par tâche et par rendu. */
+let stepsCache = {};
+
+const renderSteps = (row, steps) => {
+  const liste = document.createElement('ul');
+  liste.className = 'step-list';
+  steps.forEach((step) => {
+    const li = document.createElement('li');
+    li.className = `step${step.completed ? ' is-done' : ''}`;
+    li.innerHTML = `<span class="step-title">${escapeHtml(step.title)}</span>`;
+    liste.appendChild(li);
+  });
+  row.appendChild(liste);
+  sketchAll(liste);
+};
+
+const toggleSteps = async (row, id) => {
+  const ouverte = row.querySelector('.step-list');
+  if (ouverte) {
+    unsketchAll(ouverte);
+    ouverte.remove();
+    return;
+  }
+
+  try {
+    if (!stepsCache[id]) {
+      const { tasks } = await api.listChildren(id);
+      stepsCache[id] = tasks || [];
+    }
+    renderSteps(row, stepsCache[id]);
+  } catch (error) {
+    toast(error.message, 'error');
+  }
 };
 
 const updateCounters = () => {
