@@ -11,8 +11,12 @@
    --------------------------------------------------------------------------- */
 
 const { app, BrowserWindow, shell, dialog, Menu } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+
+const { configurerMisesAJour } = require('../lib/updates');
+const { BINAIRE_CACHE } = require('../lib/mongod-version');
 
 /** Une seule instance : deux processus ouvriraient la même base, et WiredTiger la verrouille. */
 if (!app.requestSingleInstanceLock()) {
@@ -49,7 +53,7 @@ const DOSSIER_DONNEES = path.join(app.getPath('userData'), 'db');
  */
 const MONGOD = EN_PAQUET
   ? path.join(process.resourcesPath, 'mongod.exe')
-  : path.join(__dirname, '..', 'node_modules', '.cache', 'mongodb-memory-server', 'mongod-x64-win32-8.2.6.exe');
+  : path.join(__dirname, '..', 'node_modules', '.cache', 'mongodb-memory-server', BINAIRE_CACHE);
 
 process.env.CAHIER_DATA_DIR = DOSSIER_DONNEES;
 process.env.NODE_ENV = 'production';
@@ -73,6 +77,19 @@ if (fs.existsSync(MONGOD)) {
 let fenetre = null;
 let serveur = null;
 let arretEnCours = false;
+
+/**
+ * Relâche Mongo — une fois, quelle que soit la porte de sortie.
+ *
+ * Deux chemins mènent ici : la fermeture de la fenêtre et la pose d'une mise à
+ * jour. Le second ne passe pas forcément par `before-quit` au bon moment, d'où
+ * une fonction plutôt qu'un gestionnaire d'événement.
+ */
+const arreterServices = () => {
+  if (arretEnCours || !serveur?.stopServices) return Promise.resolve();
+  arretEnCours = true;
+  return serveur.stopServices();
+};
 
 const creerFenetre = (url) => {
   fenetre = new BrowserWindow({
@@ -117,6 +134,15 @@ app.whenReady().then(async () => {
     // erreurs
     const [url] = await Promise.all([serveur.ready, serveur.dbReady]);
     creerFenetre(url);
+
+    // après la fenêtre, jamais avant : la mise à jour ne doit pas retarder
+    // l'ouverture du Cahier, ni l'empêcher si le réseau est absent
+    configurerMisesAJour({
+      updater: autoUpdater,
+      dialog,
+      enPaquet: EN_PAQUET,
+      arreterServices,
+    });
   } catch (error) {
     dialog.showErrorBox(
       'Le Cahier n’a pas pu démarrer',
@@ -147,7 +173,10 @@ app.on('window-all-closed', () => {
  */
 app.on('before-quit', (event) => {
   if (arretEnCours || !serveur?.stopServices) return;
-  arretEnCours = true;
   event.preventDefault();
-  serveur.stopServices().finally(() => app.quit());
+  // `.finally` ne consomme pas un rejet : sans ce `catch`, un arrêt de Mongo qui
+  // échoue ferait sortir le Cahier sur une unhandledRejection
+  arreterServices()
+    .catch((erreur) => console.warn(`Arrêt des services : ${erreur?.message || erreur}`))
+    .finally(() => app.quit());
 });
