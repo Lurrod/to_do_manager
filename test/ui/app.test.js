@@ -980,3 +980,51 @@ describe('récurrence', () => {
     expect(champ.disabled).toBe(false);
   });
 });
+
+describe('rappels', () => {
+  test('une tâche avec rappel porte un pictogramme', async () => {
+    server.tasks = [task('Dentiste', { reminder: { offset: '1h', at: null, sentAt: null } })];
+    await boot();
+
+    const marque = document.querySelector('.task-reminder');
+    expect(marque).not.toBeNull();
+    expect(marque.getAttribute('title')).toMatch(/heure avant/i);
+  });
+
+  test('une tâche sans rappel n’en porte pas', async () => {
+    server.tasks = [task('Simple')];
+    await boot();
+
+    expect(document.querySelector('.task-reminder')).toBeNull();
+  });
+
+  test('le champ de rappel est désactivé tant qu’il n’y a pas d’échéance', async () => {
+    await boot();
+
+    const champ = document.getElementById('task-reminder');
+    expect(champ.disabled).toBe(true);
+
+    const date = document.getElementById('task-due-date');
+    date.value = '2026-09-22T09:00';
+    date.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(champ.disabled).toBe(false);
+  });
+
+  test('le composeur envoie le rappel choisi', async () => {
+    await boot();
+
+    document.getElementById('task-title').value = 'Dentiste';
+    document.getElementById('task-due-date').value = '2026-09-22T09:00';
+    const champ = document.getElementById('task-reminder');
+    champ.disabled = false;
+    champ.value = '1h';
+    document
+      .getElementById('task-form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle();
+
+    const creation = server.calls.find((c) => c.method === 'POST');
+    expect(creation.body.reminder).toEqual({ offset: '1h' });
+  });
+});
