@@ -111,6 +111,10 @@ démarrage suivant passé 7 jours.
 | `DELETE` | `/tasks/:id`              | Met la tâche à la corbeille                    |
 | `POST`   | `/tasks/:id/restore`      | Ressort une tâche de la corbeille              |
 | `DELETE` | `/tasks/:id/purge`        | Supprime définitivement (corbeille seulement)  |
+| `GET`    | `/export`                 | Sauvegarde JSON complète (corbeille comprise)  |
+| `GET`    | `/export.md`              | Le cahier en Markdown, groupé par catégorie    |
+| `GET`    | `/export.csv`             | Tableau CSV à colonnes stables                 |
+| `POST`   | `/import`                 | Remet une sauvegarde (`merge` ou `replace`)    |
 | `GET`    | `/categories`             | Liste des catégories                           |
 | `POST`   | `/categories`             | Crée une catégorie (`name`, `color`)           |
 | `DELETE` | `/categories/:name`       | Supprime et nettoie les tâches liées           |
@@ -146,6 +150,39 @@ curl -X POST http://localhost:3000/tasks \
     "category": "Courses"
   }'
 ```
+
+---
+
+## Sauvegarde
+
+```bash
+npm run backup     # écrit backups/cahier-<horodatage>.json (serveur allumé)
+```
+
+Le bouton **Sauvegarder** de la barre latérale télécharge le même JSON, et `Ctrl+K` →
+« sauvegarder » fait de même au clavier.
+
+Pour remettre une sauvegarde :
+
+```bash
+# fusionner : ajoute ce qui manque, ne touche à rien d'existant
+curl -X POST http://127.0.0.1:3000/import \
+     -H 'Content-Type: application/json' \
+     --data-binary @backups/cahier-2026-09-16T08-42-11.json
+
+# remplacer : reconstruit la base à l'identique de la sauvegarde
+curl -X POST 'http://127.0.0.1:3000/import?mode=replace' \
+     -H 'Content-Type: application/json' -H 'X-Confirm: replace' \
+     --data-binary @backups/cahier-2026-09-16T08-42-11.json
+```
+
+Le mode `replace` exige l'en-tête `X-Confirm: replace` et **dépose l'état courant dans
+`backups/` avant d'effacer**. Un import est tout ou rien : une seule ligne invalide et rien
+n'est écrit.
+
+`export.csv` neutralise les cellules commençant par `=`, `+`, `-` ou `@` en les préfixant
+d'une apostrophe — sans quoi un tableur les exécuterait comme des formules. C'est pourquoi le
+format d'aller-retour est le JSON, pas le CSV.
 
 ---
 
@@ -191,8 +228,14 @@ to_do_manager/
 │       ├── modal.js        # Ouverture, fermeture et piège de focus
 │       ├── sketch.js       # Couche drawably (attache, biffage, jauge)
 │       └── util.js         # Dates, échappement, toasts
+├── lib/
+│   ├── portable.js         # Forme de l'export, liste blanche d'import
+│   └── formats.js          # Rendus Markdown et CSV (fonctions pures)
+├── scripts/backup.js       # Sauvegarde horodatée via l'API
+├── backups/                # Sauvegardes (ignoré par git)
 ├── test/
 │   ├── api/server.test.js  # Jest + Supertest
+│   ├── server/*.test.js    # Jest, unitaire, sans base
 │   ├── ui/parse.test.js    # Parseur de saisie rapide, horloge figée
 │   └── ui/*.test.js        # Vitest + happy-dom
 ├── server.js               # API Express + fichiers statiques + /vendor/drawably
