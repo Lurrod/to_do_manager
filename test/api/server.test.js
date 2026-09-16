@@ -878,3 +878,60 @@ describe('Erreurs de lecture du corps (body-parser)', () => {
     expect(res.body.error).not.toContain('at ');
   });
 });
+
+describe('Migration de schéma', () => {
+  const { migrateSchema } = require('../../server');
+
+  test('donne les nouveaux champs aux tâches écrites avant eux', async () => {
+    await mongoose.connection.collection('tasks').insertOne({
+      title: 'Ancienne façon',
+      createdAt: new Date('2026-01-02T08:00:00.000Z'),
+    });
+
+    await migrateSchema();
+
+    const migree = await mongoose.connection
+      .collection('tasks')
+      .findOne({ title: 'Ancienne façon' });
+    expect(migree.parentId).toBeNull();
+    expect(migree.tags).toEqual([]);
+    expect(migree.recurrence).toEqual({ freq: '', interval: 1, until: null });
+    expect(migree.reminder).toEqual({ offset: '', at: null, sentAt: null });
+    // l'ordre manuel part de la date d'écriture : le seul ordre que
+    // l'utilisateur a déjà sous les yeux
+    expect(migree.order).toBe(new Date('2026-01-02T08:00:00.000Z').getTime());
+  });
+
+  test('ne touche pas à une tâche déjà migrée', async () => {
+    const creee = await request(app).post('/tasks').send({ title: 'Déjà moderne' });
+    await mongoose.connection
+      .collection('tasks')
+      .updateOne({ title: 'Déjà moderne' }, { $set: { order: 42, tags: ['garder'] } });
+
+    await migrateSchema();
+
+    const apres = await mongoose.connection
+      .collection('tasks')
+      .findOne({ _id: new mongoose.Types.ObjectId(creee.body._id) });
+    expect(apres.order).toBe(42);
+    expect(apres.tags).toEqual(['garder']);
+  });
+
+  test('est rejouable sans rien changer', async () => {
+    await mongoose.connection.collection('tasks').insertOne({
+      title: 'Deux passages',
+      createdAt: new Date('2026-01-03T08:00:00.000Z'),
+    });
+
+    await migrateSchema();
+    const apresUn = await mongoose.connection
+      .collection('tasks')
+      .findOne({ title: 'Deux passages' });
+    await migrateSchema();
+    const apresDeux = await mongoose.connection
+      .collection('tasks')
+      .findOne({ title: 'Deux passages' });
+
+    expect(apresDeux).toEqual(apresUn);
+  });
+});

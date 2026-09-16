@@ -98,6 +98,7 @@ if (process.env.NODE_ENV !== 'test') {
       const uri = await resolveMongoUri();
       await mongoose.connect(uri);
       console.log('MongoDB connecté');
+      await migrateSchema();
       await purgeDeletedTasks();
     } catch (err) {
       console.error('Erreur de connexion à MongoDB:', err.message);
@@ -122,11 +123,34 @@ const taskSchema = new mongoose.Schema({
   priority: { type: String, enum: PRIORITIES, default: '' },
   // suppression douce : la corbeille rend le « Annuler » possible
   deletedAt: { type: Date, default: null },
+
+  // --- vague 2 : structure ---
+  parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null, index: true },
+  tags: {
+    type: [String],
+    default: [],
+    validate: [(v) => v.length <= 10, 'Maximum 10 étiquettes'],
+  },
+  order: { type: Number, default: 0, index: true },
+  recurrence: {
+    freq: { type: String, enum: ['', 'daily', 'weekly', 'monthly'], default: '' },
+    interval: { type: Number, default: 1, min: 1, max: 99 },
+    until: { type: Date, default: null },
+  },
+
+  // --- vague 4 : rappels ---
+  reminder: {
+    offset: { type: String, enum: ['', 'atDue', '1h', '1d'], default: '' },
+    at: { type: Date, default: null, index: true },
+    sentAt: { type: Date, default: null },
+  },
 });
 
 taskSchema.index({ deletedAt: 1, createdAt: -1 });
 taskSchema.index({ deletedAt: 1, dueDate: 1 });
 taskSchema.index({ deletedAt: 1, category: 1 });
+// la liste ne montre que les racines : ce filtre-là porte chaque page
+taskSchema.index({ deletedAt: 1, parentId: 1, createdAt: -1 });
 
 // la couleur est injectée telle quelle dans une déclaration CSS côté client :
 // on n'accepte qu'une notation hexadécimale — même règle que côté import,
@@ -297,6 +321,52 @@ async function purgeDeletedTasks() {
     if (deletedCount) console.log(`Corbeille vidée : ${deletedCount} tâche(s)`);
   } catch (error) {
     console.error('Purge de la corbeille impossible:', error.message);
+  }
+}
+
+/**
+ * Migration au démarrage. Chaque clause ne vise que les documents à qui le
+ * champ manque (`$exists: false`) : relancer le serveur ne réécrit donc rien,
+ * et une base déjà à jour coûte quatre requêtes qui ne touchent aucune ligne.
+ *
+ * `reminder` appartient à la vague 4 mais part ici : ajouter deux champs
+ * connus en deux migrations successives double le risque pour rien.
+ */
+async function migrateSchema() {
+  const defauts = [
+    [{ parentId: { $exists: false } }, { parentId: null }],
+    [{ tags: { $exists: false } }, { tags: [] }],
+    [
+      { 'recurrence.freq': { $exists: false } },
+      { recurrence: { freq: '', interval: 1, until: null } },
+    ],
+    [
+      { 'reminder.offset': { $exists: false } },
+      { reminder: { offset: '', at: null, sentAt: null } },
+    ],
+  ];
+
+  for (const [cible, valeurs] of defauts) {
+    await Task.updateMany(cible, { $set: valeurs });
+  }
+
+  // `order` ne peut pas être une constante : deux tâches partageant le même
+  // rang rendraient le tri manuel instable. On part de la date d'écriture,
+  // qui est déjà l'ordre que l'utilisateur a sous les yeux.
+  const sansOrdre = await Task.find({ order: { $exists: false } })
+    .select('_id createdAt')
+    .lean();
+
+  if (sansOrdre.length > 0) {
+    await Task.bulkWrite(
+      sansOrdre.map((t) => ({
+        updateOne: {
+          filter: { _id: t._id },
+          update: { $set: { order: new Date(t.createdAt).getTime() } },
+        },
+      }))
+    );
+    console.log(`Migration : ${sansOrdre.length} tâche(s) mise(s) à jour`);
   }
 }
 
@@ -661,3 +731,5 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 module.exports = app;
+// exposée pour les tests : la migration doit pouvoir être rejouée à volonté
+module.exports.migrateSchema = migrateSchema;
