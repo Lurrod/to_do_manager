@@ -30,8 +30,8 @@ depuis **Applications installées**. Les données vivent dans `%APPDATA%\Cahier\
 l'application — une mise à jour ne les touche pas.
 
 L'exécutable n'étant pas signé, Windows affichera **« Windows a protégé votre ordinateur »** au
-premier lancement : _Informations complémentaires_ → _Exécuter quand même_. Détails et coûts
-dans [`docs/passage-en-app.md`](docs/passage-en-app.md).
+premier lancement : _Informations complémentaires_ → _Exécuter quand même_. Ce que l'absence de
+signature coûte par ailleurs est écrit dans [SECURITY.md](SECURITY.md).
 
 > L'application a **sa propre base**, distincte de `data/db`. Pour y amener tes tâches :
 > **Sauvegarder** d'un côté, **Restaurer…** de l'autre.
