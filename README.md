@@ -136,7 +136,7 @@ existence les reçoit au premier lancement, et relancer le serveur ne réécrit 
 | `GET`    | `/tasks/:id`              | Détail d'une tâche                             |
 | `GET`    | `/tasks/:id/children`     | Étapes d'une tâche                             |
 | `PATCH`  | `/tasks/:id/order`        | Déplace une tâche entre deux voisines          |
-| `GET`    | `/healthz`                | Le serveur répond, et la base est là           |
+| `POST`   | `/tasks/bulk`             | Même action sur 100 tâches au plus             |
 | `POST`   | `/tasks`                  | Crée une tâche                                 |
 | `PUT`    | `/tasks/:id`              | Met à jour une tâche                           |
 | `DELETE` | `/tasks/:id`              | Met la tâche à la corbeille                    |
@@ -149,6 +149,7 @@ existence les reçoit au premier lancement, et relancer le serveur ne réécrit 
 | `GET`    | `/categories`             | Liste des catégories                           |
 | `POST`   | `/categories`             | Crée une catégorie (`name`, `color`)           |
 | `DELETE` | `/categories/:name`       | Supprime et nettoie les tâches liées           |
+| `GET`    | `/healthz`                | Le serveur répond, et la base est là           |
 
 ### Paramètres de `GET /tasks`
 
