@@ -65,6 +65,12 @@ const isRemoteUri = (uri) =>
 
 let embeddedMongo = null;
 
+/**
+ * Base ouverte, migrée et purgée. Rejetée si l'une des trois échoue.
+ * Déclarée ici, avant le bloc de démarrage qui l'affecte plus bas.
+ */
+let dbReady = null;
+
 async function resolveMongoUri() {
   if (isRemoteUri(process.env.MONGO_URI)) {
     return process.env.MONGO_URI;
@@ -76,7 +82,13 @@ async function resolveMongoUri() {
   const dbPath = process.env.CAHIER_DATA_DIR || path.join(__dirname, 'data', 'db');
   fs.mkdirSync(dbPath, { recursive: true });
 
-  console.log('Démarrage de MongoDB embarqué… (premier lancement : téléchargement ~100 Mo)');
+  // l'application de bureau fournit le binaire ; seule l'exécution depuis le
+  // dépôt le télécharge au premier lancement
+  console.log(
+    process.env.MONGOMS_SYSTEM_BINARY
+      ? 'Démarrage de MongoDB embarqué…'
+      : 'Démarrage de MongoDB embarqué… (premier lancement : téléchargement ~100 Mo)'
+  );
   embeddedMongo = await MongoMemoryServer.create({
     instance: {
       dbPath,
@@ -113,7 +125,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.on('SIGINT', () => shutdown(0));
   process.on('SIGTERM', () => shutdown(0));
 
-  (async () => {
+  dbReady = (async () => {
     try {
       const uri = await resolveMongoUri();
       await mongoose.connect(uri);
@@ -129,8 +141,11 @@ if (process.env.NODE_ENV !== 'test') {
         sweepReminders().catch((e) => console.error('Balayage des rappels :', e.message));
       }, 60 * 1000).unref();
     } catch (err) {
-      console.error('Erreur de connexion à MongoDB:', err.message);
-      await shutdown(1);
+      console.error('Erreur de connexion à MongoDB:', err.stack || err.message);
+      // sous Electron, sortir ici tuerait l'application avant que la fenêtre
+      // ait pu dire ce qui s'est passé : on laisse remonter
+      if (!process.versions.electron) await shutdown(1);
+      throw err;
     }
   })();
 }
@@ -1239,6 +1254,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 module.exports = app;
 module.exports.ready = ready;
+module.exports.dbReady = dbReady;
 // utilisé par Electron pour libérer le verrou de la base avant de quitter
 module.exports.stopServices = stopServices;
 // exposée pour les tests : la migration doit pouvoir être rejouée à volonté

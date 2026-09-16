@@ -1,7 +1,7 @@
 {
   "name": "to_do_manager",
   "version": "2.0.0",
-  "main": "server.js",
+  "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
     "app": "node scripts/app.js",
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "electron": "^32.3.3",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^24.13.3",
     "happy-dom": "^20.14.0",
     "jest": "^29.7.0",
     "supertest": "^7.0.0",
@@ -81,7 +81,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Cahier"
-    }
+      "shortcutName": "Cahier",
+      "differentialPackage": false
+    },
+    "asarUnpack": [
+      "node_modules/mongodb-memory-server*/**"
+    ]
   }
 }

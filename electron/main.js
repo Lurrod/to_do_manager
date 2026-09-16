@@ -22,10 +22,16 @@ if (!app.requestSingleInstanceLock()) {
 
 const EN_PAQUET = app.isPackaged;
 
-// posé avant tout appel à getPath : sans lui, les données atterrissent dans
-// %APPDATA%\Electron en développement et dans %APPDATA%\Cahier une fois
-// empaqueté — deux bases différentes pour la même application
+/**
+ * Emplacement des données, posé explicitement.
+ *
+ * `setName` ne suffit pas : Electron dérive le dossier du champ `name` du
+ * package (`to_do_manager`) en application empaquetée, et de « Electron » en
+ * développement. Trois noms pour la même application, donc trois bases. On le
+ * nomme une bonne fois.
+ */
 app.setName('Cahier');
+app.setPath('userData', path.join(app.getPath('appData'), 'Cahier'));
 
 /**
  * Données de l'utilisateur, hors de l'application.
@@ -47,6 +53,17 @@ const MONGOD = EN_PAQUET
 
 process.env.CAHIER_DATA_DIR = DOSSIER_DONNEES;
 process.env.NODE_ENV = 'production';
+
+/**
+ * mongodb-memory-server veut un dossier de travail, et le calcule par défaut
+ * à côté de son propre module — c'est-à-dire **dans l'archive asar**, qui est
+ * un fichier. Toute écriture y échoue par ENOTDIR. On le renvoie donc dehors,
+ * même quand le binaire est déjà fourni et qu'il n'a rien à télécharger.
+ */
+process.env.MONGOMS_DOWNLOAD_DIR = path.join(app.getPath('userData'), 'mongodb-binaries');
+process.env.MONGOMS_DISABLE_POSTINSTALL = '1';
+fs.mkdirSync(process.env.MONGOMS_DOWNLOAD_DIR, { recursive: true });
+
 if (fs.existsSync(MONGOD)) {
   process.env.MONGOMS_SYSTEM_BINARY = MONGOD;
 } else {
@@ -95,12 +112,15 @@ app.whenReady().then(async () => {
 
   try {
     serveur = require(path.join(__dirname, '..', 'server.js'));
-    const url = await serveur.ready;
+    // les deux : le serveur peut écouter alors que la base a échoué, et une
+    // fenêtre ouverte sur une application sans base ne montrerait que des
+    // erreurs
+    const [url] = await Promise.all([serveur.ready, serveur.dbReady]);
     creerFenetre(url);
   } catch (error) {
     dialog.showErrorBox(
       'Le Cahier n’a pas pu démarrer',
-      `${error.message}\n\nDonnées : ${DOSSIER_DONNEES}`
+      `${error.message}\n\nDonnées : ${DOSSIER_DONNEES}\nMongo : ${MONGOD}\n\n${error.stack || ''}`
     );
     app.quit();
   }
