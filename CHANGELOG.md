@@ -8,26 +8,7 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
-## [Non publié]
-
-### Sécurité
-
-- **Express 4 → 5.** La faille `qs` que le projet portait en risque accepté
-  disparaît : les dépendances de production ne présentent plus aucune
-  vulnérabilité connue. L'analyseur de requête d'Express 5 est par ailleurs plus
-  strict — une porte de moins pour glisser un objet dans un paramètre d'URL.
-
-  Montée vérifiée autrement que par la couleur de la CI : trente requêtes
-  identiques rejouées sous 4.22.1 puis 5.2.1 — injections d'opérateurs Mongo,
-  paramètres en tableau, routes à point, 404, validation de corps — réponses
-  identiques, aux horodatages près.
-
-### Modifié
-
-- Les notes de planification (`docs/`) sortent du dépôt. Ce qui devait survivre
-  est dans `SECURITY.md`, `CHANGELOG.md` et `README.md`.
-
-## [3.0.0] — 2026-09-16
+## [3.0.0] — 2026-09-17
 
 ### Ajouté
 
@@ -65,6 +46,8 @@ des postes déjà installés.
   levées dans ce qui est installé chez les utilisateurs.
 - L'arrêt des services (le verrou Mongo) est relâché par une fonction unique,
   qu'on ferme la fenêtre ou qu'on pose une mise à jour.
+- Les notes de planification (`docs/`) sortent du dépôt. Ce qui devait survivre
+  est dans `SECURITY.md`, `CHANGELOG.md` et `README.md`.
 
 ### Corrigé
 
@@ -77,6 +60,16 @@ des postes déjà installés.
   d'écrire un rendu vide.
 
 ### Sécurité
+
+- **Express 4 → 5.** La faille `qs` que le projet portait en risque accepté
+  disparaît : les dépendances de production ne présentent plus aucune
+  vulnérabilité connue. L'analyseur de requête d'Express 5 est par ailleurs plus
+  strict — une porte de moins pour glisser un objet dans un paramètre d'URL.
+
+  Montée vérifiée autrement que par la couleur de la CI : trente requêtes
+  identiques rejouées sous 4.22.1 puis 5.2.1 — injections d'opérateurs Mongo,
+  paramètres en tableau, routes à point, 404, validation de corps — réponses
+  identiques, aux horodatages près.
 
 - `.env` n'est plus suivi par git. Il l'était malgré le `.gitignore`, ajouté
   avant celui-ci : le jour où quelqu'un y aurait mis une URI Atlas avec un mot
