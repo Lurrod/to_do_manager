@@ -935,3 +935,83 @@ describe('Migration de schéma', () => {
     expect(apresDeux).toEqual(apresUn);
   });
 });
+
+describe('Sous-tâches', () => {
+  /** Crée un parent et renvoie son identifiant. */
+  const parent = async (title = 'Devis') => {
+    const res = await request(app).post('/tasks').send({ title });
+    return res.body._id;
+  };
+
+  test('POST /tasks accepte un parentId', async () => {
+    const parentId = await parent();
+
+    const res = await request(app).post('/tasks').send({ title: 'Verser l’acompte', parentId });
+
+    expect(res.status).toBe(201);
+    expect(res.body.parentId).toBe(parentId);
+  });
+
+  test('GET /tasks ne renvoie que les racines', async () => {
+    const parentId = await parent();
+    await request(app).post('/tasks').send({ title: 'Verser l’acompte', parentId });
+
+    const res = await request(app).get('/tasks?limit=50');
+
+    expect(res.body.tasks.map((t) => t.title)).toEqual(['Devis']);
+    // le total sert la pagination : il ne doit compter que ce qui est listé
+    expect(res.body.total).toBe(1);
+  });
+
+  test('GET /tasks/:id/children liste les étapes, les plus anciennes en tête', async () => {
+    const parentId = await parent();
+    await request(app).post('/tasks').send({ title: 'Première', parentId });
+    await request(app).post('/tasks').send({ title: 'Seconde', parentId });
+
+    const res = await request(app).get(`/tasks/${parentId}/children`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.tasks.map((t) => t.title)).toEqual(['Première', 'Seconde']);
+  });
+
+  test('une étape ne peut pas porter d’étape', async () => {
+    const parentId = await parent();
+    const etape = await request(app).post('/tasks').send({ title: 'Étape', parentId });
+
+    const res = await request(app)
+      .post('/tasks')
+      .send({ title: 'Sous-étape', parentId: etape.body._id });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/un seul niveau/i);
+  });
+
+  test('un parentId qui ne désigne rien est refusé', async () => {
+    const fantome = new mongoose.Types.ObjectId().toString();
+
+    const res = await request(app).post('/tasks').send({ title: 'Orpheline', parentId: fantome });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/parent/i);
+  });
+
+  test('on ne peut pas rattacher une tâche à elle-même', async () => {
+    const parentId = await parent();
+
+    const res = await request(app).put(`/tasks/${parentId}`).send({ parentId });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/elle-même/i);
+  });
+
+  test('rattacher une tâche qui a déjà des étapes est refusé', async () => {
+    const grandParent = await parent('Grand-parent');
+    const pere = await parent('Père');
+    await request(app).post('/tasks').send({ title: 'Fils', parentId: pere });
+
+    const res = await request(app).put(`/tasks/${pere}`).send({ parentId: grandParent });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/un seul niveau/i);
+  });
+});

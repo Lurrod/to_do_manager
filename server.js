@@ -172,7 +172,7 @@ const Category = mongoose.model('Category', categorySchema);
    -------------------------------------------------------------------------- */
 
 // liste blanche : le client ne pose jamais createdAt, deletedAt ni _id lui-même
-const CREATE_FIELDS = ['title', 'description', 'dueDate', 'category', 'priority'];
+const CREATE_FIELDS = ['title', 'description', 'dueDate', 'category', 'priority', 'parentId'];
 const UPDATE_FIELDS = [...CREATE_FIELDS, 'completed'];
 
 const pick = (source, fields) =>
@@ -286,9 +286,35 @@ const SORT_FIELDS = {
   },
 };
 
+/**
+ * Vérifie qu'un rattachement est légal : le parent doit exister, ne pas être
+ * lui-même une étape, et la tâche rattachée ne doit pas déjà en porter.
+ * @returns {string|null} le message d'erreur, ou null si le rattachement est bon
+ */
+const parentageInvalide = async (parentId, enfantId = null) => {
+  if (parentId === null || parentId === undefined || parentId === '') return null;
+
+  if (enfantId && String(parentId) === String(enfantId)) {
+    return 'Une tâche ne peut pas être sa propre étape : elle-même n’est pas un parent.';
+  }
+
+  const parent = await Task.findOne({ _id: parentId, deletedAt: null }).select('parentId').lean();
+  if (!parent) return 'Parent introuvable.';
+  if (parent.parentId) return 'Les étapes ne s’imbriquent que sur un seul niveau.';
+
+  if (enfantId) {
+    const aDesEtapes = await Task.exists({ parentId: enfantId, deletedAt: null });
+    if (aDesEtapes) return 'Les étapes ne s’imbriquent que sur un seul niveau.';
+  }
+
+  return null;
+};
+
 /** Filtre de liste — statut, échéance, catégorie et recherche portent sur TOUTES les tâches. */
 const buildFilter = (query) => {
-  const filter = { deletedAt: null };
+  // seules les racines sont listées : compter les étapes rendrait la
+  // pagination incohérente, une page de 5 pouvant n'afficher qu'un dossier
+  const filter = { deletedAt: null, parentId: null };
 
   const status = asString(query.status, 16);
   if (status === 'active') filter.completed = false;
@@ -376,7 +402,11 @@ async function migrateSchema() {
 
 app.post('/tasks', async (req, res) => {
   try {
-    const task = new Task(pick(req.body, CREATE_FIELDS));
+    const champs = pick(req.body, CREATE_FIELDS);
+    const refus = await parentageInvalide(champs.parentId);
+    if (refus) return res.status(400).json({ error: refus });
+
+    const task = new Task(champs);
     await task.save();
     res.status(201).json(task);
   } catch (error) {
@@ -454,6 +484,18 @@ app.get('/tasks', async (req, res) => {
   }
 });
 
+// déclaré avant /tasks/:id, sinon « children » serait pris pour un identifiant
+app.get('/tasks/:id/children', async (req, res) => {
+  try {
+    const tasks = await Task.find({ parentId: req.params.id, deletedAt: null })
+      .sort({ order: 1, createdAt: 1, _id: 1 })
+      .lean();
+    res.status(200).json({ tasks, total: tasks.length });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
 app.get('/tasks/:id', async (req, res) => {
   try {
     const task = await Task.findOne({ _id: req.params.id, deletedAt: null });
@@ -466,11 +508,16 @@ app.get('/tasks/:id', async (req, res) => {
 
 app.put('/tasks/:id', async (req, res) => {
   try {
-    const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, deletedAt: null },
-      pick(req.body, UPDATE_FIELDS),
-      { new: true, runValidators: true }
-    );
+    const champs = pick(req.body, UPDATE_FIELDS);
+    if (Object.hasOwn(champs, 'parentId')) {
+      const refus = await parentageInvalide(champs.parentId, req.params.id);
+      if (refus) return res.status(400).json({ error: refus });
+    }
+
+    const task = await Task.findOneAndUpdate({ _id: req.params.id, deletedAt: null }, champs, {
+      new: true,
+      runValidators: true,
+    });
     if (!task) return res.status(404).json({ error: 'Tâche non trouvée' });
     res.status(200).json(task);
   } catch (error) {
