@@ -5,7 +5,7 @@
    --------------------------------------------------------------------------- */
 
 import * as api from './api.js';
-import { duePills, initFilters } from './filters.js';
+import { initFilters, showOverdueCount } from './filters.js';
 import { bindBackdrop, closeModal, isModalOpen, openModal } from './modal.js';
 import { parseQuickEntry } from './parse.js';
 import { initTrash } from './trash.js';
@@ -81,8 +81,6 @@ const progressLabel = $('progress-label');
 const statTotal = $('stat-total');
 const statDone = $('stat-done');
 const statActive = $('stat-active');
-
-const dueOverdueCount = $('due-overdue-count');
 
 let state = {
   tasks: [],
@@ -453,17 +451,7 @@ const updateCounters = () => {
     subtitle.textContent = `${active} tâches restent à traiter.`;
   }
 
-  const overdue = state.stats.overdue || 0;
-  dueOverdueCount.textContent = overdue;
-  dueOverdueCount.hidden = overdue === 0;
-
-  // sans cela le nom accessible du bouton devient « En retard 3 », un nombre
-  // posé là sans dire de quoi il parle
-  const overduePill = duePills.find((p) => p.dataset.due === 'overdue');
-  overduePill.setAttribute(
-    'aria-label',
-    overdue === 0 ? 'En retard' : `En retard, ${overdue} tâche${overdue > 1 ? 's' : ''}`
-  );
+  showOverdueCount(state.stats.overdue || 0);
 };
 
 const updateGreeting = () => {

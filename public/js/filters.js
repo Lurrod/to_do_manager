@@ -5,13 +5,15 @@
    --------------------------------------------------------------------------- */
 
 import { setVariant } from './sketch.js';
+import { $ } from './util.js';
 
 // `.pill` est porté par les deux rangées : on les sépare sur leur attribut
-export const filterPills = [...document.querySelectorAll('.pill[data-filter]')];
-export const duePills = [...document.querySelectorAll('.due-pill')];
+const filterPills = [...document.querySelectorAll('.pill[data-filter]')];
+const duePills = [...document.querySelectorAll('.due-pill')];
+const dueOverdueCount = $('due-overdue-count');
 
 /** Marque une pastille comme seule active de sa rangée. */
-export const activatePill = (pills, target) => {
+const activatePill = (pills, target) => {
   pills.forEach((p) => {
     const isTarget = p === target;
     p.classList.toggle('is-active', isTarget);
@@ -20,6 +22,25 @@ export const activatePill = (pills, target) => {
     p.setAttribute('aria-pressed', String(isTarget));
     setVariant(p, isTarget ? 'solid' : null);
   });
+};
+
+/** Reporte le nombre de tâches en retard sur le badge et la pastille. */
+export const showOverdueCount = (count) => {
+  dueOverdueCount.textContent = count;
+  dueOverdueCount.hidden = count === 0;
+
+  // sans cela le nom accessible du bouton devient « En retard 3 », un nombre
+  // posé là sans dire de quoi il parle
+  const overduePill = duePills.find((p) => p.dataset.due === 'overdue');
+  overduePill.setAttribute(
+    'aria-label',
+    count === 0 ? 'En retard' : `En retard, ${count} tâche${count > 1 ? 's' : ''}`
+  );
+};
+
+/** Active l'horizon nommé, comme si sa pastille était cliquée. */
+export const selectDue = (due) => {
+  duePills.find((p) => p.dataset.due === due)?.click();
 };
 
 /**
