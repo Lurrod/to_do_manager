@@ -51,7 +51,7 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
     rows.forEach((row, index) => {
       const selected = index === selectedIndex;
       row.setAttribute('aria-selected', String(selected));
-      row.querySelector('.palette-item').classList.toggle('is-selected', selected);
+      row.classList.toggle('is-selected', selected);
     });
 
     const current = rows[selectedIndex];
@@ -67,19 +67,18 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
     unsketchAll(paletteList);
     paletteList.innerHTML = '';
 
+    // La ligne EST l'option : un descendant interactif dans un role="option"
+    // n'est pas exposé correctement en mode liste par les lecteurs d'écran.
     matches.forEach((command, index) => {
       const li = document.createElement('li');
       li.id = `palette-option-${index}`;
       li.setAttribute('role', 'option');
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'palette-item';
-      button.textContent = command.label;
-      button.addEventListener('click', () => {
+      li.className = 'palette-item';
+      li.textContent = command.label;
+      li.addEventListener('click', () => {
         closeModal(paletteModal);
         command.run();
       });
-      li.appendChild(button);
       paletteList.appendChild(li);
     });
 
