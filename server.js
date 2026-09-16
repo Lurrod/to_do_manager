@@ -10,6 +10,8 @@ const { toMarkdown, toCsv } = require('./lib/formats');
 const { nextDueDate } = require('./lib/recurrence');
 const { normalizeTags } = require('./lib/tags');
 const { NEEDS_RENUMBER, rankBetween, renumber } = require('./lib/ordering');
+const { remindAtFor, messageGroupe, RETARD_MAX_MS } = require('./lib/reminders');
+const { sendNotification } = require('./lib/notify');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -103,6 +105,14 @@ if (process.env.NODE_ENV !== 'test') {
       console.log('MongoDB connecté');
       await migrateSchema();
       await purgeDeletedTasks();
+
+      // rattrapage : ce qui a sonné pendant l'arrêt sort en une seule fois
+      await sweepReminders();
+      // le processus est un outil de bureau : tant qu'il tourne, il regarde.
+      // `unref` pour que ce minuteur n'empêche jamais le serveur de s'arrêter.
+      setInterval(() => {
+        sweepReminders().catch((e) => console.error('Balayage des rappels :', e.message));
+      }, 60 * 1000).unref();
     } catch (err) {
       console.error('Erreur de connexion à MongoDB:', err.message);
       await shutdown(1);
@@ -188,6 +198,7 @@ const CREATE_FIELDS = [
   'parentId',
   'recurrence',
   'tags',
+  'reminder',
 ];
 const UPDATE_FIELDS = [...CREATE_FIELDS, 'completed'];
 
@@ -420,6 +431,22 @@ const regenererRecurrence = async (task) => {
 };
 
 /**
+ * Recalcule l'heure du rappel à partir de l'état résultant.
+ *
+ * `at` est stocké plutôt que calculé à la lecture : le balayage doit rester
+ * une requête indexée triviale, pas une arithmétique de dates en base.
+ */
+const poserHeureDeRappel = (apres) => {
+  const offset = apres?.reminder?.offset || '';
+  return {
+    offset,
+    at: remindAtFor(apres?.dueDate, offset),
+    // un réglage qui change remet le compteur : le nouveau rappel doit partir
+    sentAt: null,
+  };
+};
+
+/**
  * Une récurrence a besoin d'une échéance : c'est elle qu'on fait avancer.
  * Le contrôle porte sur l'état APRÈS modification — retirer l'échéance d'une
  * tâche déjà récurrente la laisserait sans ancrage, et la série s'arrêterait
@@ -478,6 +505,52 @@ async function purgeDeletedTasks() {
   } catch (error) {
     console.error('Purge de la corbeille impossible:', error.message);
   }
+}
+
+/**
+ * Envoie les rappels échus, puis les marque.
+ *
+ * Le marquage rend l'opération idempotente : un rappel part **au plus une
+ * fois**, même si le balayage repasse dessus.
+ *
+ * Tous les rappels échus d'un même passage font **une seule** notification :
+ * au démarrage, ceux accumulés pendant l'arrêt sortiraient sinon en rafale, et
+ * on les fermerait sans les lire.
+ *
+ * @param {{now?: Date, envoyer?: Function}} options `envoyer` est injecté par
+ *   les tests, pour qu'ils n'affichent jamais de vraie notification
+ */
+async function sweepReminders({ now = new Date(), envoyer = sendNotification } = {}) {
+  const echus = await Task.find({
+    'reminder.at': { $ne: null, $lte: now },
+    'reminder.sentAt': null,
+    completed: false,
+    deletedAt: null,
+  })
+    .sort({ 'reminder.at': 1 })
+    .lean();
+
+  if (echus.length === 0) return { envoyes: 0, perimes: 0 };
+
+  const limite = new Date(now.getTime() - RETARD_MAX_MS);
+  const aDire = echus.filter((t) => new Date(t.reminder.at) >= limite);
+  const perimes = echus.length - aDire.length;
+
+  if (aDire.length > 0) {
+    await envoyer({
+      title: aDire.length === 1 ? 'Cahier — rappel' : `Cahier — ${aDire.length} rappels`,
+      message: messageGroupe(aDire),
+    });
+  }
+
+  // les périmés sont marqués eux aussi : sinon ils resurgiraient à chaque
+  // démarrage sans jamais rien apprendre à personne
+  await Task.updateMany(
+    { _id: { $in: echus.map((t) => t._id) } },
+    { $set: { 'reminder.sentAt': now } }
+  );
+
+  return { envoyes: aDire.length, perimes };
 }
 
 /**
@@ -540,6 +613,7 @@ app.post('/tasks', async (req, res) => {
     if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
 
     if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
+    if (champs.reminder || champs.dueDate) champs.reminder = poserHeureDeRappel(champs);
 
     const task = new Task(champs);
     await task.save();
@@ -716,6 +790,12 @@ app.put('/tasks/:id', async (req, res) => {
     if (refusRecurrence) return res.status(400).json({ error: refusRecurrence });
 
     if (Object.hasOwn(champs, 'tags')) champs.tags = normalizeTags(champs.tags);
+
+    // l'heure du rappel dépend de l'échéance ET du réglage : toucher à l'une
+    // ou à l'autre la refait
+    if (Object.hasOwn(champs, 'reminder') || Object.hasOwn(champs, 'dueDate')) {
+      champs.reminder = poserHeureDeRappel({ ...avant, ...champs });
+    }
 
     const task = await Task.findOneAndUpdate({ _id: req.params.id, deletedAt: null }, champs, {
       new: true,
@@ -1035,3 +1115,6 @@ if (process.env.NODE_ENV !== 'test') {
 module.exports = app;
 // exposée pour les tests : la migration doit pouvoir être rejouée à volonté
 module.exports.migrateSchema = migrateSchema;
+// exposé pour les tests : le balayage prend son horloge et son émetteur en
+// arguments, pour n'afficher aucune vraie notification
+module.exports.sweepReminders = sweepReminders;

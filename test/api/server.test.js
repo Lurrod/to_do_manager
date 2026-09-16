@@ -1498,3 +1498,148 @@ describe('Ordre manuel', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('Rappels', () => {
+  const { sweepReminders } = require('../../server');
+
+  const dans = (minutes) => new Date(Date.now() + minutes * 60 * 1000).toISOString();
+
+  /** Collecte les notifications au lieu de les afficher. */
+  const collecteur = () => {
+    const envoyees = [];
+    return { envoyees, envoyer: async (contenu) => envoyees.push(contenu) };
+  };
+
+  test('poser un rappel calcule son heure à partir de l’échéance', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .send({ title: 'Dentiste', dueDate: dans(120), reminder: { offset: '1h' } });
+
+    expect(res.status).toBe(201);
+    const attendue = new Date(new Date(res.body.dueDate).getTime() - 60 * 60 * 1000);
+    expect(new Date(res.body.reminder.at).toISOString()).toBe(attendue.toISOString());
+  });
+
+  test('un rappel sans échéance n’a pas d’heure', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .send({ title: 'Sans date', reminder: { offset: '1h' } });
+
+    expect(res.body.reminder.at).toBeNull();
+  });
+
+  test('changer l’échéance recalcule l’heure du rappel', async () => {
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Dentiste', dueDate: dans(120), reminder: { offset: '1h' } });
+
+    const res = await request(app).put(`/tasks/${creee.body._id}`).send({ dueDate: dans(300) });
+
+    const attendue = new Date(new Date(res.body.dueDate).getTime() - 60 * 60 * 1000);
+    expect(new Date(res.body.reminder.at).toISOString()).toBe(attendue.toISOString());
+  });
+
+  test('retirer le rappel efface son heure', async () => {
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Dentiste', dueDate: dans(120), reminder: { offset: '1h' } });
+
+    const res = await request(app)
+      .put(`/tasks/${creee.body._id}`)
+      .send({ reminder: { offset: '' } });
+
+    expect(res.body.reminder.at).toBeNull();
+  });
+
+  test('le balayage envoie les rappels échus et les marque', async () => {
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Dentiste', dueDate: dans(-30), reminder: { offset: 'atDue' } });
+    const { envoyees, envoyer } = collecteur();
+
+    await sweepReminders({ now: new Date(), envoyer });
+
+    expect(envoyees).toHaveLength(1);
+    expect(envoyees[0].message).toContain('Dentiste');
+    const apres = await request(app).get(`/tasks/${creee.body._id}`);
+    expect(apres.body.reminder.sentAt).not.toBeNull();
+  });
+
+  test('un rappel ne part qu’une fois, même si le balayage repasse', async () => {
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Dentiste', dueDate: dans(-30), reminder: { offset: 'atDue' } });
+    const { envoyees, envoyer } = collecteur();
+
+    await sweepReminders({ now: new Date(), envoyer });
+    await sweepReminders({ now: new Date(), envoyer });
+
+    expect(envoyees).toHaveLength(1);
+  });
+
+  test('un rappel à venir ne part pas', async () => {
+    await request(app)
+      .post('/tasks')
+      .send({ title: 'Plus tard', dueDate: dans(300), reminder: { offset: 'atDue' } });
+    const { envoyees, envoyer } = collecteur();
+
+    await sweepReminders({ now: new Date(), envoyer });
+
+    expect(envoyees).toHaveLength(0);
+  });
+
+  test('cocher une tâche avant l’heure du rappel empêche l’envoi', async () => {
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Faite avant', dueDate: dans(-30), reminder: { offset: 'atDue' } });
+    await request(app).put(`/tasks/${creee.body._id}`).send({ completed: true });
+    const { envoyees, envoyer } = collecteur();
+
+    await sweepReminders({ now: new Date(), envoyer });
+
+    expect(envoyees).toHaveLength(0);
+  });
+
+  test('supprimer une tâche empêche son rappel', async () => {
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Jetée', dueDate: dans(-30), reminder: { offset: 'atDue' } });
+    await request(app).delete(`/tasks/${creee.body._id}`);
+    const { envoyees, envoyer } = collecteur();
+
+    await sweepReminders({ now: new Date(), envoyer });
+
+    expect(envoyees).toHaveLength(0);
+  });
+
+  test('plusieurs rappels échus font une seule notification', async () => {
+    for (const titre of ['Un', 'Deux', 'Trois']) {
+      await request(app)
+        .post('/tasks')
+        .send({ title: titre, dueDate: dans(-30), reminder: { offset: 'atDue' } });
+    }
+    const { envoyees, envoyer } = collecteur();
+
+    await sweepReminders({ now: new Date(), envoyer });
+
+    // douze toasts d'affilée au lancement seraient du bruit
+    expect(envoyees).toHaveLength(1);
+    expect(envoyees[0].message).toContain('Un');
+    expect(envoyees[0].message).toContain('Trois');
+  });
+
+  test('un rappel oublié depuis plus de sept jours est marqué sans rien afficher', async () => {
+    const vieux = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const creee = await request(app)
+      .post('/tasks')
+      .send({ title: 'Oublié', dueDate: vieux, reminder: { offset: 'atDue' } });
+    const { envoyees, envoyer } = collecteur();
+
+    await sweepReminders({ now: new Date(), envoyer });
+
+    expect(envoyees).toHaveLength(0);
+    const apres = await request(app).get(`/tasks/${creee.body._id}`);
+    // marqué quand même : sinon il resurgirait à chaque démarrage
+    expect(apres.body.reminder.sentAt).not.toBeNull();
+  });
+});
