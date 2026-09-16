@@ -4,6 +4,12 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../../server');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+// les sauvegardes automatiques ne doivent pas atterrir dans le dépôt
+process.env.BACKUP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'cahier-backups-'));
 
 jest.setTimeout(60000);
 
@@ -587,5 +593,95 @@ describe('Export / import', () => {
     const res = await request(app).get('/export');
 
     expect(res.headers['content-disposition']).toMatch(/attachment; filename="cahier-.*\.json"/);
+  });
+
+  test('POST /import en mode merge ajoute sans écraser l’existant', async () => {
+    await seed();
+    const avant = (await request(app).get('/export')).body;
+
+    const res = await request(app)
+      .post('/import')
+      .send({
+        mode: 'merge',
+        tasks: [{ title: 'Venue de la sauvegarde' }],
+        categories: [{ name: 'Travail', color: '#1f2f5c' }],
+      });
+
+    expect(res.status).toBe(200);
+    const apres = (await request(app).get('/export')).body;
+    expect(apres.tasks).toHaveLength(avant.tasks.length + 1);
+    expect(apres.categories.map((c) => c.name)).toEqual(['Perso', 'Travail']);
+  });
+
+  test('POST /import en mode replace exige un en-tête de confirmation', async () => {
+    await seed();
+
+    const res = await request(app).post('/import').send({ mode: 'replace', tasks: [] });
+
+    expect(res.status).toBe(428);
+    expect(res.body.error).toMatch(/confirm/i);
+    // et surtout : rien n'a été effacé
+    const apres = (await request(app).get('/export')).body;
+    expect(apres.tasks).toHaveLength(2);
+  });
+
+  test('un export réimporté en replace reproduit la base à l’identique', async () => {
+    await seed();
+    const avant = (await request(app).get('/export')).body;
+
+    // on abîme la base entre les deux : sans cela le test passerait sans rien faire
+    await request(app).post('/tasks').send({ title: 'Intrus' });
+    await request(app).post('/categories').send({ name: 'Intruse', color: '#c8402f' });
+
+    const res = await request(app)
+      .post('/import')
+      .set('X-Confirm', 'replace')
+      .send({ mode: 'replace', tasks: avant.tasks, categories: avant.categories });
+
+    expect(res.status).toBe(200);
+    const apres = (await request(app).get('/export')).body;
+    expect(apres.tasks).toEqual(avant.tasks);
+    expect(apres.categories).toEqual(avant.categories);
+  });
+
+  test('un import malformé est refusé sans rien écrire', async () => {
+    await seed();
+    const avant = (await request(app).get('/export')).body;
+
+    const res = await request(app)
+      .post('/import')
+      .set('X-Confirm', 'replace')
+      .send({ mode: 'replace', tasks: [{ title: 'Correcte' }, { title: '' }] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/tâche 2/i);
+    const apres = (await request(app).get('/export')).body;
+    expect(apres.tasks).toEqual(avant.tasks);
+  });
+
+  test('POST /import rejette un mode inconnu', async () => {
+    const res = await request(app).post('/import').send({ mode: 'ecraser', tasks: [] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/mode/i);
+  });
+
+  test('un replace dépose une sauvegarde avant d’effacer', async () => {
+    await seed();
+
+    await request(app)
+      .post('/import')
+      .set('X-Confirm', 'replace')
+      .send({ mode: 'replace', tasks: [{ title: 'Seule survivante' }] });
+
+    const fichiers = fs.readdirSync(process.env.BACKUP_DIR);
+    expect(fichiers.some((f) => f.startsWith('avant-remplacement-'))).toBe(true);
+    const depose = JSON.parse(
+      fs.readFileSync(
+        path.join(process.env.BACKUP_DIR, fichiers.find((f) => f.startsWith('avant-remplacement-'))),
+        'utf8'
+      )
+    );
+    expect(depose.tasks).toHaveLength(2);
   });
 });

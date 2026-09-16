@@ -23,6 +23,9 @@ const PURGE_AFTER_DAYS = 7;
 if (process.env.CORS_ORIGIN) {
   app.use(cors({ origin: process.env.CORS_ORIGIN }));
 }
+// une sauvegarde entière ne tient pas dans la limite prévue pour une tâche.
+// Monté avant le parseur global, qui laissera passer une requête déjà lue.
+app.use('/import', bodyParser.json({ limit: '8mb' }));
 app.use(bodyParser.json({ limit: '32kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 // la lib drawably est servie telle quelle depuis node_modules (ESM, zero build)
@@ -456,6 +459,95 @@ app.get('/export', async (req, res) => {
     const payload = await collectExport();
     res.setHeader('Content-Disposition', `attachment; filename="cahier-${fileStamp()}.json"`);
     res.status(200).json(payload);
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+/**
+ * Dépose un instantané sur disque et renvoie son chemin.
+ * Le dossier est relu à chaque appel, et non figé au chargement du module :
+ * sinon la valeur dépendrait de l'ordre des `require` dans les tests, qui
+ * doivent pouvoir écrire ailleurs que dans le dépôt.
+ */
+const writeBackup = (prefix, payload) => {
+  const dir = process.env.BACKUP_DIR || path.join(__dirname, 'backups');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${prefix}-${fileStamp()}.json`);
+  fs.writeFileSync(file, JSON.stringify(payload, null, 2), 'utf8');
+  return file;
+};
+
+/**
+ * Remise en base d'une sauvegarde.
+ *
+ * `merge` ajoute sans toucher à l'existant ; `replace` reconstruit la base.
+ * Mongo tourne ici sans jeu de réplicas, donc sans transaction : l'atomicité
+ * est obtenue autrement — tout est validé avant la moindre écriture, et un
+ * `replace` dépose l'état courant dans BACKUP_DIR juste avant d'effacer.
+ */
+app.post('/import', async (req, res) => {
+  try {
+    // le mode se donne en query ou dans le corps : un fichier d'export ne
+    // contient pas de « mode », et il ne faut pas obliger à le rouvrir pour
+    // l'y glisser avant de le remettre
+    const mode = asString(req.query?.mode, 16) || asString(req.body?.mode, 16) || 'merge';
+    if (mode !== 'merge' && mode !== 'replace') {
+      return res.status(400).json({ error: 'Mode inconnu : « merge » ou « replace » attendu.' });
+    }
+    // un effacement complet ne doit pas tenir dans une requête qu'on lance par mégarde
+    if (mode === 'replace' && req.get('X-Confirm') !== 'replace') {
+      return res
+        .status(428)
+        .json({ error: 'Remplacement refusé : en-tête X-Confirm: replace requis.' });
+    }
+
+    const { tasks, categories, errors } = validateImport(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({ error: errors.slice(0, 5).join(' · ') });
+    }
+
+    // seconde barrière : le schéma Mongoose relit chaque document, toujours
+    // sans écrire — un import est tout ou rien
+    const taskDocs = tasks.map((raw) => new Task(raw));
+    const categoryDocs = categories.map((raw) => new Category(raw));
+    for (const [index, doc] of taskDocs.entries()) {
+      const invalid = doc.validateSync();
+      if (invalid) return res.status(400).json({ error: `Tâche ${index + 1} : ${invalid.message}` });
+    }
+    for (const [index, doc] of categoryDocs.entries()) {
+      const invalid = doc.validateSync();
+      if (invalid) {
+        return res.status(400).json({ error: `Catégorie ${index + 1} : ${invalid.message}` });
+      }
+    }
+
+    let backup = null;
+    if (mode === 'replace') {
+      backup = writeBackup('avant-remplacement', await collectExport());
+      await Promise.all([Task.deleteMany({}), Category.deleteMany({})]);
+      await Task.insertMany(taskDocs);
+      await Category.insertMany(categoryDocs);
+    } else {
+      // merge : on n'écrase jamais, on complète. Un identifiant ou un nom déjà
+      // pris est laissé tel qu'il est en base.
+      // un doublon n'est pas une erreur ici : c'est une entrée déjà en base,
+      // qu'on laisse telle quelle. Une écriture en lot signale ses doublons
+      // dans `writeErrors` plutôt que dans un `code` de premier niveau.
+      const ignorerDoublons = (e) => {
+        const doublon = e.code === 11000 || (e.writeErrors || []).every((w) => w.err?.code === 11000);
+        if (!doublon) throw e;
+      };
+      await Task.insertMany(taskDocs, { ordered: false }).catch(ignorerDoublons);
+      await Category.insertMany(categoryDocs, { ordered: false }).catch(ignorerDoublons);
+    }
+
+    res.status(200).json({
+      message: mode === 'replace' ? 'Base remplacée' : 'Sauvegarde fusionnée',
+      tasks: taskDocs.length,
+      categories: categoryDocs.length,
+      backup,
+    });
   } catch (error) {
     fail(res, error);
   }
