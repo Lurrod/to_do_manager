@@ -23,6 +23,11 @@ des postes déjà installés.
   permanence, vide, avec ses deux boutons actifs. Cliquer « Redémarrer
   maintenant » arrêtait alors la base pour installer une version qui n'existait
   pas. Désormais tout élément marqué caché l'est réellement.
+- **Une mise à jour qui ne peut pas s'installer le dit.** Le refus arrivait par
+  le même canal qu'une coupure de réseau, que le Cahier passe volontairement
+  sous silence : le bandeau annonçait « Fermeture du Cahier… » et y restait.
+  Il explique maintenant quoi faire — fermer et rouvrir, la version se posant
+  à la fermeture.
 
 ### Modifié
 

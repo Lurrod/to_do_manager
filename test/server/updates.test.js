@@ -57,6 +57,40 @@ describe('configurerMisesAJour', () => {
     expect(etat.lire().etape).toBe(ETAPES.INACTIVE);
   });
 
+  test('une application installée ne se dit jamais « inactive », même avant la première réponse', () => {
+    const { etat } = armer();
+
+    // la recherche part sur le réseau, et son premier événement met une
+    // seconde à revenir. « inactive » est le seul état qu'un lecteur tient pour
+    // définitif — il range le bandeau et cesse d'interroger pour de bon. Le
+    // laisser dire d'une application installée, même le temps d'une réponse,
+    // c'est armer un piège pour le premier appelant qui arrive trop tôt.
+    expect(etat.lire().etape).toBe(ETAPES.RECHERCHE);
+  });
+
+  test('une pose refusée se dit, au lieu de promettre une fermeture qui n’arrive pas', async () => {
+    const updater = fauxUpdater();
+    // electron-updater refuse d'installer ce qu'il n'a pas téléchargé, et le
+    // signale par un `error` — le même canal qu'une panne de réseau, que l'on
+    // passe volontairement sous silence. D'où la confusion à lever ici.
+    updater.quitAndInstall = function () {
+      this.installe += 1;
+      return this.emettre(
+        'error',
+        new Error("No update filepath provided, can't quit and install")
+      );
+    };
+    const { etat } = armer({ updater });
+    etat.poser({ etape: ETAPES.PRETE, version: '3.2.0' });
+
+    await etat.installer();
+
+    // les services sont déjà arrêtés : le Cahier tourne sans base, et se taire
+    // le laisserait sur « Fermeture du Cahier… » indéfiniment
+    expect(etat.lire().etape).toBe(ETAPES.ECHEC);
+    expect(etat.lire().message).toMatch(/pos[ée]/);
+  });
+
   test('télécharge en fond sans rien demander à l’utilisateur', async () => {
     const { updater, etat } = armer();
 

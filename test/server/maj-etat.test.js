@@ -56,6 +56,17 @@ describe('creerEtatMaj', () => {
     expect(appels).toEqual(['chercher', 'installer']);
   });
 
+  test('brancher sort d’inactive : des actions branchées, c’est une mise à jour qui existe', () => {
+    const etat = creerEtatMaj();
+
+    etat.brancher({ chercher: () => Promise.resolve(), installer: () => Promise.resolve() });
+
+    // « inactive » annonce qu'il n'y aura jamais rien à chercher, et vaut
+    // permission de cesser d'interroger. Des actions branchées le démentent :
+    // l'état doit le refléter tout de suite, sans attendre le réseau.
+    expect(etat.lire().etape).toBe(ETAPES.RECHERCHE);
+  });
+
   test('chercher horodate la recherche', async () => {
     const etat = creerEtatMaj({ maintenant: horlogeFigee('2026-09-17T10:00:00Z') });
     etat.brancher({ chercher: () => Promise.resolve(), installer: () => Promise.resolve() });
