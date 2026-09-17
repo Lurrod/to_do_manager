@@ -398,6 +398,13 @@ ne perd rien : elle se pose à la fermeture suivante. Hors ligne, il ne se passe
 rien et rien ne s'affiche — le Cahier s'utilise sans réseau. La logique est dans
 `lib/updates.js`, testable sans ouvrir de fenêtre.
 
+Poser le nouvel exécutable ne suffit pas à le montrer : le service worker
+(`public/sw.js`) garde une copie de la page, et tant qu'il la servait avant de
+demander au serveur, l'interface d'hier survivait à la mise à jour. Il demande
+donc toujours au serveur d'abord — il tourne sur `127.0.0.1`, dans le même
+processus que la fenêtre — et ne puise dans sa copie que lorsque celui-ci est
+éteint.
+
 La proposition paraît **dans la page**, sur un bandeau de papier, et non dans une
 boîte de dialogue Windows. La fenêtre étant bridée (`contextIsolation: true`,
 aucun préchargement privilégié), le processus principal ne peut rien lui envoyer

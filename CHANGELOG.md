@@ -28,6 +28,15 @@ des postes déjà installés.
   sous silence : le bandeau annonçait « Fermeture du Cahier… » et y restait.
   Il explique maintenant quoi faire — fermer et rouvrir, la version se posant
   à la fermeture.
+- **Une mise à jour se voit enfin.** Le Cahier posait bien la nouvelle version,
+  puis rouvrait l'interface de l'ancienne : la coquille était servie depuis un
+  cache local qui n'expirait jamais. On pouvait donc installer la 3.1.0, lire
+  « Le Cahier est à jour », et n'avoir ni la page Réglages ni le bandeau de
+  mise à jour. La page demande désormais toujours au serveur avant de puiser
+  dans le cache, qui ne sert plus que lorsque le serveur est éteint.
+- **L'ouverture hors ligne retrouve la page entière.** Quatre modules arrivés
+  avec la 3.1.0 — réglages, apparence, préférences, mise à jour — et les traits
+  au crayon n'étaient pas conservés pour l'usage sans serveur.
 
 ### Modifié
 
