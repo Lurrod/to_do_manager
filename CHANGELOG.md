@@ -10,6 +10,13 @@ des postes déjà installés.
 
 ## [Non publié]
 
+### Ajouté
+
+- **Une page Réglages**, ouverte par le bouton de l'en-tête ou par la palette
+  (`Ctrl`+`K`). Elle dit aussi où en est la mise à jour, permet d'en chercher
+  une sans attendre le prochain lancement, et nomme la version installée ainsi
+  que le dossier où vivent les données.
+
 ### Modifié
 
 - **La mise à jour se propose dans le Cahier, plus dans une boîte Windows.**

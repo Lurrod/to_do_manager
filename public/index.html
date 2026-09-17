@@ -31,6 +31,16 @@
       <div class="brand">
         <span class="brand-name">Cahier</span>
       </div>
+      <button
+        id="open-settings"
+        class="btn topbar-settings"
+        type="button"
+        data-sketch="button"
+        data-tone="neutral"
+        aria-label="Réglages"
+      >
+        Réglages
+      </button>
       <div class="counters" aria-label="Statistiques">
         <span class="counter">
           <b id="stat-total">0</b>
@@ -428,6 +438,34 @@
         <div class="modal-actions">
           <button
             id="close-trash"
+            class="btn"
+            type="button"
+            data-sketch="button"
+            data-tone="neutral"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="settings-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-modal-title"
+    >
+      <div class="modal-content modal-content--wide" data-sketch="card">
+        <h2 id="settings-modal-title" class="modal-title">Réglages</h2>
+        <!-- Vide à dessein : les sections sont dessinées à partir du schéma
+             servi par /preferences/schema, pour qu'un réglage ajouté côté
+             serveur paraisse ici sans qu'on y touche. -->
+        <div id="settings-body" class="reglages"></div>
+
+        <div class="modal-actions">
+          <button
+            id="close-settings"
             class="btn"
             type="button"
             data-sketch="button"

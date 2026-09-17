@@ -424,6 +424,9 @@ to_do_manager/
 │       ├── filters.js      # Pastilles de statut et d'échéance, invariant croisé
 │       ├── trash.js        # Corbeille : liste, restauration, purge confirmée
 │       ├── palette.js      # Palette de commandes (Ctrl+K), navigable au clavier
+│       ├── reglages.js     # Page Réglages, dessinée depuis le schéma du serveur
+│       ├── preferences.js  # Les réglages courants, détenus à un seul endroit
+│       ├── maj.js          # Bandeau de mise à jour (n'ouvre que sur une version prête)
 │       ├── steps.js        # Étapes d'une tâche, dépliage et cache
 │       ├── keyboard.js     # Curseur et raccourcis clavier
 │       ├── modal.js        # Ouverture, fermeture et piège de focus
@@ -438,6 +441,11 @@ to_do_manager/
 │   ├── reminders.js        # Heure d'un rappel et texte groupé
 │   ├── notify.js           # Toast Windows (le seul module qui parle à l'OS)
 │   ├── listen.js           # Mise à l'écoute tolérante au port occupé
+│   ├── preferences.js      # Schéma fermé des réglages : défauts et validation
+│   ├── preferences-depot.js # Le document unique des réglages, dans Mongo
+│   ├── preferences-routes.js # GET/PUT /preferences, et le schéma servi à la page
+│   ├── maj-etat.js         # État de la mise à jour, partagé Electron ↔ page
+│   ├── systeme-routes.js   # GET /systeme et les actions, gardées par l'origine
 │   └── launcher.js         # Ce que le lanceur doit décider
 ├── electron/
 │   ├── main.js             # Processus principal : données, mongod, fenêtre

@@ -14,6 +14,7 @@ import { bindBackdrop, closeModal, openModal } from './modal.js';
 import { initPalette } from './palette.js';
 import { parseQuickEntry } from './parse.js';
 import { initPreferences } from './preferences.js';
+import { initReglages } from './reglages.js';
 import { resetSteps, toggleSteps } from './steps.js';
 import { initTrash } from './trash.js';
 
@@ -714,6 +715,7 @@ const { openPalette, closePalette } = initPalette({
   focusTitle: () => taskTitleInput.focus(),
   focusSearch: () => searchInput.focus(),
   openTrash,
+  ouvrirReglages: () => reglages.ouvrir(),
 });
 
 const { applyCursor } = initKeyboard({
@@ -751,6 +753,18 @@ const preferences = initPreferences({
   lire: api.fetchPreferences,
   ecrire: api.savePreferences,
 });
+
+/** La page Réglages se dessine à partir du schéma décrit par le serveur. */
+const reglages = initReglages({
+  preferences,
+  lireSchema: api.fetchSchemaPreferences,
+  lireSysteme: api.fetchSysteme,
+  agirMaj: api.agirMaj,
+  toast,
+});
+
+$('open-settings').addEventListener('click', () => reglages.ouvrir());
+$('close-settings').addEventListener('click', () => reglages.fermer());
 
 const misesAJour = initMisesAJour({
   lireSysteme: api.fetchSysteme,
