@@ -22,7 +22,7 @@ C'est tout. MongoDB est embarqué dans l'app via [`mongodb-memory-server`](https
 
 ```bash
 npm install
-npm run dist          # → dist/Cahier Setup 3.1.1.exe
+npm run dist          # → dist/Cahier Setup 3.2.0.exe
 ```
 
 Un installeur classique : raccourci sur le bureau et dans le menu Démarrer, désinstallable
@@ -50,7 +50,7 @@ Puisque la signature ne peut pas l'attester, l'empreinte le peut. Chaque release
 son empreinte SHA-256 ; pour la comparer, dans PowerShell :
 
 ```powershell
-Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\Cahier-Setup-3.1.1.exe"
+Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\Cahier-Setup-3.2.0.exe"
 ```
 
 Si elle correspond à celle des notes de release, le fichier n'a pas été modifié en chemin.
@@ -290,8 +290,8 @@ curl -X POST http://localhost:3000/tasks \
 npm run backup     # écrit backups/cahier-<horodatage>.json (serveur allumé)
 ```
 
-Le bouton **Sauvegarder** de la barre latérale télécharge le même JSON, et `Ctrl+K` →
-« sauvegarder » fait de même au clavier.
+Le bouton **Sauvegarder** des Réglages, section « Données », télécharge le même JSON,
+et `Ctrl+K` → « sauvegarder » fait de même au clavier, sans avoir à ouvrir les Réglages.
 
 Pour remettre une sauvegarde :
 

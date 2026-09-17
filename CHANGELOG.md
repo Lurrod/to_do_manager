@@ -8,7 +8,7 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
-## [Non publié]
+## [3.2.0] — 2026-09-18
 
 ### Modifié
 
