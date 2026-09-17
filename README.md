@@ -22,7 +22,7 @@ C'est tout. MongoDB est embarqué dans l'app via [`mongodb-memory-server`](https
 
 ```bash
 npm install
-npm run dist          # → dist/Cahier Setup 3.1.0.exe
+npm run dist          # → dist/Cahier Setup 3.1.1.exe
 ```
 
 Un installeur classique : raccourci sur le bureau et dans le menu Démarrer, désinstallable
@@ -50,7 +50,7 @@ Puisque la signature ne peut pas l'attester, l'empreinte le peut. Chaque release
 son empreinte SHA-256 ; pour la comparer, dans PowerShell :
 
 ```powershell
-Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\Cahier-Setup-3.1.0.exe"
+Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\Cahier-Setup-3.1.1.exe"
 ```
 
 Si elle correspond à celle des notes de release, le fichier n'a pas été modifié en chemin.
