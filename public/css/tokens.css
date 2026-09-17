@@ -51,6 +51,40 @@
   --drawably-width: 1.7;
 }
 
+/* ---------------------------------------------------------------------------
+   Ce que la page Réglages change. Chaque réglage est un attribut posé sur la
+   racine par js/apparence.js ; tout se joue ici, en redéfinissant des jetons.
+   --------------------------------------------------------------------------- */
+
+/* Densité : le pas du quadrillage sert d'unité verticale, resserrer l'un
+   resserre tout le reste avec lui. */
+:root[data-densite='compact'] {
+  --gap-3: 12px;
+  --gap-4: 17px;
+  --gap-5: 24px;
+  --line: 23px;
+}
+
+:root[data-taille='petite'] {
+  --step-xs: 0.7rem;
+  --step-sm: 0.78rem;
+  --step-md: 0.87rem;
+  --step-lg: 1.04rem;
+  --step-xl: 2.2rem;
+}
+
+:root[data-taille='grande'] {
+  --step-xs: 0.83rem;
+  --step-sm: 0.95rem;
+  --step-md: 1.07rem;
+  --step-lg: 1.3rem;
+  --step-xl: 3rem;
+}
+
+:root[data-grain='off'] .paper-grain {
+  display: none;
+}
+
 *,
 *::before,
 *::after {

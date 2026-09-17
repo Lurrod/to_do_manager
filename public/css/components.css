@@ -925,3 +925,51 @@
 .reglages-faits code {
   font-size: var(--step-xs);
 }
+
+/* ------------------------ quand le crayon est rangé ----------------------- */
+
+/* Les traits dessinés sont débranchés depuis les Réglages : drawably n'attache
+   plus rien, et ses classes ne sont jamais posées. Les contrôles natifs
+   (champs, boutons, cases) retrouvent donc d'eux-mêmes leur chrome de
+   navigateur — seules les cartes, qui ne sont que des <div>, se retrouveraient
+   sans le moindre bord. C'est tout ce que ce bloc répare. */
+
+:root[data-crayon='off'] [data-sketch='card'] {
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  background: var(--paper-sheet);
+}
+
+:root[data-crayon='off'] .field :is(input, textarea, select) {
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--paper-sheet);
+}
+
+/* la gouttière ne sert plus : il n'y a plus de chevron dessiné à loger */
+:root[data-crayon='off'] .field select {
+  padding-right: 11px;
+}
+
+:root[data-crayon='off'] .btn {
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--paper-sheet);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+:root[data-crayon='off'] .btn[data-variant='solid'],
+:root[data-crayon='off'] .btn.is-active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper-sheet);
+}
+
+:root[data-crayon='off'] .btn[data-tone='danger'] {
+  color: var(--red-pen);
+}
+
+:root[data-crayon='off'] .rule {
+  border-top: 1px solid var(--rule-strong);
+}

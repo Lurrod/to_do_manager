@@ -38,6 +38,34 @@ export const showOverdueCount = (count) => {
   );
 };
 
+/**
+ * Accorde les deux rangées entre elles.
+ *
+ * Les réglages d'ouverture sont deux champs indépendants ; rien n'empêche d'y
+ * enregistrer « toutes les tâches » et « en retard », qui ne vont pas ensemble.
+ * C'est la même règle que celle tenue au clic : le retard se lit parmi ce
+ * qui reste à faire.
+ */
+export const accorderOuverture = ({ statut, horizon }) =>
+  horizon === 'overdue' ? { statut: 'active', horizon } : { statut, horizon };
+
+/**
+ * Pose les deux rangées sans rien recharger.
+ *
+ * Passer par un clic déclencherait un chargement de plus au démarrage, et un
+ * bref affichage de la mauvaise vue avant la bonne.
+ */
+export const appliquerOuverture = ({ statut, horizon }) => {
+  activatePill(
+    filterPills,
+    filterPills.find((p) => p.dataset.filter === statut)
+  );
+  activatePill(
+    duePills,
+    duePills.find((p) => p.dataset.due === horizon)
+  );
+};
+
 /** Active l'horizon nommé, comme si sa pastille était cliquée. */
 export const selectDue = (due) => {
   duePills.find((p) => p.dataset.due === due)?.click();

@@ -122,6 +122,10 @@ tant que `CORS_ORIGIN` n'est pas défini.
 - **Corbeille** consultable : restaurer ou supprimer définitivement (en deux clics)
 - **Clavier** : `n` saisir · `/` chercher · `j`/`k` naviguer · `x` cocher · `e` modifier ·
   `Suppr` supprimer · `Ctrl+K` palette de commandes (`↑`/`↓` pour choisir, `Entrée` pour lancer)
+- **Réglages** : apparence (densité, taille du texte, grain du papier, traits au
+  crayon), vue d'ouverture (statut, échéance, tri) et mise à jour. Ils vivent
+  dans la base, comme le reste ; l'apparence est en plus mise en miroir dans le
+  stockage local pour être reposée avant même la réponse du serveur
 - **Recherche** (titre + description) — raccourci `/`
 - **Tri** : par création, par échéance ou par priorité
 - **Tri, filtres et recherche côté serveur** : ils portent sur toute la base, pas sur la page affichée
@@ -425,6 +429,7 @@ to_do_manager/
 │       ├── trash.js        # Corbeille : liste, restauration, purge confirmée
 │       ├── palette.js      # Palette de commandes (Ctrl+K), navigable au clavier
 │       ├── reglages.js     # Page Réglages, dessinée depuis le schéma du serveur
+│       ├── apparence.js    # Densité, taille, grain, crayon — posés sur la racine
 │       ├── preferences.js  # Les réglages courants, détenus à un seul endroit
 │       ├── maj.js          # Bandeau de mise à jour (n'ouvre que sur une version prête)
 │       ├── steps.js        # Étapes d'une tâche, dépliage et cache

@@ -73,11 +73,30 @@ const optionsFor = (el) => {
   return opts;
 };
 
+/**
+ * Les traits peuvent être débranchés depuis les Réglages : chaque croquis tient
+ * un ResizeObserver et une animation, et tout le monde n'en veut pas.
+ */
+let crayonActif = true;
+
+/**
+ * Branche ou débranche la couche dessinée, et rattrape la page en une fois.
+ * @param {boolean} actif
+ */
+export function setCrayon(actif) {
+  if (actif === crayonActif) return;
+  crayonActif = actif;
+  // l'un détache tout ce qui est posé, l'autre repose tout ce qui le demande :
+  // dans les deux sens, la page entière est remise d'accord d'un coup
+  if (actif) sketchAll();
+  else unsketchAll();
+}
+
 /** Attache le croquis déclaré par data-sketch. Sans effet si déjà attaché. */
 export function sketch(el) {
   const kind = el?.dataset?.sketch;
   const attacher = ATTACHERS[kind];
-  if (!attacher || sketches.has(el)) return null;
+  if (!crayonActif || !attacher || sketches.has(el)) return null;
 
   try {
     const handle = attacher(el, { ...(DEFAULTS[kind] || {}), ...optionsFor(el) });

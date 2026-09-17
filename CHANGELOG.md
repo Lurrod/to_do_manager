@@ -16,6 +16,15 @@ des postes déjà installés.
   (`Ctrl`+`K`). Elle dit aussi où en est la mise à jour, permet d'en chercher
   une sans attendre le prochain lancement, et nomme la version installée ainsi
   que le dossier où vivent les données.
+- **L'apparence se règle** : densité des lignes, taille du texte, grain du
+  papier, et traits au crayon — ces derniers peuvent être rangés, ce qui allège
+  nettement l'affichage sur une longue liste. Le choix est repris tel quel au
+  lancement suivant, sans que la page s'ouvre d'abord dans l'autre mise en page.
+- **La vue d'ouverture se règle** : le Cahier peut s'ouvrir directement sur les
+  tâches à faire de la semaine, triées par échéance, plutôt que sur tout.
+- **Une préférence pour la mise à jour** : décocher « prévenir quand une version
+  est prête » fait disparaître le bandeau — la version se posera alors sans un
+  mot à la fermeture.
 
 ### Modifié
 
