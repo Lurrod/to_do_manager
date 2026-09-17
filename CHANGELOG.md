@@ -8,6 +8,16 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
+## [Non publié]
+
+### Modifié
+
+- **Le projet s'appelle Cahier partout.** L'application portait déjà ce nom ;
+  le dépôt, le paquet et le README disaient encore « to-do manager ». L'adresse
+  du dépôt devient `github.com/Lurrod/cahier` — GitHub redirige l'ancienne, donc
+  un clone existant et les mises à jour des postes installés continuent de
+  fonctionner sans rien changer.
+
 ## [3.1.0] — 2026-09-17
 
 ### Ajouté

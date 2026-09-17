@@ -1,5 +1,5 @@
 {
-  "name": "to_do_manager",
+  "name": "cahier",
   "version": "3.1.0",
   "main": "electron/main.js",
   "scripts": {
@@ -121,7 +121,7 @@
       {
         "provider": "github",
         "owner": "Lurrod",
-        "repo": "to_do_manager",
+        "repo": "cahier",
         "releaseType": "draft"
       }
     ]

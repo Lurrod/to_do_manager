@@ -30,7 +30,7 @@ const EN_PAQUET = app.isPackaged;
  * Emplacement des données, posé explicitement.
  *
  * `setName` ne suffit pas : Electron dérive le dossier du champ `name` du
- * package (`to_do_manager`) en application empaquetée, et de « Electron » en
+ * package (`cahier`) en application empaquetée, et de « Electron » en
  * développement. Trois noms pour la même application, donc trois bases. On le
  * nomme une bonne fois.
  */

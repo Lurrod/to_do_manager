@@ -1,10 +1,10 @@
-# To-Do Manager
+# Cahier
 
 Gestionnaire de tâches local — backend Express + MongoDB, frontend vanilla (HTML/CSS/JS), prêt à tourner depuis un clone GitHub.
 
-Direction artistique « cahier » : papier crème quadrillé, encre bleue, stylo rouge, surligneur jaune. Tout le chrome de l'interface (cadres, cases à cocher, boutons, champs) est dessiné à main levée par [drawably](https://www.npmjs.com/package/drawably) — aucune bordure CSS ne simule un trait.
+Le nom dit la direction artistique : papier crème quadrillé, encre bleue, stylo rouge, surligneur jaune. Tout le chrome de l'interface (cadres, cases à cocher, boutons, champs) est dessiné à main levée par [drawably](https://www.npmjs.com/package/drawably) — aucune bordure CSS ne simule un trait.
 
-![tasks · to-do manager](https://img.shields.io/badge/stack-Node%20%E2%80%A2%20Express%20%E2%80%A2%20MongoDB-1a1a22?style=flat-square)
+![cahier · gestionnaire de tâches](https://img.shields.io/badge/stack-Node%20%E2%80%A2%20Express%20%E2%80%A2%20MongoDB-1a1a22?style=flat-square)
 
 ---
 
@@ -61,8 +61,8 @@ Si elle correspond à celle des notes de release, le fichier n'a pas été modif
 ### Depuis le dépôt
 
 ```bash
-git clone https://github.com/Lurrod/to_do_manager.git
-cd to_do_manager
+git clone https://github.com/Lurrod/cahier.git
+cd cahier
 npm install
 npm run app
 ```
@@ -83,7 +83,7 @@ Tes tâches sont stockées dans `./data/db/` (ignoré par Git) et persistent ent
 Le fichier `.env` n'est pas requis. Si tu veux pointer vers une base distante (Atlas par exemple) :
 
 ```env
-MONGO_URI=mongodb+srv://user:pass@cluster.xxx.mongodb.net/to_do_manager
+MONGO_URI=mongodb+srv://user:pass@cluster.xxx.mongodb.net/cahier
 PORT=3000
 HOST=127.0.0.1
 CORS_ORIGIN=https://exemple.fr
@@ -414,7 +414,7 @@ ce que l'application ne protège pas. Les versions se lisent dans
 ## Structure
 
 ```
-to_do_manager/
+cahier/
 ├── public/
 │   ├── index.html          # UI (les éléments à dessiner portent data-sketch="…")
 │   ├── css/
