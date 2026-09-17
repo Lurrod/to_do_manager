@@ -32,7 +32,7 @@
     "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "mongodb-memory-server": "^11.2.0",
-    "mongoose": "^8.9.7"
+    "mongoose": "^9.10.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.11",
