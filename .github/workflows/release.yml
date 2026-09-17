@@ -78,6 +78,15 @@ jobs:
           $octets = '{0:N0}' -f $exe.Length
           $cloture = [string]([char]96) * 3
 
+          # Le fichier ne porte pas le meme nom des deux cotes : electron-builder
+          # ecrit « Cahier Setup X.Y.Z.exe » et GitHub sert « Cahier-Setup-X.Y.Z.exe ».
+          # On lit donc le nom de l'asset plutot que celui du fichier local : c'est
+          # celui-la que la personne aura sur son disque, et la commande proposee
+          # doit marcher telle quelle.
+          $nomTelecharge = gh release view $env:ETIQUETTE --json assets `
+            --jq '.assets[] | select(.name | endswith(".exe")) | .name' | Select-Object -First 1
+          if (-not $nomTelecharge) { throw "Aucun .exe dans la release - rien a nommer." }
+
           $lignes = @(
             ''
             '## Verifier le fichier'
@@ -88,7 +97,7 @@ jobs:
             $cloture
             ''
             ($cloture + 'powershell')
-            ('Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\' + $exe.Name + '"')
+            ('Get-FileHash -Algorithm SHA256 "$env:USERPROFILE\Downloads\' + $nomTelecharge + '"')
             $cloture
             ''
             "Si l'empreinte correspond, le fichier n'a pas ete modifie depuis sa construction par GitHub Actions."
