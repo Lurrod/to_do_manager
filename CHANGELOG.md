@@ -10,6 +10,20 @@ des postes déjà installés.
 
 ## [Non publié]
 
+### Corrigé
+
+- **La page se charge à nouveau en entier.** Le minuteur du bandeau de mise à
+  jour appelait `setInterval` d'une façon que le navigateur refuse ; l'exception
+  interrompait `app.js` en cours d'évaluation, et tout ce qui venait après —
+  dont le chargement des tâches — ne se faisait plus. Le défaut est arrivé avec
+  la 3.1.0 et n'a jamais été vu : le cache de l'ancienne version masquait la
+  page neuve.
+- **Le bandeau de mise à jour ne squatte plus le haut de l'écran.** Sa mise en
+  forme l'emportait sur l'ordre de le cacher : il restait affiché en
+  permanence, vide, avec ses deux boutons actifs. Cliquer « Redémarrer
+  maintenant » arrêtait alors la base pour installer une version qui n'existait
+  pas. Désormais tout élément marqué caché l'est réellement.
+
 ### Modifié
 
 - **Le projet s'appelle Cahier partout.** L'application portait déjà ce nom ;

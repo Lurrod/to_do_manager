@@ -138,6 +138,84 @@ describe('bandeau de mise à jour', () => {
     expect(visible()).toBe(false);
   });
 
+  test('le minuteur par défaut n’appelle pas setInterval détaché de la fenêtre', () => {
+    const vraiPoser = globalThis.setInterval;
+    const vraiRetirer = globalThis.clearInterval;
+
+    // Chromium refuse `setInterval` appelé sur autre chose que la fenêtre —
+    // « Illegal invocation ». happy-dom l'accepte, et tous les autres tests
+    // injectent un faux minuteur : le défaut n'était jamais joué. Il a suffi
+    // à faire mourir `app.js` entier au chargement de la 3.1.0.
+    const commeChromium = (vrai) =>
+      function (...args) {
+        if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+        return vrai.apply(globalThis, args);
+      };
+    globalThis.setInterval = commeChromium(vraiPoser);
+    globalThis.clearInterval = commeChromium(vraiRetirer);
+
+    try {
+      const bandeau = initMisesAJour({
+        lireSysteme: () => Promise.resolve(systeme({ etape: 'inactive' })),
+        agir: () => Promise.resolve(null),
+        prevenir: () => true,
+        toast: () => {},
+      });
+
+      // `arreter` passe par `clearInterval`, qui tombe dans le même piège
+      expect(() => bandeau.arreter()).not.toThrow();
+    } finally {
+      globalThis.setInterval = vraiPoser;
+      globalThis.clearInterval = vraiRetirer;
+    }
+  });
+
+  test('un élément marqué hidden est réellement caché, quelle que soit sa classe', () => {
+    const feuilles = ['tokens.css', 'layout.css', 'components.css']
+      .map((f) => readFileSync(resolve(process.cwd(), 'public/css', f), 'utf8'))
+      .join('\n');
+
+    // `.maj { display: flex }` l'emportait sur l'attribut `hidden` du bandeau,
+    // qui restait donc à l'écran en permanence, boutons compris. Une règle
+    // globale vaut mieux qu'un garde-fou par classe qu'on oublie.
+    expect(feuilles).toMatch(/\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  });
+
+  test('pendant la recherche, on continue d’interroger', async () => {
+    const { bandeau, appels, minuteur } = armer([
+      systeme({ etape: 'recherche' }),
+      systeme({ etape: 'prete', version: '3.2.0' }),
+    ]);
+
+    await bandeau.rafraichir();
+    await minuteur.battre();
+
+    // une application installée annonce « recherche » le temps que le réseau
+    // réponde : y voir une raison de se taire condamnerait le bandeau à ne
+    // jamais rien annoncer de la session
+    expect(minuteur.arrets).toBe(0);
+    expect(visible()).toBe(true);
+  });
+
+  test('une pose qui échoue le dit, au lieu de rester sur « Fermeture du Cahier… »', async () => {
+    const { bandeau } = armer([systeme({ etape: 'prete', version: '3.2.0' })], {
+      agir: () =>
+        Promise.resolve(
+          systeme({ etape: 'echec', message: 'La nouvelle version ne s’est pas posée.' })
+        ),
+    });
+
+    await bandeau.rafraichir();
+    el('maj-install').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // sans cela, le bandeau annonce une fermeture qui n'aura pas lieu, et
+    // personne ne l'apprend avant le battement suivant — une minute plus tard
+    expect(el('maj-title').textContent).not.toBe('Fermeture du Cahier…');
+    expect(el('maj-detail').textContent).toContain('ne s’est pas posée');
+  });
+
   test('une réponse sans état ne fait rien apparaître, et arrête les questions', async () => {
     const { bandeau, minuteur } = armer([{}]);
 

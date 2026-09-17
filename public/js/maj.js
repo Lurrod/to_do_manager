@@ -35,7 +35,15 @@ export const initMisesAJour = ({
   agir,
   prevenir,
   toast,
-  minuteur = { poser: setInterval, retirer: clearInterval },
+  // `{ poser: setInterval }` a l'air équivalent et ne l'est pas : appelée
+  // comme méthode d'un objet ordinaire, `setInterval` reçoit cet objet pour
+  // `this` et Chromium refuse — « Illegal invocation ». L'exception remontait
+  // jusqu'au corps de `app.js`, qui cessait de s'évaluer. D'où les fonctions
+  // qui enveloppent, et qui appellent la fenêtre comme elle veut l'être.
+  minuteur = {
+    poser: (rappel, ms) => setInterval(rappel, ms),
+    retirer: (id) => clearInterval(id),
+  },
   intervalleMs = INTERVALLE_MS,
 }) => {
   const bandeau = $('maj-banner');
@@ -138,6 +146,10 @@ export const initMisesAJour = ({
   boutonInstaller.addEventListener('click', async () => {
     titre.textContent = 'Fermeture du Cahier…';
     await demander('installer');
+    // encore là, c'est que la pose a échoué : le dire maintenant, et non au
+    // battement suivant — une minute à annoncer une fermeture qui n'aura pas
+    // lieu, c'est une minute à passer pour cassé
+    if (dernierEtat?.maj) rendre(dernierEtat.maj);
   });
 
   battement = minuteur.poser(rafraichir, intervalleMs);

@@ -5,6 +5,19 @@
    drawably et tremble. Rien de dessiné n'est simulé en CSS.
    --------------------------------------------------------------------------- */
 
+/**
+ * `hidden` cache, quoi qu'en dise la classe.
+ *
+ * La règle du navigateur ne pèse rien face à une feuille d'auteur : il a suffi
+ * d'un `.maj { display: flex }` pour que le bandeau de mise à jour reste à
+ * l'écran en permanence, ses deux boutons vivants, alors que la page le
+ * croyait rangé. Le `!important` est là pour que la place de cette règle dans
+ * la cascade ne soit jamais la question.
+ */
+[hidden] {
+  display: none !important;
+}
+
 .topbar,
 .layout,
 .rule--top {
