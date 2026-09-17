@@ -831,6 +831,30 @@ describe('clavier', () => {
     expect(labels).toEqual(['Voir : en retard']);
   });
 
+  test('la palette sauvegarde sans dépendre d’un bouton de la page', async () => {
+    await boot();
+    const clics = [];
+    const vraiClic = window.HTMLAnchorElement.prototype.click;
+    window.HTMLAnchorElement.prototype.click = function () {
+      clics.push({ href: this.getAttribute('href'), download: this.hasAttribute('download') });
+    };
+
+    try {
+      press('k', { ctrlKey: true });
+      const input = document.getElementById('palette-input');
+      input.value = 'Sauvegarder';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('#palette-list .palette-item').click();
+      await settle();
+    } finally {
+      window.HTMLAnchorElement.prototype.click = vraiClic;
+    }
+
+    // le lien vit desormais dans les Réglages, donc nulle part tant qu'ils sont
+    // fermés : la commande doit savoir télécharger toute seule
+    expect(clics).toEqual([{ href: '/export', download: true }]);
+  });
+
   test('choisir une commande de la palette l’exécute et ferme', async () => {
     await boot();
     press('k', { ctrlKey: true });
@@ -1183,7 +1207,7 @@ describe('glisser-déposer', () => {
 describe('restauration d’une sauvegarde', () => {
   /** Faux fichier : happy-dom n'a pas de sélecteur de fichiers. */
   const choisirFichier = (contenu) => {
-    const champ = document.getElementById('import-file');
+    const champ = document.getElementById('reglages-fichier');
     Object.defineProperty(champ, 'files', {
       configurable: true,
       value: [{ text: async () => contenu }],
@@ -1191,20 +1215,37 @@ describe('restauration d’une sauvegarde', () => {
     champ.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
+  /** Les deux gestes vivent dans les Réglages : il faut les ouvrir d'abord. */
+  const ouvrirReglages = async () => {
+    document.getElementById('open-settings').click();
+    await settle();
+  };
+
   test('le bouton Restaurer ouvre le sélecteur de fichiers', async () => {
     await boot();
+    await ouvrirReglages();
     let ouvert = false;
-    document.getElementById('import-file').click = () => {
+    document.getElementById('reglages-fichier').click = () => {
       ouvert = true;
     };
 
-    document.getElementById('open-restore').click();
+    document.getElementById('reglages-restaurer').click();
 
     expect(ouvert).toBe(true);
   });
 
+  test('« Sauvegarder » télécharge l’export sans passer par un bouton mort', async () => {
+    await boot();
+    await ouvrirReglages();
+
+    const lien = document.getElementById('reglages-sauvegarder');
+    expect(lien.getAttribute('href')).toBe('/export');
+    expect(lien.hasAttribute('download')).toBe(true);
+  });
+
   test('choisir une sauvegarde l’envoie en fusion, jamais en remplacement', async () => {
     await boot();
+    await ouvrirReglages();
     server.calls = [];
 
     choisirFichier(
@@ -1221,6 +1262,7 @@ describe('restauration d’une sauvegarde', () => {
 
   test('un fichier qui n’est pas une sauvegarde le dit sans planter', async () => {
     await boot();
+    await ouvrirReglages();
     server.calls = [];
 
     choisirFichier('ceci n’est pas du JSON');
@@ -1228,6 +1270,21 @@ describe('restauration d’une sauvegarde', () => {
 
     expect(server.calls.find((c) => c.url === '/import')).toBeUndefined();
     expect(document.querySelector('.toast').textContent).toMatch(/sauvegarde du Cahier/i);
+  });
+
+  test('rouvrir les réglages ne double pas l’envoi', async () => {
+    await boot();
+    await ouvrirReglages();
+    document.getElementById('close-settings').click();
+    // le corps des réglages est réécrit à chaque ouverture : un branchement
+    // qui s'accumulerait enverrait la sauvegarde deux fois, puis trois
+    await ouvrirReglages();
+    server.calls = [];
+
+    choisirFichier(JSON.stringify({ tasks: [], categories: [] }));
+    await settle();
+
+    expect(server.calls.filter((c) => c.url === '/import')).toHaveLength(1);
   });
 });
 

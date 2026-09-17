@@ -886,7 +886,8 @@
   align-items: center;
 }
 
-.reglages-maj {
+.reglages-maj,
+.reglages-donnees {
   display: flex;
   align-items: center;
   flex-wrap: wrap;

@@ -82,6 +82,10 @@ export const fetchSchemaPreferences = () => request('preferences/schema');
    -------------------------------------------------------------------------- */
 
 /** Version, dossier de données, et où en est la mise à jour. */
+/** Fusionne une sauvegarde dans la base. Le mode part avec le corps. */
+export const importerSauvegarde = (contenu) =>
+  request('import', { method: 'POST', body: JSON.stringify(contenu) });
+
 export const fetchSysteme = () => request('systeme');
 
 /** @param {'chercher'|'installer'|'reporter'} quoi */

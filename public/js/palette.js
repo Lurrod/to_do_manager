@@ -27,7 +27,13 @@ const paletteList = $('palette-list');
  * clavier de app.js reste seul à écouter Ctrl+K : il ouvre ou referme la
  * palette sans jamais toucher directement à sa modale.
  */
-export const initPalette = ({ focusTitle, focusSearch, openTrash, ouvrirReglages }) => {
+export const initPalette = ({
+  focusTitle,
+  focusSearch,
+  openTrash,
+  ouvrirReglages,
+  sauvegarder,
+}) => {
   /** Commandes de la palette : libellé + action. Aucune ne dépend du DOM courant. */
   const PALETTE_COMMANDS = [
     { label: 'Nouvelle tâche', run: focusTitle },
@@ -39,7 +45,7 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash, ouvrirReglages
     { label: 'Voir : sans date', run: () => selectDue('none') },
     { label: 'Ouvrir la corbeille', run: openTrash },
     { label: 'Ouvrir les réglages', run: ouvrirReglages },
-    { label: 'Sauvegarder le cahier', run: () => document.getElementById('export-link').click() },
+    { label: 'Sauvegarder le cahier', run: sauvegarder },
   ];
 
   // Liste courante (après filtre) et ligne mise en avant : le focus réel

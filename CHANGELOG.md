@@ -8,6 +8,16 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
+## [Non publié]
+
+### Modifié
+
+- **Sauvegarder et Restaurer… passent dans les Réglages**, sous une section
+  « Données », juste au-dessus du bloc qui nomme le dossier où vivent les
+  données. La barre latérale ne garde que la Corbeille, qui se consulte
+  souvent ; ces deux gestes-là sont rares et n'avaient pas à occuper une place
+  permanente. Restaurer fusionne toujours sans rien remplacer.
+
 ## [3.1.1] — 2026-09-17
 
 ### Corrigé

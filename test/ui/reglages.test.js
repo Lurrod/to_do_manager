@@ -364,3 +364,120 @@ describe('page Réglages — la mise à jour vue de près', () => {
     expect(champ('apparence.grain').checked).toBe(true);
   });
 });
+
+/* ---------------------------------------------------------------------------
+   Sauvegarder et restaurer, désormais dans les Réglages.
+
+   Le corps de la page est reconstruit à chaque ouverture : ces gestes ne
+   peuvent pas s'accrocher une fois pour toutes au chargement du module, et
+   c'est tout l'objet de ces tests. L'envoi au serveur est injecté — ils
+   n'ouvrent aucune connexion.
+   --------------------------------------------------------------------------- */
+
+/** Un fichier choisi dans le sélecteur, réduit à ce que le code en lit. */
+const fichierChoisi = (contenu) => {
+  const champFichier = document.getElementById('reglages-fichier');
+  Object.defineProperty(champFichier, 'files', {
+    configurable: true,
+    value: [{ text: async () => contenu }],
+  });
+  champFichier.dispatchEvent(new Event('change'));
+  return champFichier;
+};
+
+describe('sauvegarde et restauration', () => {
+  test('la section Données porte les deux gestes, avant « À propos »', async () => {
+    const { reglages } = armer();
+
+    await reglages.ouvrir();
+
+    const lien = document.getElementById('reglages-sauvegarder');
+    expect(lien.getAttribute('href')).toBe('/export');
+    expect(lien.hasAttribute('download')).toBe(true);
+    expect(document.getElementById('reglages-restaurer')).toBeTruthy();
+
+    const sections = [...document.querySelectorAll('.reglages-section')].map(
+      (s) => s.dataset.section
+    );
+    expect(sections.indexOf('donnees')).toBeLessThan(sections.indexOf('apropos'));
+  });
+
+  test('restaurer envoie la sauvegarde lue, puis rafraîchit la liste', async () => {
+    const envois = [];
+    const { reglages } = armer({
+      deps: {
+        importer: async (contenu) => {
+          envois.push(contenu);
+          return { tasks: 12 };
+        },
+        rafraichir: async () => envois.push('rafraichi'),
+      },
+    });
+    await reglages.ouvrir();
+
+    fichierChoisi('{"tasks":[{"title":"relire"}]}');
+    await new Promise((r) => setTimeout(r, 0));
+
+    // fusionner, jamais remplacer : le mode part avec la requête
+    expect(envois[0]).toMatchObject({ mode: 'merge', tasks: [{ title: 'relire' }] });
+    expect(envois[1]).toBe('rafraichi');
+  });
+
+  test('un fichier illisible n’est jamais envoyé, et le dit avec des mots', async () => {
+    const { reglages, journal } = armer({
+      deps: {
+        importer: async () => {
+          throw new Error('on ne devrait pas arriver ici');
+        },
+      },
+    });
+    await reglages.ouvrir();
+
+    fichierChoisi('ceci n’est pas du JSON');
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(journal.gestes).toContain("toast:error:Ce fichier n'est pas une sauvegarde du Cahier.");
+  });
+
+  test('une erreur du serveur est rapportée telle quelle', async () => {
+    const { reglages, journal } = armer({
+      deps: {
+        importer: async () => {
+          throw new Error('Sauvegarde refusée : format inconnu.');
+        },
+      },
+    });
+    await reglages.ouvrir();
+
+    fichierChoisi('{"tasks":[]}');
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(journal.gestes).toContain('toast:error:Sauvegarde refusée : format inconnu.');
+  });
+
+  test('rouvrir les réglages rebranche les gestes', async () => {
+    const envois = [];
+    const { reglages } = armer({
+      deps: { importer: async (c) => envois.push(c) || { tasks: 0 }, rafraichir: async () => {} },
+    });
+
+    await reglages.ouvrir();
+    reglages.fermer();
+    // le corps est réécrit à chaque ouverture : les éléments d'avant n'existent
+    // plus, et un branchement fait une fois pour toutes serait perdu
+    await reglages.ouvrir();
+
+    fichierChoisi('{"tasks":[]}');
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(envois).toHaveLength(1);
+  });
+
+  test('la barre latérale ne porte plus ces gestes', async () => {
+    // les laisser aux deux endroits ferait deux chemins à tenir, et deux
+    // occasions de n'en réparer qu'un
+    expect(HTML).not.toContain('id="export-link"');
+    expect(HTML).not.toContain('id="open-restore"');
+    expect(HTML).not.toContain('id="import-file"');
+  });
+});

@@ -6,10 +6,10 @@
 
 import * as api from './api.js';
 import { appliquerApparence, restaurerApparence } from './apparence.js';
-import { initBackup } from './backup.js';
 import { initDragDrop } from './dragdrop.js';
 import { accorderOuverture, appliquerOuverture, initFilters, showOverdueCount } from './filters.js';
 import { initKeyboard } from './keyboard.js';
+import { telechargerSauvegarde } from './backup.js';
 import { initMisesAJour } from './maj.js';
 import { bindBackdrop, closeModal, openModal } from './modal.js';
 import { initPalette } from './palette.js';
@@ -718,13 +718,12 @@ initDragDrop({
 
 const { openTrash } = initTrash({ restoreTask });
 
-initBackup({ refresh });
-
 const { openPalette, closePalette } = initPalette({
   focusTitle: () => taskTitleInput.focus(),
   focusSearch: () => searchInput.focus(),
   openTrash,
   ouvrirReglages: () => reglages.ouvrir(),
+  sauvegarder: () => telechargerSauvegarde(),
 });
 
 const { applyCursor } = initKeyboard({
@@ -774,6 +773,8 @@ const reglages = initReglages({
   lireSchema: api.fetchSchemaPreferences,
   lireSysteme: api.fetchSysteme,
   agirMaj: api.agirMaj,
+  importer: api.importerSauvegarde,
+  rafraichir: () => refresh(),
   toast,
 });
 

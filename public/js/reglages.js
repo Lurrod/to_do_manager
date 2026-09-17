@@ -10,6 +10,7 @@
    interroger le système, agir sur la mise à jour, écrire les réglages.
    --------------------------------------------------------------------------- */
 
+import { brancherSauvegarde } from './backup.js';
 import { closeModal, openModal } from './modal.js';
 import { sketchAll, unsketchAll } from './sketch.js';
 import { $, escapeHtml } from './util.js';
@@ -43,9 +44,19 @@ const heure = (iso) => {
  * @param {() => Promise<{sections: object, schema: object}>} deps.lireSchema
  * @param {() => Promise<object>} deps.lireSysteme
  * @param {(quoi: string) => Promise<object>} deps.agirMaj
+ * @param {(contenu: object) => Promise<{tasks: number}>} deps.importer fusionne une sauvegarde
+ * @param {() => Promise<void>} deps.rafraichir relit la liste après une fusion
  * @param {(message: string, variante?: string) => void} deps.toast
  */
-export const initReglages = ({ preferences, lireSchema, lireSysteme, agirMaj, toast }) => {
+export const initReglages = ({
+  preferences,
+  lireSchema,
+  lireSysteme,
+  agirMaj,
+  importer,
+  rafraichir = () => Promise.resolve(),
+  toast,
+}) => {
   const modale = $('settings-modal');
   const corps = $('settings-body');
 
@@ -130,6 +141,42 @@ export const initReglages = ({ preferences, lireSchema, lireSysteme, agirMaj, to
     </div>
   `;
 
+  /**
+   * Sauvegarder et restaurer.
+   *
+   * Placé juste avant « À propos », qui nomme le dossier où vivent les
+   * données : les deux gestes et l'endroit dont ils parlent se suivent.
+   */
+  const BLOC_DONNEES = `
+    <section class="reglages-section" data-section="donnees">
+      <h3 class="reglages-titre">Données</h3>
+      <div class="reglages-donnees">
+        <a
+          class="btn"
+          id="reglages-sauvegarder"
+          href="/export"
+          download
+          data-sketch="button"
+          data-tone="neutral"
+          >Sauvegarder</a
+        >
+        <button
+          id="reglages-restaurer"
+          class="btn"
+          type="button"
+          data-sketch="button"
+          data-tone="neutral"
+        >
+          Restaurer…
+        </button>
+        <input type="file" id="reglages-fichier" accept="application/json,.json" hidden />
+      </div>
+      <p class="reglages-note">
+        Restaurer ajoute ce qui manque et ne touche à rien d’existant.
+      </p>
+    </section>
+  `;
+
   const blocAPropos = (systeme) => `
     <section class="reglages-section" data-section="apropos">
       <h3 class="reglages-titre">À propos</h3>
@@ -199,6 +246,8 @@ export const initReglages = ({ preferences, lireSchema, lireSysteme, agirMaj, to
       });
     });
 
+    brancherSauvegarde({ racine: corps, importer, rafraichir, toast });
+
     $('reglages-maj-chercher').addEventListener('click', async () => {
       try {
         direEtatMaj(await agirMaj('chercher'));
@@ -228,6 +277,7 @@ export const initReglages = ({ preferences, lireSchema, lireSysteme, agirMaj, to
       ...Object.entries(schema.schema).map(([cle, reglages]) =>
         dessinerSection(cle, schema.sections[cle] || { titre: cle, note: null }, reglages, valeurs)
       ),
+      BLOC_DONNEES,
       blocAPropos(systeme || {}),
     ].join('');
 
