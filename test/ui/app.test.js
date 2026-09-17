@@ -83,11 +83,26 @@ const mutate = (url, method, body) => {
     return { message: 'ordre mis à jour' };
   }
 
+  if (method === 'PUT' && url === '/preferences') {
+    server.preferences = Object.fromEntries(
+      Object.entries(server.preferences).map(([section, reglages]) => [
+        section,
+        { ...reglages, ...(body[section] || {}) },
+      ])
+    );
+    return server.preferences;
+  }
+
+  if (method === 'POST' && url.startsWith('/systeme/maj/')) return server.systeme;
+
   return {};
 };
 
 const bodyFor = (url, method, body) => {
   if (method !== 'GET') return mutate(url, method, body);
+  if (url.startsWith('/preferences/schema')) return server.schema;
+  if (url.startsWith('/preferences')) return server.preferences;
+  if (url.startsWith('/systeme')) return server.systeme;
   if (/^\/tasks\/[^/]+\/children$/.test(url)) {
     const id = url.split('/')[2];
     return { tasks: server.children[id] || [], total: (server.children[id] || []).length };
@@ -110,6 +125,11 @@ let bootListeners = [];
 
 const boot = async () => {
   document.body.innerHTML = BODY;
+  // l'apparence est mise en miroir dans le stockage local : sans ce nettoyage,
+  // un test ouvrirait la page sur l'apparence reglee par le precedent
+  document.documentElement.removeAttribute('data-densite');
+  document.documentElement.removeAttribute('data-crayon');
+  localStorage.clear();
   vi.resetModules();
 
   const add = document.addEventListener.bind(document);
@@ -142,6 +162,32 @@ beforeEach(() => {
     children: {},
     hold: false,
     failNextPost: false,
+    preferences: {
+      apparence: { densite: 'confort', taille: 'normale', grain: true, crayon: true },
+      ouverture: { statut: 'all', horizon: 'all', tri: 'creation' },
+      misesAJour: { prevenir: true },
+    },
+    schema: {
+      sections: { apparence: { titre: 'Apparence', note: null } },
+      schema: {
+        apparence: {
+          densite: {
+            libelle: 'Densité',
+            type: 'choix',
+            valeurs: [
+              { valeur: 'confort', libelle: 'Confort' },
+              { valeur: 'compact', libelle: 'Compact' },
+            ],
+            defaut: 'confort',
+          },
+        },
+      },
+    },
+    systeme: {
+      version: '3.0.1',
+      dossierDonnees: 'C:\Cahier\db',
+      maj: { etape: 'inactive', version: null, progression: 0, message: null },
+    },
   };
 
   vi.stubGlobal(
@@ -1182,5 +1228,143 @@ describe('restauration d’une sauvegarde', () => {
 
     expect(server.calls.find((c) => c.url === '/import')).toBeUndefined();
     expect(document.querySelector('.toast').textContent).toMatch(/sauvegarde du Cahier/i);
+  });
+});
+
+describe('page Réglages', () => {
+  test('le bouton de l’en-tête ouvre les réglages, remplis de ce qui est enregistré', async () => {
+    server.preferences.apparence.densite = 'compact';
+    await boot();
+
+    document.getElementById('open-settings').click();
+    await settle();
+
+    expect(document.getElementById('settings-modal').classList.contains('active')).toBe(true);
+    expect(document.querySelector('[data-reglage="apparence.densite"] select').value).toBe(
+      'compact'
+    );
+  });
+
+  test('changer un réglage l’envoie au serveur', async () => {
+    await boot();
+    document.getElementById('open-settings').click();
+    await settle();
+    server.calls = [];
+
+    const select = document.querySelector('[data-reglage="apparence.densite"] select');
+    select.value = 'compact';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+
+    const envoi = server.calls.find((c) => c.url === '/preferences' && c.method === 'PUT');
+    expect(envoi.body).toEqual({ apparence: { densite: 'compact' } });
+  });
+
+  test('« Fermer » range la page', async () => {
+    await boot();
+    document.getElementById('open-settings').click();
+    await settle();
+
+    document.getElementById('close-settings').click();
+
+    expect(document.getElementById('settings-modal').classList.contains('active')).toBe(false);
+  });
+
+  test('la palette sait ouvrir les réglages', async () => {
+    await boot();
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
+    );
+    document.getElementById('palette-input').value = 'réglages';
+    document.getElementById('palette-input').dispatchEvent(new Event('input'));
+    document.querySelector('.palette-item').click();
+    await settle();
+
+    expect(document.getElementById('settings-modal').classList.contains('active')).toBe(true);
+  });
+
+  test('hors application installée, le bandeau de mise à jour reste rangé', async () => {
+    await boot();
+
+    // dans un navigateur, il n'y a pas de version publiée : rien à annoncer
+    expect(document.getElementById('maj-banner').hidden).toBe(true);
+  });
+});
+
+describe('les reglages appliques', () => {
+  test('la vue d’ouverture reglee decide de la premiere liste demandee', async () => {
+    server.preferences.ouverture = { statut: 'active', horizon: 'week', tri: 'dueDate' };
+
+    await boot();
+
+    const premiere = calls().find((url) => url.startsWith('/tasks?'));
+    const params = new URL(premiere, 'http://test').searchParams;
+    expect(params.get('status')).toBe('active');
+    expect(params.get('due')).toBe('week');
+    expect(params.get('sort')).toBe('dueDate');
+    // et une seule liste : passer par un clic sur les pastilles en demanderait deux
+    expect(calls().filter((url) => url.startsWith('/tasks?'))).toHaveLength(1);
+  });
+
+  test('la vue reglee est celle que montrent les pastilles', async () => {
+    server.preferences.ouverture = { statut: 'active', horizon: 'week', tri: 'dueDate' };
+
+    await boot();
+
+    expect(document.querySelector('.pill[data-filter="active"]').getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    expect(document.querySelector('.due-pill[data-due="week"]').getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    expect(document.getElementById('sort-select').value).toBe('dueDate');
+  });
+
+  test('ouvrir sur « en retard » n’ouvre pas aussi sur les taches rayees', async () => {
+    server.preferences.ouverture = { statut: 'all', horizon: 'overdue', tri: 'creation' };
+
+    await boot();
+
+    // le retard se lit parmi ce qui reste a faire : les deux reglages sont
+    // independants, la page doit les accorder plutot que de les subir
+    const premiere = calls().find((url) => url.startsWith('/tasks?'));
+    expect(new URL(premiere, 'http://test').searchParams.get('status')).toBe('active');
+  });
+
+  test('l’apparence reglee est posee sur la page', async () => {
+    server.preferences.apparence = {
+      densite: 'compact',
+      taille: 'grande',
+      grain: false,
+      crayon: true,
+    };
+
+    await boot();
+
+    expect(document.documentElement.dataset.densite).toBe('compact');
+    expect(document.documentElement.dataset.taille).toBe('grande');
+    expect(document.documentElement.dataset.grain).toBe('off');
+  });
+
+  test('changer l’apparence dans les reglages la pose aussitot', async () => {
+    await boot();
+    document.getElementById('open-settings').click();
+    await settle();
+
+    const select = document.querySelector('[data-reglage="apparence.densite"] select');
+    select.value = 'compact';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+
+    // sans attendre un rechargement de la page
+    expect(document.documentElement.dataset.densite).toBe('compact');
+  });
+
+  test('l’apparence est retenue pour le lancement suivant', async () => {
+    server.preferences.apparence.densite = 'compact';
+    await boot();
+
+    expect(JSON.parse(localStorage.getItem('cahier.apparence')).densite).toBe('compact');
   });
 });

@@ -11,18 +11,18 @@ export default {
        * Seuils posés juste sous le niveau atteint : ils ne récompensent rien,
        * ils empêchent de redescendre. On les relève quand la mesure les dépasse.
        *
-       * Les branches sont à 79 % — sous la barre des 80 % que se donne le
-       * projet. C'est une dette connue, pas un oubli.
+       * Les branches ont passé la barre des 80 % que se donne le projet, après
+       * être restées à 79 % le temps de deux versions.
        *
        * À lire avec une réserve : la mesure ne porte que sur les modules
        * atteints par les tests. Les écrans jamais importés (glisser-déposer,
        * corbeille, palette) ne pèsent pas dans ce pourcentage.
        */
       thresholds: {
-        statements: 85,
-        branches: 75,
-        functions: 85,
-        lines: 88,
+        statements: 89,
+        branches: 80,
+        functions: 89,
+        lines: 91,
       },
     },
   },

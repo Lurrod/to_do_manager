@@ -5,17 +5,29 @@
    --------------------------------------------------------------------------- */
 
 import * as api from './api.js';
+import { appliquerApparence, restaurerApparence } from './apparence.js';
 import { initBackup } from './backup.js';
 import { initDragDrop } from './dragdrop.js';
-import { initFilters, showOverdueCount } from './filters.js';
+import { accorderOuverture, appliquerOuverture, initFilters, showOverdueCount } from './filters.js';
 import { initKeyboard } from './keyboard.js';
+import { initMisesAJour } from './maj.js';
 import { bindBackdrop, closeModal, openModal } from './modal.js';
 import { initPalette } from './palette.js';
 import { parseQuickEntry } from './parse.js';
+import { initPreferences } from './preferences.js';
+import { initReglages } from './reglages.js';
 import { resetSteps, toggleSteps } from './steps.js';
 import { initTrash } from './trash.js';
 
-import { progress, resketch, setText, sketchAll, strike, unsketchAll } from './sketch.js';
+import {
+  progress,
+  resketch,
+  setCrayon,
+  setText,
+  sketchAll,
+  strike,
+  unsketchAll,
+} from './sketch.js';
 
 import {
   $,
@@ -712,6 +724,7 @@ const { openPalette, closePalette } = initPalette({
   focusTitle: () => taskTitleInput.focus(),
   focusSearch: () => searchInput.focus(),
   openTrash,
+  ouvrirReglages: () => reglages.ouvrir(),
 });
 
 const { applyCursor } = initKeyboard({
@@ -741,11 +754,72 @@ document.querySelectorAll('.modal').forEach(bindBackdrop);
    Démarrage
    ---------------------------------------------------------------------- */
 
+// avant le premier trait : l'apparence du dernier lancement est reposée depuis
+// le miroir local, pour que la page ne s'ouvre pas dans une mise en page qu'on
+// verrait changer une fraction de seconde plus tard
+restaurerApparence({ poserCrayon: setCrayon });
+
 sketchAll();
 updateGreeting();
 
+/** Les réglages, détenus à un seul endroit ; tout ce qui les suit s'y abonne. */
+const preferences = initPreferences({
+  lire: api.fetchPreferences,
+  ecrire: api.savePreferences,
+});
+
+/** La page Réglages se dessine à partir du schéma décrit par le serveur. */
+const reglages = initReglages({
+  preferences,
+  lireSchema: api.fetchSchemaPreferences,
+  lireSysteme: api.fetchSysteme,
+  agirMaj: api.agirMaj,
+  toast,
+});
+
+$('open-settings').addEventListener('click', () => reglages.ouvrir());
+$('close-settings').addEventListener('click', () => reglages.fermer());
+
+// l'apparence suit les réglages, d'où qu'ils changent
+preferences.surChangement((valeurs) =>
+  appliquerApparence(valeurs?.apparence, { poserCrayon: setCrayon })
+);
+
+const misesAJour = initMisesAJour({
+  lireSysteme: api.fetchSysteme,
+  agir: api.agirMaj,
+  // lue à chaque fois : elle peut changer pendant que le Cahier est ouvert
+  prevenir: () => preferences.valeurs()?.misesAJour?.prevenir !== false,
+  toast,
+});
+
+/**
+ * Pose la vue d'ouverture réglée, sans rien charger.
+ *
+ * Doit précéder le premier chargement : passer par un clic sur les pastilles
+ * demanderait une liste de plus, et montrerait brièvement la mauvaise vue.
+ */
+const appliquerOuvertureReglee = (ouverture) => {
+  if (!ouverture) return;
+
+  const { statut, horizon } = accorderOuverture({
+    statut: ouverture.statut,
+    horizon: ouverture.horizon,
+  });
+
+  state = { ...state, status: statut, due: horizon, sort: ouverture.tri };
+  sortSelect.value = ouverture.tri;
+  appliquerOuverture({ statut, horizon });
+};
+
 (async () => {
-  // les catégories d'abord : le rendu des tâches y lit les couleurs
-  await loadCategories();
+  // les réglages et les catégories ensemble : les premiers décident de la vue
+  // à demander, les secondes portent les couleurs que le rendu y lira
+  const [valeurs] = await Promise.all([preferences.charger(), loadCategories()]);
+
+  appliquerOuvertureReglee(valeurs?.ouverture);
   await refresh({ page: 1 });
+
+  // en dernier : l'état de la mise à jour ne doit retarder l'ouverture de rien
+  await misesAJour.rafraichir();
 })();

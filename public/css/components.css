@@ -775,3 +775,201 @@
   /* un trait d'encre marque où la ligne va tomber */
   box-shadow: inset 0 3px 0 -1px var(--ink);
 }
+
+/* ------------------------- bandeau de mise à jour ------------------------- */
+
+/* Note collée en haut du cahier. Elle ne paraît que sur une version déjà
+   téléchargée : le reste se passe en silence. Le trait vient de drawably —
+   aucune bordure CSS ici, comme partout ailleurs. */
+.maj {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-2) var(--gap-3);
+  margin: 0 var(--gap-5);
+  padding: var(--gap-2) var(--gap-3);
+  background: color-mix(in srgb, var(--highlighter) 22%, var(--paper-sheet));
+}
+
+.maj-body {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap-1) var(--gap-2);
+  min-width: 0;
+}
+
+.maj-title {
+  font-family: var(--font-hand);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.maj-detail {
+  font-size: var(--step-sm);
+  color: var(--ink-soft);
+}
+
+.maj-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  flex-shrink: 0;
+}
+
+/* ------------------------------ page Réglages ----------------------------- */
+
+.topbar-settings {
+  align-self: center;
+}
+
+.reglages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-4);
+  max-height: 62vh;
+  overflow-y: auto;
+  /* la barre de défilement ne doit pas passer sous le trait du cadre */
+  padding-right: var(--gap-2);
+}
+
+.reglages-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+}
+
+.reglages-titre {
+  margin: 0;
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.reglages-note {
+  margin: 0;
+  font-size: var(--step-sm);
+  color: var(--ink-soft);
+}
+
+/* Libellé à gauche, contrôle à droite, alignés d'une ligne à l'autre. */
+.reglage {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--gap-2) var(--gap-3);
+  min-height: var(--line);
+}
+
+.reglage-libelle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.reglage-aide {
+  font-size: var(--step-xs);
+  line-height: 1.35;
+  color: var(--ink-faint);
+}
+
+.reglage-case {
+  display: inline-flex;
+  align-items: center;
+}
+
+.reglages-maj {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap-2);
+  margin-top: var(--gap-1);
+}
+
+.reglages-maj-etat {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--step-sm);
+  color: var(--ink-soft);
+}
+
+/* Version et dossier de données : deux faits, pas un formulaire. */
+.reglages-faits {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: var(--gap-1) var(--gap-3);
+  margin: 0;
+  font-size: var(--step-sm);
+}
+
+.reglages-faits dt {
+  color: var(--ink-faint);
+}
+
+.reglages-faits dd {
+  margin: 0;
+  color: var(--ink);
+  /* un chemin Windows est long et ne doit pas élargir la modale */
+  overflow-wrap: anywhere;
+}
+
+.reglages-faits code {
+  font-size: var(--step-xs);
+}
+
+/* ------------------------ quand le crayon est rangé ----------------------- */
+
+/* Les traits dessinés sont débranchés depuis les Réglages : drawably n'attache
+   plus rien, et ses classes ne sont jamais posées. Les contrôles natifs
+   (champs, boutons, cases) retrouvent donc d'eux-mêmes leur chrome de
+   navigateur — seules les cartes, qui ne sont que des <div>, se retrouveraient
+   sans le moindre bord. C'est tout ce que ce bloc répare. */
+
+:root[data-crayon='off'] [data-sketch='card'] {
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  background: var(--paper-sheet);
+}
+
+:root[data-crayon='off'] .field :is(input, textarea, select) {
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--paper-sheet);
+}
+
+/* la gouttière ne sert plus : il n'y a plus de chevron dessiné à loger */
+:root[data-crayon='off'] .field select {
+  padding-right: 11px;
+}
+
+:root[data-crayon='off'] .btn {
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--paper-sheet);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+:root[data-crayon='off'] .btn[data-variant='solid'],
+:root[data-crayon='off'] .btn.is-active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper-sheet);
+}
+
+:root[data-crayon='off'] .btn[data-tone='danger'] {
+  color: var(--red-pen);
+}
+
+:root[data-crayon='off'] .rule {
+  border-top: 1px solid var(--rule-strong);
+}

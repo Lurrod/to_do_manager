@@ -2,6 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest
 
 import {
   progress,
+  setCrayon,
   setText,
   setVariant,
   sketch,
@@ -175,5 +176,57 @@ describe('tracés maison', () => {
 
     expect(emptyPaths).toBeGreaterThan(0);
     expect(filledPaths).toBeGreaterThan(emptyPaths);
+  });
+});
+
+describe('setCrayon', () => {
+  // le réglage est global au module : on le remet en place, sinon les tests
+  // suivants dessineraient sur une page débranchée
+  afterEach(() => setCrayon(true));
+
+  test('débranché, plus rien ne s’attache', () => {
+    const el = document.createElement('div');
+    el.dataset.sketch = 'card';
+    document.body.append(el);
+
+    setCrayon(false);
+    sketch(el);
+
+    expect(el.dataset.sketched).toBeUndefined();
+  });
+
+  test('débrancher détache ce qui était déjà posé', () => {
+    const el = document.createElement('div');
+    el.dataset.sketch = 'card';
+    document.body.append(el);
+    sketch(el);
+    expect(el.dataset.sketched).toBe('card');
+
+    setCrayon(false);
+
+    // sans ce rattrapage, la page garderait ses traits jusqu'au prochain rendu
+    expect(el.dataset.sketched).toBeUndefined();
+  });
+
+  test('rebrancher repose les traits de toute la page', () => {
+    const el = document.createElement('div');
+    el.dataset.sketch = 'card';
+    document.body.append(el);
+    setCrayon(false);
+
+    setCrayon(true);
+
+    expect(el.dataset.sketched).toBe('card');
+  });
+
+  test('reposer le même réglage ne fait rien', () => {
+    const el = document.createElement('div');
+    el.dataset.sketch = 'card';
+    document.body.append(el);
+    sketch(el);
+
+    setCrayon(true);
+
+    expect(el.dataset.sketched).toBe('card');
   });
 });

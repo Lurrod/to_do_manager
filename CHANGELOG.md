@@ -8,6 +8,34 @@ Une version se publie en étiquetant un commit : `npm version <niveau>` puis
 release brouillon ; publier ce brouillon dans GitHub est ce qui la rend visible
 des postes déjà installés.
 
+## [Non publié]
+
+### Ajouté
+
+- **Une page Réglages**, ouverte par le bouton de l'en-tête ou par la palette
+  (`Ctrl`+`K`). Elle dit aussi où en est la mise à jour, permet d'en chercher
+  une sans attendre le prochain lancement, et nomme la version installée ainsi
+  que le dossier où vivent les données.
+- **L'apparence se règle** : densité des lignes, taille du texte, grain du
+  papier, et traits au crayon — ces derniers peuvent être rangés, ce qui allège
+  nettement l'affichage sur une longue liste. Le choix est repris tel quel au
+  lancement suivant, sans que la page s'ouvre d'abord dans l'autre mise en page.
+- **La vue d'ouverture se règle** : le Cahier peut s'ouvrir directement sur les
+  tâches à faire de la semaine, triées par échéance, plutôt que sur tout.
+- **Une préférence pour la mise à jour** : décocher « prévenir quand une version
+  est prête » fait disparaître le bandeau — la version se posera alors sans un
+  mot à la fermeture.
+
+### Modifié
+
+- **La mise à jour se propose dans le Cahier, plus dans une boîte Windows.**
+  Un bandeau de papier s'affiche en haut de la page, avec les mots de
+  l'application : « La version 3.1.0 est prête. » Rien ne s'affiche tant que la
+  version n'est pas téléchargée, et « Plus tard » ne la fait pas revenir toutes
+  les minutes — elle se posera à la fermeture, comme avant.
+- Un redémarrage qui échoue s'explique désormais dans ce même bandeau, au lieu
+  d'une seconde boîte de dialogue.
+
 ## [3.0.1] — 2026-09-17
 
 ### Modifié

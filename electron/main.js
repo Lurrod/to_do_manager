@@ -136,10 +136,13 @@ app.whenReady().then(async () => {
     creerFenetre(url);
 
     // après la fenêtre, jamais avant : la mise à jour ne doit pas retarder
-    // l'ouverture du Cahier, ni l'empêcher si le réseau est absent
+    // l'ouverture du Cahier, ni l'empêcher si le réseau est absent.
+    //
+    // Rien ne s'affiche depuis ici : l'updater écrit dans l'état porté par le
+    // serveur, et c'est la page qui en parle, avec ses mots et son papier.
     configurerMisesAJour({
       updater: autoUpdater,
-      dialog,
+      etat: serveur.etatMaj,
       enPaquet: EN_PAQUET,
       arreterServices,
     });

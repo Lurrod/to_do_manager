@@ -13,6 +13,10 @@ const { NEEDS_RENUMBER, rankBetween, renumber } = require('./lib/ordering');
 const { remindAtFor, messageGroupe, RETARD_MAX_MS } = require('./lib/reminders');
 const { sendNotification } = require('./lib/notify');
 const { listenWithFallback } = require('./lib/listen');
+const { creerDepotPreferences } = require('./lib/preferences-depot');
+const { creerRoutesPreferences } = require('./lib/preferences-routes');
+const { creerEtatMaj } = require('./lib/maj-etat');
+const { creerRoutesSysteme } = require('./lib/systeme-routes');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -1216,6 +1220,35 @@ app.delete('/categories/:name', async (req, res) => {
   }
 });
 
+/* --------------------------------------------------------------------------
+   Réglages
+   -------------------------------------------------------------------------- */
+
+// tout ce qui touche aux préférences vit dans lib/ : ce fichier ne fait que
+// poser le dépôt sur la connexion Mongo et monter le routeur
+app.use('/preferences', creerRoutesPreferences({ depot: creerDepotPreferences(mongoose) }));
+
+/**
+ * L'état de la mise à jour, écrit par le processus principal d'Electron et lu
+ * par la page.
+ *
+ * Il vit ici parce que le serveur tourne DANS ce processus : c'est le seul
+ * point que les deux côtés atteignent sans ouvrir de pont Node vers la fenêtre.
+ * Hors Electron — navigateur, développement — personne ne le remplit : il
+ * reste à INACTIVE, et la page n'interroge rien.
+ */
+const etatMaj = creerEtatMaj();
+
+app.use(
+  '/systeme',
+  creerRoutesSysteme({
+    etat: etatMaj,
+    version: require('./package.json').version,
+    dossierDonnees: process.env.CAHIER_DATA_DIR || path.join(__dirname, 'data', 'db'),
+    origineAutorisee: process.env.CORS_ORIGIN || null,
+  })
+);
+
 /**
  * Adresse réellement obtenue, quand le serveur est mis à l'écoute.
  *
@@ -1253,6 +1286,8 @@ module.exports.ready = ready;
 module.exports.dbReady = dbReady;
 // utilisé par Electron pour libérer le verrou de la base avant de quitter
 module.exports.stopServices = stopServices;
+// rempli par electron/main.js : lui seul sait où en est la mise à jour
+module.exports.etatMaj = etatMaj;
 // exposée pour les tests : la migration doit pouvoir être rejouée à volonté
 module.exports.migrateSchema = migrateSchema;
 // exposé pour les tests : le balayage prend son horloge et son émetteur en

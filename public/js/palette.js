@@ -19,6 +19,7 @@ const paletteList = $('palette-list');
  *   focusTitle: () => void,
  *   focusSearch: () => void,
  *   openTrash: () => Promise<void>,
+ *   ouvrirReglages: () => Promise<void>,
  * }} deps Ce que la palette ne peut pas atteindre par elle-même : le focus sur
  * le composeur et la recherche vivent dans app.js, et la corbeille dans sa
  * propre closure (trash.js).
@@ -26,7 +27,7 @@ const paletteList = $('palette-list');
  * clavier de app.js reste seul à écouter Ctrl+K : il ouvre ou referme la
  * palette sans jamais toucher directement à sa modale.
  */
-export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
+export const initPalette = ({ focusTitle, focusSearch, openTrash, ouvrirReglages }) => {
   /** Commandes de la palette : libellé + action. Aucune ne dépend du DOM courant. */
   const PALETTE_COMMANDS = [
     { label: 'Nouvelle tâche', run: focusTitle },
@@ -37,6 +38,7 @@ export const initPalette = ({ focusTitle, focusSearch, openTrash }) => {
     { label: 'Voir : cette semaine', run: () => selectDue('week') },
     { label: 'Voir : sans date', run: () => selectDue('none') },
     { label: 'Ouvrir la corbeille', run: openTrash },
+    { label: 'Ouvrir les réglages', run: ouvrirReglages },
     { label: 'Sauvegarder le cahier', run: () => document.getElementById('export-link').click() },
   ];
 

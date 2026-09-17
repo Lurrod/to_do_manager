@@ -63,3 +63,26 @@ export const createCategory = (name, color) =>
 
 export const deleteCategory = (name) =>
   request(`categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
+
+/* --------------------------------------------------------------------------
+   Réglages
+   -------------------------------------------------------------------------- */
+
+export const fetchPreferences = () => request('preferences');
+
+/** Patch partiel : ce qui n'est pas dit garde sa valeur enregistrée. */
+export const savePreferences = (patch) =>
+  request('preferences', { method: 'PUT', body: JSON.stringify(patch) });
+
+/** La description des réglages : la page Réglages se dessine à partir d'elle. */
+export const fetchSchemaPreferences = () => request('preferences/schema');
+
+/* --------------------------------------------------------------------------
+   Système
+   -------------------------------------------------------------------------- */
+
+/** Version, dossier de données, et où en est la mise à jour. */
+export const fetchSysteme = () => request('systeme');
+
+/** @param {'chercher'|'installer'|'reporter'} quoi */
+export const agirMaj = (quoi) => request(`systeme/maj/${quoi}`, { method: 'POST' });

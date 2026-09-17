@@ -122,6 +122,10 @@ tant que `CORS_ORIGIN` n'est pas défini.
 - **Corbeille** consultable : restaurer ou supprimer définitivement (en deux clics)
 - **Clavier** : `n` saisir · `/` chercher · `j`/`k` naviguer · `x` cocher · `e` modifier ·
   `Suppr` supprimer · `Ctrl+K` palette de commandes (`↑`/`↓` pour choisir, `Entrée` pour lancer)
+- **Réglages** : apparence (densité, taille du texte, grain du papier, traits au
+  crayon), vue d'ouverture (statut, échéance, tri) et mise à jour. Ils vivent
+  dans la base, comme le reste ; l'apparence est en plus mise en miroir dans le
+  stockage local pour être reposée avant même la réponse du serveur
 - **Recherche** (titre + description) — raccourci `/`
 - **Tri** : par création, par échéance ou par priorité
 - **Tri, filtres et recherche côté serveur** : ils portent sur toute la base, pas sur la page affichée
@@ -394,6 +398,13 @@ ne perd rien : elle se pose à la fermeture suivante. Hors ligne, il ne se passe
 rien et rien ne s'affiche — le Cahier s'utilise sans réseau. La logique est dans
 `lib/updates.js`, testable sans ouvrir de fenêtre.
 
+La proposition paraît **dans la page**, sur un bandeau de papier, et non dans une
+boîte de dialogue Windows. La fenêtre étant bridée (`contextIsolation: true`,
+aucun préchargement privilégié), le processus principal ne peut rien lui envoyer
+directement : il écrit dans un état partagé (`lib/maj-etat.js`) que le serveur —
+qui tourne dans ce même processus — expose en `GET /systeme`. Aucun pont Node
+n'est ouvert vers la page ; elle ne voit qu'une réponse JSON de plus.
+
 Les failles se signalent en privé — voir [SECURITY.md](SECURITY.md), qui dit aussi
 ce que l'application ne protège pas. Les versions se lisent dans
 [CHANGELOG.md](CHANGELOG.md).
@@ -417,6 +428,10 @@ to_do_manager/
 │       ├── filters.js      # Pastilles de statut et d'échéance, invariant croisé
 │       ├── trash.js        # Corbeille : liste, restauration, purge confirmée
 │       ├── palette.js      # Palette de commandes (Ctrl+K), navigable au clavier
+│       ├── reglages.js     # Page Réglages, dessinée depuis le schéma du serveur
+│       ├── apparence.js    # Densité, taille, grain, crayon — posés sur la racine
+│       ├── preferences.js  # Les réglages courants, détenus à un seul endroit
+│       ├── maj.js          # Bandeau de mise à jour (n'ouvre que sur une version prête)
 │       ├── steps.js        # Étapes d'une tâche, dépliage et cache
 │       ├── keyboard.js     # Curseur et raccourcis clavier
 │       ├── modal.js        # Ouverture, fermeture et piège de focus
@@ -431,6 +446,11 @@ to_do_manager/
 │   ├── reminders.js        # Heure d'un rappel et texte groupé
 │   ├── notify.js           # Toast Windows (le seul module qui parle à l'OS)
 │   ├── listen.js           # Mise à l'écoute tolérante au port occupé
+│   ├── preferences.js      # Schéma fermé des réglages : défauts et validation
+│   ├── preferences-depot.js # Le document unique des réglages, dans Mongo
+│   ├── preferences-routes.js # GET/PUT /preferences, et le schéma servi à la page
+│   ├── maj-etat.js         # État de la mise à jour, partagé Electron ↔ page
+│   ├── systeme-routes.js   # GET /systeme et les actions, gardées par l'origine
 │   └── launcher.js         # Ce que le lanceur doit décider
 ├── electron/
 │   ├── main.js             # Processus principal : données, mongod, fenêtre
